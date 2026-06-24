@@ -1,6 +1,14 @@
 # GVHMR: World-Grounded Human Motion Recovery via Gravity-View Coordinates
 ### [Project Page](https://zju3dv.github.io/gvhmr) | [Paper](https://arxiv.org/abs/2409.06662)
 
+> [!NOTE]
+> **Modernized fork** of [`zju3dv/GVHMR`](https://github.com/zju3dv/GVHMR) by
+> [@ryanrudes](https://github.com/ryanrudes) — runs on **Apple Silicon (MPS)**, with `uv`/`pyproject`
+> packaging, a Typer + Rich `gvhmr` CLI, a GPU mesh renderer, skeleton-overlay exports, and a
+> device-agnostic **scene-aware SLAM** backend (`gvhmr demo --slam dust3r`, a Mac-friendly DPVO
+> alternative that recovers a *metric* camera). The released model's behaviour is preserved
+> (golden-guarded). Details: [`AGENTS.md`](AGENTS.md) · upstream: [`zju3dv/GVHMR`](https://github.com/zju3dv/GVHMR).
+
 > World-Grounded Human Motion Recovery via Gravity-View Coordinates  
 > [Zehong Shen](https://zehongs.github.io/)<sup>\*</sup>,
 [Huaijin Pi](https://phj128.github.io/)<sup>\*</sup>,
@@ -24,8 +32,11 @@
 
 > **This is a modernized fork** of [zju3dv/GVHMR](https://github.com/zju3dv/GVHMR): `uv` +
 > `pyproject.toml` packaging, Python 3.13 / modern typing, a CPU/MPS test suite,
-> **Apple-Silicon (MPS) support**, a **Typer + Rich `gvhmr` CLI**, and agent tooling —
-> with model behaviour preserved.
+> **Apple-Silicon (MPS) support**, a **Typer + Rich `gvhmr` CLI**, a GPU mesh renderer
+> (moderngl/Metal), skeleton-overlay video exports, a device-agnostic **DUSt3R + Depth-Anything-V2
+> scene-aware SLAM backend** (`--slam dust3r` — recovers a metric camera on Mac, where DPVO is
+> CUDA-only; set it up with [`scripts/setup_scene_aware.sh`](scripts/setup_scene_aware.sh)), and
+> agent tooling — with model behaviour preserved (golden-guarded).
 > See [`AGENTS.md`](AGENTS.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and
 > [`docs/PROVENANCE.md`](docs/PROVENANCE.md).
 
