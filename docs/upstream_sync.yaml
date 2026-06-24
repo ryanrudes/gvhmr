@@ -1,0 +1,60 @@
+# ---------------------------------------------------------------------------
+# Upstream-sync manifest
+# ---------------------------------------------------------------------------
+# Machine-readable map from the ORIGINAL repo (zju3dv/GVHMR) to THIS fork, so an
+# LLM agent (or human) can mechanically translate an upstream change to where it
+# now lives here — even after heavy restructuring.
+#
+# Consumed by `scripts/upstream_sync.py`. KEEP THIS UPDATED whenever you move,
+# split, rename, or vendor code: append an entry so future upstream merges stay
+# mechanical. The golden rule: every upstream path must resolve to a local path
+# (or be explicitly marked vendored/removed).
+# ---------------------------------------------------------------------------
+
+upstream:
+  remote: upstream
+  url: https://github.com/zju3dv/GVHMR
+  # Last upstream commit whose changes have been reconciled into this fork.
+  # Update this after each successful sync.
+  last_synced_commit: 6ec3ca3   # merge of PR #94 (simple_vo parallel), the fork point
+
+# The import package was renamed wholesale. This is a clean prefix + symbol swap
+# that covers the vast majority of upstream diffs.
+package_rename:
+  from: hmr4d
+  to: gvhmr
+
+# Token-level renames to apply to the TEXT of an upstream patch before mapping
+# paths. `\bhmr4d\b` (word boundary) intentionally preserves data/output names
+# like `hmr4d_support` (dataset dirs) and `hmr4d_results` (output files).
+symbol_renames:
+  - { pattern: '\bhmr4d\b', replacement: gvhmr, applies_to: [imports, _target_ strings, package-relative paths] }
+
+# Directory/file relocations beyond the package rename. `upstream` is a path
+# prefix in the original tree; `local` is where it lives now. First match wins.
+path_map:
+  - { upstream: hmr4d/, local: gvhmr/, note: "package rename (covers everything below unless overridden)" }
+  - { upstream: setup.py, local: pyproject.toml, note: "packaging migrated to PEP 621 + hatchling + uv; setup.py removed" }
+  - { upstream: requirements.txt, local: pyproject.toml, note: "deps moved into [project.dependencies] + extras" }
+
+# Import-level rewrites: upstream imported these directly; this fork routes them
+# through first-party modules. Apply these to import statements in an upstream patch.
+import_rewrites:
+  - upstream: "from pytorch3d.transforms import"
+    local: "from gvhmr.utils.geo.rotations import"
+    note: >
+      pytorch3d rotation conversions are vendored under gvhmr/utils/_vendor/pytorch3d
+      (byte-identical to v0.7.6) and re-exported by the gvhmr.utils.geo.rotations facade,
+      so the inference/geometry path no longer hard-depends on pytorch3d. Mesh RENDERING
+      (gvhmr/utils/vis/renderer.py) still uses pytorch3d.renderer/structures directly.
+
+# Frozen vendored trees: do NOT hand-merge upstream logic changes into these by
+# path; instead re-vendor from their own upstreams (see each dir's README).
+vendored:
+  - { path: gvhmr/utils/preproc/vitpose_pytorch, source: ViTPose, policy: frozen }
+  - { path: gvhmr/network/hmr2, source: "4D-Humans / HMR2.0 (+ MMLab ViT)", policy: "frozen (minimal documented compat patches)" }
+  - { path: gvhmr/utils/_vendor/pytorch3d, source: "PyTorch3D v0.7.6", policy: "frozen (import-path patches only)" }
+
+# Planned/future structural splits. Append here when reorg moves symbols out of a
+# file so upstream edits to that file can be routed to the right new home.
+moved_symbols: []

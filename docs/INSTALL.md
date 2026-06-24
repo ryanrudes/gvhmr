@@ -1,91 +1,102 @@
 # Install
 
-## Environment
+GVHMR uses [**uv**](https://docs.astral.sh/uv/) and installs in **layers**: a base
+install that runs on CPU / Apple-Silicon **MPS** (core inference, geometry, configs,
+tests), plus optional extras for the heavy/GPU-only pieces.
 
 ```bash
-git clone https://github.com/zju3dv/GVHMR
-cd GVHMR
-
-conda create -y -n gvhmr python=3.10
-conda activate gvhmr
-pip install -r requirements.txt
-pip install -e .
-# to install gvhmr in other repo as editable, try adding "python.analysis.extraPaths": ["path/to/your/package"] to settings.json
+git clone https://github.com/zju3dv/GVHMR && cd GVHMR
+uv sync                       # base install (CPU/MPS) — works on macOS out of the box
+uv run gvhmr info             # device, installed features, and checkpoint status
 ```
 
-### Optional: DPVO (not recommended if you want fast inference speed)
+`uv sync` creates `.venv/` and installs from the locked `uv.lock`. Prefix commands with
+`uv run` (e.g. `uv run python …`, `uv run pytest`). No conda required.
+
+> Coming from the old setup? `pip install -r requirements.txt && pip install -e .` is
+> replaced by `uv sync`. There is no `setup.py`/`requirements.txt` anymore — everything
+> is in `pyproject.toml`.
+
+## Extras
+
 ```bash
-cd third-party/DPVO
-wget https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.zip
-unzip eigen-3.4.0.zip -d thirdparty && rm -rf eigen-3.4.0.zip
-pip install torch-scatter -f "https://data.pyg.org/whl/torch-2.3.0+cu121.html"
-pip install numba pypose
-export CUDA_HOME=/usr/local/cuda-12.1/
-export PATH=$PATH:/usr/local/cuda-12.1/bin/
-pip install -e .
+uv sync --extra dev           # tests + ruff + pyright
+uv sync --extra preproc       # YOLO + ViTPose + pycolmap (per-video preprocessing)
+uv sync --extra vis           # wis3d / viser (interactive 3D debugging)
+uv sync --extra notebook      # jupyter / ipython / ipdb
+uv sync --all-extras          # everything pip-resolvable
 ```
 
-## Inputs & Outputs
+| Extra | Provides | Notes |
+|---|---|---|
+| `dev` | pytest, ruff, pyright | runs the full test suite on CPU/MPS |
+| `preproc` | ultralytics, cython_bbox, lapx, pycolmap | needs model weights (below); SimpleVO uses pycolmap |
+| `vis` | wis3d, viser | research visualization |
+| `notebook` | jupyter, ipython, ipdb | interactive work |
+
+### Mesh rendering — works out of the box
+
+The demo's **overlay/world videos** render on the **GPU via moderngl** (OpenGL/Metal), which
+is a **base dependency** — so rendering just works after `uv sync`, no extra build, real-time
+on Apple Silicon. It needs an **SMPL** body model under
+`inputs/checkpoints/body_models/smpl/SMPL_NEUTRAL.pkl` (legacy `.pkl` files load via `chumpy`
+in the base deps; GVHMR auto-applies the Python-3.13 / NumPy-2 shims in
+`gvhmr/utils/_smpl_compat.py`).
+
+**pytorch3d** is only a *fallback* (CUDA boxes, or a headless machine with no GL context) and
+is otherwise unnecessary. If you want it, it's wired into the `render` extra so `uv` builds it
+from source and never prunes it:
 
 ```bash
-mkdir inputs
-mkdir outputs
+uv sync --extra render        # optional fallback; MACOSX_DEPLOYMENT_TARGET=11.0 prefix if the build asks
 ```
 
-**Weights**
+> `make_renderer` (`gvhmr/utils/vis/renderer_gl.py`) prefers the GPU renderer and falls back to
+> pytorch3d automatically. Everything upstream (tracking, pose, features, motion recovery) runs
+> on MPS; only the optional pytorch3d *fallback* rasterizer is CPU/CUDA-only.
+- **DPVO** (optional SLAM; SimpleVO is the default):
+  ```bash
+  cd third-party/DPVO
+  wget https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.zip
+  unzip eigen-3.4.0.zip -d thirdparty && rm eigen-3.4.0.zip
+  uv pip install torch-scatter numba pypose
+  CUDA_HOME=/usr/local/cuda uv pip install -e .
+  ```
+
+## Apple Silicon (MPS)
+
+Base install runs core GVHMR inference and all geometry on the Apple-Silicon GPU.
+Selection is automatic (cuda → mps → cpu); override with `GVHMR_DEVICE=mps|cpu|cuda`.
+**Caveats:** mesh rendering (pytorch3d) and DPVO are CUDA-only; some preprocessing
+models hard-code CUDA. So on a Mac you can run the model and the geometry; full
+end-to-end video rendering still needs a CUDA box.
+
+## Weights & data
 
 ```bash
-mkdir -p inputs/checkpoints
+mkdir -p inputs/checkpoints outputs
+```
 
-# 1. You need to sign up for downloading [SMPL](https://smpl.is.tue.mpg.de/) and [SMPLX](https://smpl-x.is.tue.mpg.de/). And the checkpoints should be placed in the following structure:
+**Body models** — sign up for [SMPL](https://smpl.is.tue.mpg.de/) and
+[SMPL-X](https://smpl-x.is.tue.mpg.de/), then place:
 
+```
+inputs/checkpoints/body_models/
+├── smplx/SMPLX_{GENDER}.npz
+└── smpl/SMPL_{GENDER}.pkl
+```
+
+**Pretrained models** — from the project's
+[Google Drive](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD):
+
+```
 inputs/checkpoints/
-├── body_models/smplx/
-│   └── SMPLX_{GENDER}.npz # SMPLX (We predict SMPLX params + evaluation)
-└── body_models/smpl/
-    └── SMPL_{GENDER}.pkl  # SMPL (rendering and evaluation)
-
-# 2. Download other pretrained models from Google-Drive (By downloading, you agree to the corresponding licences): https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD?usp=drive_link
-
-inputs/checkpoints/
-├── dpvo/
-│   └── dpvo.pth
-├── gvhmr/
-│   └── gvhmr_siga24_release.ckpt
-├── hmr2/
-│   └── epoch=10-step=25000.ckpt
-├── vitpose/
-│   └── vitpose-h-multi-coco.pth
-└── yolo/
-    └── yolov8x.pt
+├── gvhmr/gvhmr_siga24_release.ckpt
+├── hmr2/epoch=10-step=25000.ckpt
+├── vitpose/vitpose-h-multi-coco.pth
+├── yolo/yolov8x.pt
+└── dpvo/dpvo.pth            # only if using DPVO
 ```
 
-**Data**
-
-We provide preprocessed data for training and evaluation.
-Note that we do not intend to distribute the original datasets, and you need to download them (annotation, videos, etc.) from the original websites.
-*We're unable to provide the original data due to the license restrictions.*
-By downloading the preprocessed data, you agree to the original dataset's terms of use and use the data for research purposes only.
-
-You can download them from [Google-Drive](https://drive.google.com/drive/folders/10sEef1V_tULzddFxzCmDUpsIqfv7eP-P?usp=drive_link). Please place them in the "inputs" folder and execute the following commands:
-
-```bash
-cd inputs
-# Train
-tar -xzvf AMASS_hmr4d_support.tar.gz
-tar -xzvf BEDLAM_hmr4d_support.tar.gz
-tar -xzvf H36M_hmr4d_support.tar.gz
-# Test
-tar -xzvf 3DPW_hmr4d_support.tar.gz
-tar -xzvf EMDB_hmr4d_support.tar.gz
-tar -xzvf RICH_hmr4d_support.tar.gz
-
-# The folder structure should be like this:
-inputs/
-├── AMASS/hmr4d_support/
-├── BEDLAM/hmr4d_support/
-├── H36M/hmr4d_support/
-├── 3DPW/hmr4d_support/
-├── EMDB/hmr4d_support/
-└── RICH/hmr4d_support/
-```
+**Training/eval data** — see the project Drive; extract under `inputs/` so the
+`*/hmr4d_support/` directories sit alongside (these dataset dir names are unchanged).

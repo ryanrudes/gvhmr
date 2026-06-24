@@ -22,9 +22,21 @@
 - [2025-03-08] By default not using DPVO. We implemented a SimpleVO, which is more efficient and compatible with GVHMR.
 - [2025-03-08] We added a new option `f_mm` to specify the focal length of the fullframe camera in mm.
 
+> **This is a modernized fork** of [zju3dv/GVHMR](https://github.com/zju3dv/GVHMR): `uv` +
+> `pyproject.toml` packaging, Python 3.13 / modern typing, a CPU/MPS test suite,
+> **Apple-Silicon (MPS) support**, a **Typer + Rich `gvhmr` CLI**, and agent tooling —
+> with model behaviour preserved.
+> See [`AGENTS.md`](AGENTS.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and
+> [`docs/PROVENANCE.md`](docs/PROVENANCE.md).
+
 ## Setup
 
-Please see [installation](docs/INSTALL.md) for details.
+Please see [installation](docs/INSTALL.md). In short:
+
+```bash
+uv sync                 # base install (CPU / Apple-Silicon MPS); add --extra preproc for the demo
+uv run gvhmr info       # check device, installed features, and checkpoint status
+```
 
 ## Quick Start
 
@@ -32,19 +44,33 @@ Please see [installation](docs/INSTALL.md) for details.
 
 ### [<img src="https://s2.loli.net/2024/09/15/aw3rElfQAsOkNCn.png" width="20"> HuggingFace demo for GVHMR](https://huggingface.co/spaces/LittleFrog/GVHMR)
 
-### Demo
-Demo entries are provided in `tools/demo`. Use `-s` to skip visual odometry if you know the camera is static, otherwise the camera will be estimated by DPVO.
-We also provide a script `demo_folder.py` to inference a entire folder.
+### CLI
+
+The `gvhmr` command (Typer + Rich) is the main entry point — run `gvhmr --help` for the
+full menu, and `gvhmr info` for a device/extras/checkpoint diagnostic.
+
 ```shell
-python tools/demo/demo.py --video=docs/example_video/tennis.mp4 -s
-python tools/demo/demo_folder.py -f inputs/demo/folder_in -d outputs/demo/folder_out -s
+uv run gvhmr info                                              # environment & asset status
+uv run gvhmr demo docs/example_video/tennis.mp4 -s            # single video (static camera)
+uv run gvhmr demo-folder inputs/demo/folder_in -o outputs/demo/folder_out -s
+uv run gvhmr bench                                            # inference latency benchmark
 ```
+
+Use `-s` for a static camera (skip visual odometry); otherwise the camera is estimated by
+SimpleVO (or DPVO with `--use-dpvo`). The device is auto-selected (CUDA → MPS → CPU);
+override with `GVHMR_DEVICE=mps|cpu|cuda`. `--render-scale` trades overlay resolution for
+speed, `--no-render` skips overlays. (The old `python tools/demo/demo.py …` scripts still
+work as thin shims.)
+
+For **higher accuracy**, add `--flip-test` (averages the prediction with its mirror — the
+benchmark-time setting) and pass the true `--f_mm` if you know the camera's focal length. See
+[docs/ACCURACY.md](docs/ACCURACY.md) for the techniques, the evidence, and how they're measured.
 
 ### Reproduce
 1. **Test**:
 To reproduce the 3DPW, RICH, and EMDB results in a single run, use the following command:
     ```shell
-    python tools/train.py global/task=gvhmr/test_3dpw_emdb_rich exp=gvhmr/mixed/mixed ckpt_path=inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
+    uv run gvhmr train global/task=gvhmr/test_3dpw_emdb_rich exp=gvhmr/mixed/mixed ckpt_path=inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
     ```
     To test individual datasets, change `global/task` to `gvhmr/test_3dpw`, `gvhmr/test_rich`, or `gvhmr/test_emdb`.
 
@@ -52,9 +78,20 @@ To reproduce the 3DPW, RICH, and EMDB results in a single run, use the following
 To train the model, use the following command:
     ```shell
     # The gvhmr_siga24_release.ckpt is trained with 2x4090 for 420 epochs, note that different GPU settings may lead to different results.
-    python tools/train.py exp=gvhmr/mixed/mixed
+    uv run gvhmr train exp=gvhmr/mixed/mixed
     ```
     During training, note that we do not employ post-processing as in the test script, so the global metrics results will differ (but should still be good for comparison with baseline methods).
+
+## Development
+
+```shell
+uv sync --extra dev        # install test/lint/type tooling
+uv run pytest              # CPU/MPS characterization suite (no GPU/checkpoints needed)
+uv run ruff check gvhmr tools tests
+uv run pyright
+```
+See [`AGENTS.md`](AGENTS.md) for architecture, conventions, the behaviour-preservation
+landmines, and the upstream-sync workflow.
 
 # Citation
 
