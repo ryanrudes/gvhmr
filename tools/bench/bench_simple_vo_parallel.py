@@ -54,26 +54,26 @@ from pathlib import Path
 
 import numpy as np
 
-# Ensure repo root is on sys.path so `import hmr4d...` works when running this file directly.
+# Ensure repo root is on sys.path so `import gvhmr...` works when running this file directly.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-# `hmr4d.utils.preproc.__init__` eagerly imports Tracker / Extractor / VitPose,
+# `gvhmr.utils.preproc.__init__` eagerly imports Tracker / Extractor / VitPose,
 # which pull in ultralytics + the HMR2 network. We only need SimpleVO here,
 # so stub those siblings before the package-level import runs.
 for _name, _attr in [
-    ("hmr4d.utils.preproc.tracker", "Tracker"),
-    ("hmr4d.utils.preproc.vitfeat_extractor", "Extractor"),
-    ("hmr4d.utils.preproc.vitpose", "VitPoseExtractor"),
+    ("gvhmr.utils.preproc.tracker", "Tracker"),
+    ("gvhmr.utils.preproc.vitfeat_extractor", "Extractor"),
+    ("gvhmr.utils.preproc.vitpose", "VitPoseExtractor"),
 ]:
     if _name not in sys.modules:
         _m = types.ModuleType(_name)
         setattr(_m, _attr, type(_attr, (), {}))
         sys.modules[_name] = _m
 
-from hmr4d.utils.preproc.relpose.simple_vo import SimpleVO  # noqa: E402
-from hmr4d.utils.preproc.relpose.solver_two_view import (  # noqa: E402
+from gvhmr.utils.preproc.relpose.simple_vo import SimpleVO  # noqa: E402
+from gvhmr.utils.preproc.relpose.solver_two_view import (  # noqa: E402
     PycolmapRansacTwoViewGeometrySolver,
 )
 
@@ -149,10 +149,7 @@ def main():
         else:
             # Same shape expected; identical sample_idxs path.
             max_diff = float(np.max(np.abs(T - baseline_T)))
-        print(
-            f"workers={nw:2d}  time={dt:7.2f}s  frames={T.shape[0]:5d}  "
-            f"max|T - T_baseline|={max_diff:.2e}"
-        )
+        print(f"workers={nw:2d}  time={dt:7.2f}s  frames={T.shape[0]:5d}  max|T - T_baseline|={max_diff:.2e}")
         if args.check and max_diff > 1e-3 and nw != args.workers[0]:
             print(f"  WARNING: output differs from baseline by {max_diff:.3e}")
 

@@ -1,7 +1,7 @@
 """This script will glob two folder, check the mp4 files are one-to-one match precisely, then call merge_horizontal.py to merge them one by one"""
 
-import os
 import argparse
+import os
 from pathlib import Path
 
 

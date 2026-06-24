@@ -38,22 +38,21 @@ if str(_REPO_ROOT) not in sys.path:
 # full preproc package (ultralytics, HMR2 network, etc.). Same shim the
 # bench script uses.
 for _name, _attr in [
-    ("hmr4d.utils.preproc.tracker", "Tracker"),
-    ("hmr4d.utils.preproc.vitfeat_extractor", "Extractor"),
-    ("hmr4d.utils.preproc.vitpose", "VitPoseExtractor"),
+    ("gvhmr.utils.preproc.tracker", "Tracker"),
+    ("gvhmr.utils.preproc.vitfeat_extractor", "Extractor"),
+    ("gvhmr.utils.preproc.vitpose", "VitPoseExtractor"),
 ]:
     if _name not in sys.modules:
         _m = types.ModuleType(_name)
         setattr(_m, _attr, type(_attr, (), {}))
         sys.modules[_name] = _m
 
-from hmr4d.utils.preproc.relpose.matcher_wrapper import Matcher  # noqa: E402
-from hmr4d.utils.preproc.relpose.solver_two_view import (  # noqa: E402
+from gvhmr.utils.preproc.relpose.matcher_wrapper import Matcher  # noqa: E402
+from gvhmr.utils.preproc.relpose.solver_two_view import (  # noqa: E402
     CameraParams,
     PycolmapRansacTwoViewGeometrySolver,
     TwoPairSolver,
 )
-
 
 # Same robustness shim as the bench script: pycolmap occasionally returns
 # answer.cam2_from_cam1 == None on degenerate pairs. Fall back to identity
@@ -121,11 +120,9 @@ def test_solver_clone_preserves_camera_params():
 
 
 def integration_serial_vs_parallel(video_path, scale, step, method, parallel_workers, tol):
-    from hmr4d.utils.preproc.relpose.simple_vo import SimpleVO
+    from gvhmr.utils.preproc.relpose.simple_vo import SimpleVO
 
-    serial_vo = SimpleVO(
-        video_path=str(video_path), scale=scale, step=step, method=method, num_workers=1
-    )
+    serial_vo = SimpleVO(video_path=str(video_path), scale=scale, step=step, method=method, num_workers=1)
     T_serial = np.asarray(serial_vo.compute())
 
     # Serial path shape contract

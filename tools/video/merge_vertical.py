@@ -1,5 +1,6 @@
 import argparse
-from hmr4d.utils.video_io_utils import merge_videos_vertical
+
+from gvhmr.utils.video_io_utils import merge_videos_vertical
 
 
 def parse_args():

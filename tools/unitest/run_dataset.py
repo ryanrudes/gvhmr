@@ -1,18 +1,18 @@
-import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 
 def get_dataset(DATA_TYPE):
     if DATA_TYPE == "BEDLAM_V2":
-        from hmr4d.dataset.bedlam.bedlam import BedlamDatasetV2
+        from gvhmr.dataset.bedlam.bedlam import BedlamDatasetV2
 
         return BedlamDatasetV2()
 
     if DATA_TYPE == "3DPW_TRAIN":
-        from hmr4d.dataset.threedpw.threedpw_motion_train import ThreedpwSmplDataset
+        from gvhmr.dataset.threedpw.threedpw_motion_train import ThreedpwSmplDataset
 
         return ThreedpwSmplDataset()
+
 
 if __name__ == "__main__":
     DATA_TYPE = "3DPW_TRAIN"
@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     data = dataset[0]
 
-    from hmr4d.datamodule.mocap_trainX_testY import collate_fn
+    from gvhmr.datamodule.mocap_trainX_testY import collate_fn
 
     loader = DataLoader(
         dataset,

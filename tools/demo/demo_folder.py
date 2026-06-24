@@ -1,29 +1,24 @@
+"""Backward-compat entry point for the folder demo. Prefer [gvhmr demo-folder FOLDER].
+
+python tools/demo/demo_folder.py -f inputs/demo/folder_in -d outputs/demo/folder_out -s
+# equivalently:
+gvhmr demo-folder inputs/demo/folder_in -o outputs/demo/folder_out -s
+"""
+
 import argparse
 from pathlib import Path
-from tqdm import tqdm
-from hmr4d.utils.pylogger import Log
-import subprocess
-import os
+
+from gvhmr.cli.demo_folder import run
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(description="GVHMR folder demo (legacy entry; prefer `gvhmr demo-folder`).")
+    p.add_argument("-f", "--folder", type=str, required=True)
+    p.add_argument("-d", "--output_root", type=str, default=None)
+    p.add_argument("-s", "--static_cam", action="store_true", help="Cameras are static.")
+    a = p.parse_args()
+    run(Path(a.folder), output_root=a.output_root, static_cam=a.static_cam)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--folder", type=str)
-    parser.add_argument("-d", "--output_root", type=str, default=None)
-    parser.add_argument("-s", "--static_cam", action="store_true", help="If true, skip DPVO")
-    args = parser.parse_args()
-
-    folder = Path(args.folder)
-    output_root = args.output_root
-
-    # Run demo.py for each .mp4 file
-    mp4_paths = sorted(list(folder.glob("*.mp4")) + list(folder.glob("*.MP4")))
-    Log.info(f"Found {len(mp4_paths)} .mp4 files in {folder}")
-    for mp4_path in tqdm(mp4_paths):
-        command = ["python", "tools/demo/demo.py", "--video", str(mp4_path)]
-        if output_root is not None:
-            command += ["--output_root", output_root]
-        if args.static_cam:
-            command += ["-s"]
-        Log.info(f"Running: {' '.join(command)}")
-        subprocess.run(command, env=dict(os.environ), check=True)
+    main()
