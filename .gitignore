@@ -177,3 +177,14 @@ tensorboard
 
 # glove
 glove
+
+# videos
+videos/*
+
+# scene-aware camera backend: vendored model clones (set up via scripts/setup_scene_aware.sh)
+third-party/
+
+# local tooling / OS cruft
+.claude/
+.DS_Store
+*.bak

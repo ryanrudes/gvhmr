@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: lint + type-check + test (CPU)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync (base + dev)
+        run: uv sync --extra dev --python ${{ matrix.python-version }}
+
+      - name: Ruff (lint)
+        run: uv run ruff check gvhmr tools tests
+        continue-on-error: true  # advisory while the deeper typing/lint pass lands
+
+      - name: Ruff (format check)
+        run: uv run ruff format --check gvhmr tools tests
+
+      - name: Pyright (type-check)
+        run: uv run pyright
+        continue-on-error: true  # advisory while the typing pass lands
+
+      - name: Pytest (CPU characterization suite)
+        run: uv run pytest -q
+
+      - name: Build wheel
+        run: uv build --wheel

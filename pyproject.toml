@@ -1,16 +1,157 @@
-[tool.black]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gvhmr"
+version = "1.0.0"
+description = "GVHMR: World-Grounded Human Motion Recovery via Gravity-View Coordinates (training & inference)"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [{ name = "Zehong Shen" }]
+keywords = ["human-motion-recovery", "smpl", "pose-estimation", "pytorch", "siggraph"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Base install: enough to import the package, compose configs, build/run the
+# GVHMR network on CPU/MPS, do video IO, and run the test suite. Installs cleanly
+# on macOS (Apple Silicon, CPU/MPS) with `uv sync`. Heavy/platform-specific pieces
+# (rendering, preprocessing models, SLAM) live in the optional extras below.
+dependencies = [
+    "torch>=2.4",
+    "torchvision>=0.19",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "einops>=0.8",
+    "omegaconf>=2.3",
+    "hydra-core>=1.3",
+    "hydra-zen>=0.13",
+    "hydra-colorlog>=1.2",
+    "pytorch-lightning>=2.3",
+    "rich>=13",
+    "typer>=0.12",
+    "termcolor",
+    "tqdm",
+    "timm>=1.0.9",
+    "imageio>=2.34",
+    "moderngl>=5.10",  # fast GPU overlay renderer (Metal/OpenGL); real-time, no pytorch3d needed
+    "av>=12",
+    "opencv-python>=4.9",
+    "ffmpeg-python",
+    "scikit-image",
+    "joblib",
+    "trimesh",
+    "matplotlib",
+    "smplx>=0.1.28",
+    "chumpy",  # loads legacy SMPL .pkl body models (see gvhmr/utils/_smpl_compat.py)
+]
+
+[project.optional-dependencies]
+# 2D detection / pose / camera preprocessing (per-video). `pycolmap` powers the
+# default SimpleVO and ships macOS wheels; YOLO + trackers need their own weights.
+preproc = ["ultralytics>=8.2", "cython_bbox", "lapx", "pycolmap>=0.6", "yacs"]
+
+# Interactive 3D visualization / research debugging.
+vis = ["wis3d", "viser"]
+
+# Notebooks and interactive debugging.
+notebook = ["jupyter", "ipython", "ipdb"]
+
+# Developer tooling: tests, lint/format, type-checking.
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+    "ruff>=0.6",
+    "pyright>=1.1.380",
+    "ipdb",
+]
+
+# Mesh rendering (overlay videos). pytorch3d has no general PyPI wheel for recent torch, so it
+# is built from source from git — declared here (with build isolation disabled, see [tool.uv]
+# below) so `uv sync --extra render` installs it and a later `uv sync` never prunes it.
+render = ["pytorch3d"]
+
+# NOTE: DPVO (CUDA-only SLAM) is still a manual install — see docs/INSTALL.md `slam` recipe.
+
+[project.scripts]
+gvhmr = "gvhmr.cli:app"
+
+[project.urls]
+Homepage = "https://zju3dv.github.io/gvhmr"
+Repository = "https://github.com/zju3dv/GVHMR"
+Paper = "https://arxiv.org/abs/2409.06662"
+
+# ---------------------------------------------------------------------------
+# uv: build pytorch3d (the `render` extra) from source against the installed torch
+# ---------------------------------------------------------------------------
+[tool.uv]
+# pytorch3d's build imports torch, so it must build in the project env (not an isolated one).
+no-build-isolation-package = ["pytorch3d"]
+
+[tool.uv.sources]
+# No PyPI wheel for recent torch — build from git. uv pins the resolved commit in uv.lock.
+pytorch3d = { git = "https://github.com/facebookresearch/pytorch3d.git" }
+
+# ---------------------------------------------------------------------------
+# Build backend (hatchling)
+# ---------------------------------------------------------------------------
+[tool.hatch.build.targets.wheel]
+# Ships the whole package, including committed model-data assets
+# (*.pt/*.pth/*.npz/*.npy) and Hydra *.yaml configs under gvhmr/.
+packages = ["gvhmr"]
+
+[tool.hatch.build.targets.sdist]
+include = ["gvhmr", "tools", "docs", "tests", "README.md", "LICENSE"]
+
+# ---------------------------------------------------------------------------
+# Tooling
+# ---------------------------------------------------------------------------
+[tool.ruff]
 line-length = 120
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-)/
-'''
+target-version = "py311"
+extend-exclude = [
+    "gvhmr/utils/preproc/vitpose_pytorch",  # vendored (ViTPose) — frozen
+    "gvhmr/network/hmr2",                    # vendored (4D-Humans/HMR2.0) — frozen
+    "third-party",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = [
+    "E501",  # line length handled by formatter
+    "B008",  # function call in default arg (hydra-zen builds pattern)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]  # re-exports
+"gvhmr/configs/store_gvhmr.py" = ["F401"]  # import-for-side-effect registration
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "gpu: requires a CUDA/MPS device",
+    "checkpoint: requires released model checkpoints",
+    "dataset: requires preprocessed datasets",
+    "pytorch3d: requires the pytorch3d package",
+]
+
+[tool.pyright]
+include = ["gvhmr", "tools", "tests"]
+exclude = [
+    "**/__pycache__",
+    "gvhmr/utils/preproc/vitpose_pytorch",  # vendored — frozen
+    "gvhmr/network/hmr2",                    # vendored — frozen
+    "inputs",
+    "outputs",
+]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+reportMissingImports = "warning"
