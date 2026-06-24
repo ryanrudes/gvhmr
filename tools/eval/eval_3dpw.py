@@ -39,7 +39,9 @@ def main() -> None:
     # Eval body models / regressors — exactly as MetricMocap.__init__.
     smplx = make_smplx("supermotion_EVAL3DPW").to(device)
     smpl = {g: make_smplx("smpl", gender=g).to(device) for g in ("male", "female")}
-    J_reg = torch.load("gvhmr/utils/body_model/smpl_3dpw14_J_regressor_sparse.pt", weights_only=False).to_dense().to(device)
+    J_reg = (
+        torch.load("gvhmr/utils/body_model/smpl_3dpw14_J_regressor_sparse.pt", weights_only=False).to_dense().to(device)
+    )
     smplx2smpl = torch.load("gvhmr/utils/body_model/smplx2smpl_sparse.pt", weights_only=False).to(device)
 
     register_store_gvhmr()

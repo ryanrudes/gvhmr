@@ -94,6 +94,11 @@ Paper = "https://arxiv.org/abs/2409.06662"
 # pytorch3d's build imports torch, so it must build in the project env (not an isolated one).
 no-build-isolation-package = ["pytorch3d"]
 
+# chumpy's legacy setup.py imports `pip` at build time but doesn't declare it as a build dependency,
+# so its isolated build env needs pip added explicitly (otherwise `uv sync` fails on clean CI runners).
+[tool.uv.extra-build-dependencies]
+chumpy = ["pip"]
+
 [tool.uv.sources]
 # No PyPI wheel for recent torch — build from git. uv pins the resolved commit in uv.lock.
 pytorch3d = { git = "https://github.com/facebookresearch/pytorch3d.git" }
