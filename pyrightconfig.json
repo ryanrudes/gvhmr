@@ -1,7 +1,12 @@
 {
+    "include": ["gvhmr", "tools", "tests"],
     "exclude": [
-        "./inputs",
-        "./outputs"
+        "inputs",
+        "outputs",
+        "third-party",
+        "**/_vendor",
+        "gvhmr/network/hmr2",
+        "gvhmr/utils/preproc/vitpose_pytorch"
     ],
-    "typeCheckingMode": "off",
+    "typeCheckingMode": "off"
 }
