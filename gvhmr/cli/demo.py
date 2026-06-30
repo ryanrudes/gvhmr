@@ -23,9 +23,10 @@ from gvhmr.model.gvhmr.gvhmr_pl_demo import DemoPL
 from gvhmr.utils.console import console, rule, status, track
 from gvhmr.utils.device import device_name, get_device, to_device
 from gvhmr.utils.geo.hmr_cam import convert_K_to_K4, create_camera_sensor, estimate_K, get_bbx_xys_from_xyxy
-from gvhmr.utils.geo.rotations import axis_angle_to_matrix, quaternion_to_matrix
+from gvhmr.utils.geo.rotations import quaternion_to_matrix
 from gvhmr.utils.geo_transform import apply_T_on_points, compute_cam_angvel, compute_T_ayfz2ay
 from gvhmr.utils.net_utils import detach_to_cpu
+from gvhmr.utils.postproc_world import compose_world_from_dust3r
 from gvhmr.utils.preproc import Extractor, SimpleVO, Tracker, VitPoseExtractor
 from gvhmr.utils.pylogger import Log
 from gvhmr.utils.smplx_utils import make_smplx
@@ -107,40 +108,6 @@ def focal_mm_from_metadata(video_path) -> int | None:
             if "focal" in key.lower() and "35" in key and (f := _sane_focal(value)) is not None:
                 return f
     return None
-
-
-def _lowpass(x, window: int):
-    """Moving-average low-pass over the time axis, endpoints preserved."""
-    import numpy as np
-
-    xn = x.detach().cpu().numpy() if hasattr(x, "detach") else np.asarray(x)
-    if len(xn) < window or window < 3:
-        return torch.as_tensor(xn).float()
-    k = np.ones(window) / window
-    sm = np.stack([np.convolve(xn[:, i], k, mode="same") for i in range(xn.shape[1])], axis=1)
-    e = window // 2
-    sm[:e], sm[-e:] = xn[:e], xn[-e:]
-    return torch.from_numpy(sm).float()
-
-
-def compose_world_from_dust3r(pred: dict, T_w2c) -> None:
-    """Moving-camera world trajectory from the DUSt3R metric camera (modifies ``pred`` in place).
-
-    Carries the in-cam human through the per-frame metric camera (``world = R_c2w·in-cam + cam_centre``),
-    gravity-aligns that path to the prior's frame (via the frame-0 body orientation), then keeps its
-    **gross** low-frequency path and grafts the prior's **local** high-frequency motion. This captures
-    the scene traversal a moving/following camera induces — which the velocity prior misses when the
-    subject stays centred — and reduces to the static-camera in-cam carry when the camera doesn't move.
-    """
-    ic, gp = pred["smpl_params_incam"], pred["smpl_params_global"]
-    c2w = torch.linalg.inv(torch.as_tensor(T_w2c).float())
-    R_c2w, cam_c = c2w[:, :3, :3], c2w[:, :3, 3]
-    geom = torch.einsum("fij,fj->fi", R_c2w, ic["transl"]) + cam_c  # metric world, DUSt3R frame
-    geom_o0 = R_c2w[0] @ axis_angle_to_matrix(ic["global_orient"][0])
-    r_align = axis_angle_to_matrix(gp["global_orient"][0]) @ geom_o0.mT  # → prior gravity-view frame
-    geom_gv = (r_align @ (geom - geom[0]).mT).mT + gp["transl"][0]
-    window = max(15, (len(geom_gv) // 3) | 1)  # odd, ~a third of the clip
-    gp["transl"] = _lowpass(geom_gv, window) + (gp["transl"] - _lowpass(gp["transl"], window))
 
 
 def build_demo_cfg(
