@@ -1,3 +1,4 @@
+import os
 import time
 from multiprocessing import Process, Queue
 
@@ -10,7 +11,7 @@ try:
     from dpvo.config import cfg
     from dpvo.dpvo import DPVO
     from dpvo.utils import Timer
-except:
+except ImportError:
     pass
 
 
@@ -31,8 +32,10 @@ class SLAMModel:
         else:
             intrinsics = intrinsics.clone()
 
-        self.dpvo_cfg = str(PROJ_ROOT / "third-party/DPVO/config/default.yaml")
-        self.dpvo_ckpt = "inputs/checkpoints/dpvo/dpvo.pth"
+        # Vendored alongside this module so it works with a pip/uv-installed `dpvo` (the upstream
+        # config/ dir isn't part of the installed package); override with $GVHMR_DPVO_CFG if needed.
+        self.dpvo_cfg = os.environ.get("GVHMR_DPVO_CFG", str(PROJ_ROOT / "gvhmr/utils/preproc/dpvo_default.yaml"))
+        self.dpvo_ckpt = os.environ.get("GVHMR_DPVO_CKPT", "inputs/checkpoints/dpvo/dpvo.pth")
 
         self.buffer = buffer
         self.times = []
