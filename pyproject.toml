@@ -77,7 +77,11 @@ dev = [
 # below) so `uv sync --extra render` installs it and a later `uv sync` never prunes it.
 render = ["pytorch3d"]
 
-# NOTE: DPVO (CUDA-only SLAM) is still a manual install — see docs/INSTALL.md `slam` recipe.
+# NOTE: DPVO (CUDA-only SLAM) is installed by `scripts/setup_dpvo.sh`, not a uv extra. It builds CUDA
+# extensions and needs a torch whose CUDA build matches the local toolkit — and uv (0.11) can't
+# auto-select that for the project/lock workflow (`--torch-backend=auto` is a `uv pip` feature only), so
+# a committed lock would pin one CUDA for everyone. The script uses `uv pip --torch-backend=auto` to fit
+# torch to the box, then builds DPVO from a thin Eigen-vendored fork. On Mac/MPS use `--slam dust3r`.
 
 [project.scripts]
 gvhmr = "gvhmr.cli:app"
@@ -102,6 +106,9 @@ chumpy = ["pip"]
 [tool.uv.sources]
 # No PyPI wheel for recent torch — build from git. uv pins the resolved commit in uv.lock.
 pytorch3d = { git = "https://github.com/facebookresearch/pytorch3d.git" }
+# (DPVO is not declared here — it's CUDA-only and installed out-of-band by scripts/setup_dpvo.sh,
+# which fits torch to the box via `uv pip --torch-backend=auto`. Keeping it out of the project graph
+# means the Mac/base `uv sync` never tries to build its CUDA extensions.)
 
 # ---------------------------------------------------------------------------
 # Build backend (hatchling)

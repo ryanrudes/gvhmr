@@ -54,14 +54,24 @@ uv sync --extra render        # optional fallback; MACOSX_DEPLOYMENT_TARGET=11.0
 > `make_renderer` (`gvhmr/utils/vis/renderer_gl.py`) prefers the GPU renderer and falls back to
 > pytorch3d automatically. Everything upstream (tracking, pose, features, motion recovery) runs
 > on MPS; only the optional pytorch3d *fallback* rasterizer is CPU/CUDA-only.
-- **DPVO** (optional SLAM; SimpleVO is the default):
+- **DPVO** (optional SLAM; SimpleVO is the default) — **CUDA only**. One script on a box with a
+  CUDA toolchain (`nvcc`); no manual Eigen download, and it adapts to whatever CUDA the box has:
   ```bash
-  cd third-party/DPVO
-  wget https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.zip
-  unzip eigen-3.4.0.zip -d thirdparty && rm eigen-3.4.0.zip
-  uv pip install torch-scatter numba pypose
-  CUDA_HOME=/usr/local/cuda uv pip install -e .
+  scripts/setup_dpvo.sh         # syncs the project, fits torch to the box, builds DPVO
   ```
+  It uses uv's `--torch-backend=auto` to install the torch wheel matching this box's driver (the
+  default PyPI wheel targets one CUDA — currently 13.x — and mismatches most toolkits), then builds
+  DPVO from a [thin fork](https://github.com/ryanrudes/DPVO) that vendors Eigen 3.4.0 and carries the
+  minimal modern-PyTorch build patches. Why a script and not `uv sync --extra slam`: uv (0.11) can't
+  auto-select the CUDA torch for the project/lock workflow (`--torch-backend` is a `uv pip` feature
+  only), so a committed lock would pin one CUDA for everyone.
+
+  Then fetch the weight to `inputs/checkpoints/dpvo/dpvo.pth` (see *Weights & data*) and run via the
+  venv (so `uv run`'s auto-sync doesn't swap the matched torch back):
+  ```bash
+  source .venv/bin/activate && gvhmr demo VIDEO --use-dpvo
+  ```
+  On Mac/MPS, where DPVO can't build, use `gvhmr demo VIDEO --slam dust3r` instead.
 
 ## Apple Silicon (MPS)
 

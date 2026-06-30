@@ -70,8 +70,13 @@ mesh the moderngl renderer draws): `--skeleton` (world-frame skeleton-only video
 or joint names/indices; a bone draws only when both endpoints are kept). Left side warm, right cool.
 
 Extras: `preproc` (YOLO/ViTPose/pycolmap), `vis` (wis3d/viser), `notebook`, `render`
-(optional pytorch3d fallback). Mesh rendering works out of the box (moderngl is a base dep);
-only DPVO SLAM needs a manual build — see `docs/INSTALL.md`.
+(optional pytorch3d fallback). Mesh rendering works out of the box (moderngl is a base dep).
+**DPVO** (CUDA-only SLAM) is installed by `scripts/setup_dpvo.sh`, not a uv extra: uv (0.11) can't
+auto-select a CUDA torch for the `uv sync`/lock workflow (`--torch-backend=auto` is `uv pip`-only), so
+the script uses `uv pip --torch-backend=auto` to fit torch to the box's driver, then builds DPVO from a
+thin fork (`ryanrudes/DPVO`) that vendors Eigen 3.4.0 + carries minimal modern-PyTorch build patches
+(`.scalar_type()` in dispatch, `loop_closure` packaging). The vendored
+`gvhmr/utils/preproc/dpvo_default.yaml` lets the pip-installed `dpvo` find its config. See `docs/INSTALL.md`.
 
 ## Device / MPS
 
