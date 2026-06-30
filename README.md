@@ -49,6 +49,10 @@ uv sync                 # base install (CPU / Apple-Silicon MPS); add --extra pr
 uv run gvhmr info       # check device, installed features, and checkpoint status
 ```
 
+On **Linux/CUDA**, add the extra matching your GPU (uv can't auto-detect it for `uv sync`) — check
+`nvidia-smi` and pick the nearest ≤ your CUDA: `uv sync --extra cu128` (covers 12.8–13.x), `cu126`,
+`cu124`, or `cpu`. macOS needs no extra (MPS). See [installation](docs/INSTALL.md#cuda--gpu-linux).
+
 ## Quick Start
 
 ### [<img src="https://i.imgur.com/QCojoJk.png" width="30"> Google Colab demo for GVHMR](https://colab.research.google.com/drive/1N9WSchizHv2bfQqkE9Wuiegw_OT7mtGj?usp=sharing)

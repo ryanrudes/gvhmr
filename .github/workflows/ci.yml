@@ -26,8 +26,8 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - name: Sync (base + dev)
-        run: uv sync --extra dev --python ${{ matrix.python-version }}
+      - name: Sync (base + dev, CPU torch)
+        run: uv sync --extra dev --extra cpu --python ${{ matrix.python-version }}
       - name: Ruff (format check)
         run: uv run ruff format --check gvhmr tools tests
       - name: Pytest (CPU characterization suite)
@@ -48,8 +48,8 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - name: Sync (base + dev)
-        run: uv sync --extra dev
+      - name: Sync (base + dev, CPU torch)
+        run: uv sync --extra dev --extra cpu
       - name: Ruff (lint)
         run: uv run ruff check gvhmr tools tests
         continue-on-error: true  # advisory: reported, but the check stays green while the lint pass lands

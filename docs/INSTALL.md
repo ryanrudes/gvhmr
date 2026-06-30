@@ -17,6 +17,33 @@ uv run gvhmr info             # device, installed features, and checkpoint statu
 > replaced by `uv sync`. There is no `setup.py`/`requirements.txt` anymore — everything
 > is in `pyproject.toml`.
 
+## CUDA / GPU (Linux)
+
+On **macOS you're done** — bare `uv sync` installs the Apple-Silicon **MPS** build. On **Linux/CUDA**,
+bare `uv sync` installs the default PyPI torch wheel, which targets one recent CUDA (13.x) and **won't
+see the GPU on most drivers**. uv can't auto-detect your GPU for `uv sync` (`--torch-backend=auto` is
+`uv pip`-only) and a lockfile can't gate wheels on CUDA version — so the CUDA build is an explicit
+one-of choice. Check `nvidia-smi` and add the matching extra (nearest one ≤ your CUDA version):
+
+```bash
+nvidia-smi                              # → e.g. "CUDA Version: 12.8"
+uv sync --extra cu128                   # torch for CUDA 12.8 — covers 12.8 … 13.x (driver back-compat)
+uv sync --extra cu128 --extra preproc   # combine with other extras as usual
+```
+
+| Your CUDA (`nvidia-smi`) | Extra | torch |
+|---|---|---|
+| 12.0 – 12.5 | `cu124` | 2.6.x |
+| 12.6 / 12.7 | `cu126` | 2.7.x |
+| 12.8 / 12.9 / 13.x | `cu128` | 2.7.x |
+| CPU-only Linux / CI | `cpu` | CPU build |
+
+The CUDA extras are mutually exclusive and pin torch **< 2.8** (newer wheels carry a broken `nvshmem`
+dependency that fails to import). `gvhmr info` shows the resolved torch and `cuda ✓` once synced.
+
+> On a GPU box, **pass your extra every time** — `uv sync --extra cu128`, `uv run --extra cu128 …` — or
+> set `UV_NO_SYNC=1`; a bare `uv sync` reverts torch to the PyPI default.
+
 ## Extras
 
 ```bash
@@ -55,25 +82,21 @@ uv sync --extra render        # optional fallback; MACOSX_DEPLOYMENT_TARGET=11.0
 > pytorch3d automatically. Everything upstream (tracking, pose, features, motion recovery) runs
 > on MPS; only the optional pytorch3d *fallback* rasterizer is CPU/CUDA-only.
 - **DPVO** (optional SLAM; SimpleVO is the default) — **CUDA only**. One script on a box with a
-  CUDA toolchain (`nvcc`); no manual Eigen download, and it adapts to whatever CUDA the box has:
+  CUDA toolchain (`nvcc`); no manual Eigen download:
   ```bash
-  scripts/setup_dpvo.sh         # syncs the project, fits torch to the box, builds DPVO
+  scripts/setup_dpvo.sh         # detects your CUDA → syncs the matching torch → builds DPVO
   ```
-  It uses uv's `--torch-backend=auto` to install the torch wheel matching this box's driver (the
-  default PyPI wheel targets one CUDA — currently 13.x — and mismatches most toolkits), then builds
-  DPVO from a [thin fork](https://github.com/ryanrudes/DPVO) that vendors Eigen 3.4.0 and carries the
-  minimal modern-PyTorch build patches. Why a script and not `uv sync --extra slam`: uv (0.11) can't
-  auto-select the CUDA torch for the project/lock workflow (`--torch-backend` is a `uv pip` feature
-  only), so a committed lock would pin one CUDA for everyone.
+  It reads your toolkit version, runs `uv sync --extra cuXXX` for the matching torch (see *CUDA / GPU*
+  above), then builds DPVO from a [thin fork](https://github.com/ryanrudes/DPVO) that vendors Eigen
+  3.4.0 and carries the minimal modern-PyTorch build patches (`.scalar_type()` dispatch, `loop_closure`
+  packaging, `torch.amp`). Then fetch the weight to `inputs/checkpoints/dpvo/dpvo.pth` (see *Weights &
+  data*) and run with `--use-dpvo`.
 
-  Then fetch the weight to `inputs/checkpoints/dpvo/dpvo.pth` (see *Weights & data*).
-
-  > ⚠️ **Don't let uv re-sync this env.** `uv sync` and plain `uv run` auto-sync to the committed
-  > lock, which pins torch to the default PyPI (cu13x) wheel — reverting the CUDA-matched torch and
-  > breaking DPVO's compiled extensions. On a CUDA box, set `export UV_NO_SYNC=1` once (e.g. in
-  > `~/.bashrc`) so uv never auto-reverts, then `uv run gvhmr demo VIDEO --use-dpvo` works normally;
-  > or just `source .venv/bin/activate && gvhmr demo VIDEO --use-dpvo`. If it ever gets reverted,
-  > re-running `scripts/setup_dpvo.sh` recovers (it's idempotent).
+  > DPVO is installed out-of-band (it's CUDA-only, so it can't live in the lock), which means a bare
+  > `uv sync` / plain `uv run` would prune it and revert torch. On a GPU box set `export UV_NO_SYNC=1`
+  > once (e.g. in `~/.bashrc`), then `uv run gvhmr demo VIDEO --use-dpvo` works; or
+  > `source .venv/bin/activate && gvhmr demo VIDEO --use-dpvo`. When you *do* re-sync, keep your
+  > backend (`uv sync --extra cuXXX`). Re-running `scripts/setup_dpvo.sh` recovers it (idempotent).
 
   On Mac/MPS, where DPVO can't build, use `gvhmr demo VIDEO --slam dust3r` instead.
 

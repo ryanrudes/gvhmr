@@ -77,11 +77,29 @@ dev = [
 # below) so `uv sync --extra render` installs it and a later `uv sync` never prunes it.
 render = ["pytorch3d"]
 
-# NOTE: DPVO (CUDA-only SLAM) is installed by `scripts/setup_dpvo.sh`, not a uv extra. It builds CUDA
-# extensions and needs a torch whose CUDA build matches the local toolkit — and uv (0.11) can't
-# auto-select that for the project/lock workflow (`--torch-backend=auto` is a `uv pip` feature only), so
-# a committed lock would pin one CUDA for everyone. The script uses `uv pip --torch-backend=auto` to fit
-# torch to the box, then builds DPVO from a thin Eigen-vendored fork. On Mac/MPS use `--slam dust3r`.
+# --- PyTorch CUDA backend (Linux): pick the one matching your GPU ---------------------------------
+# uv can't auto-detect the GPU for `uv sync` (`--torch-backend=auto` is uv-pip-only) and a lockfile
+# can't gate wheels on CUDA version (no marker exists), so the CUDA build is an explicit, mutually-
+# exclusive choice. Check `nvidia-smi` ("CUDA Version: X.Y") and sync the nearest extra <= X.Y:
+#     uv sync --extra cu128                 # a CUDA 12.8 box
+#     uv sync --extra cu128 --extra preproc # combine with other extras as usual
+# macOS / plain `uv sync` (no cuXXX extra) uses the PyPI wheel = Apple-Silicon MPS — don't add a cuXXX
+# extra on a Mac. `cpu` forces the CPU build (handy for CI or a GPU-less Linux box). These extras are
+# mutually exclusive (see [tool.uv] conflicts); each routes torch/torchvision to a PyTorch index.
+#
+# The CUDA extras are pinned to torch < 2.8: newer wheels (>= 2.8) depend on a separate
+# `nvidia-nvshmem-cu12` package that their RPATH fails to locate ("libnvshmem_host.so.3: cannot open
+# shared object file"), so they don't import. torch 2.7.x predates that and is rock-solid. CUDA wheels
+# are forward/back compatible across the driver line, so cu128 also covers CUDA 13.x boxes — no cu130
+# extra needed. (cpu floats to the latest; it has no nvshmem dependency.)
+cpu = ["torch", "torchvision"]
+cu124 = ["torch>=2.4,<2.8", "torchvision>=0.19,<0.23"]
+cu126 = ["torch>=2.4,<2.8", "torchvision>=0.19,<0.23"]
+cu128 = ["torch>=2.4,<2.8", "torchvision>=0.19,<0.23"]
+
+# NOTE: DPVO (CUDA-only SLAM) is installed by `scripts/setup_dpvo.sh`, not a uv extra — it compiles CUDA
+# extensions from a thin Eigen-vendored fork against the selected torch. The script picks the CUDA extra
+# for you. On Mac/MPS (no DPVO) use `gvhmr demo --slam dust3r`.
 
 [project.scripts]
 gvhmr = "gvhmr.cli:app"
@@ -97,18 +115,56 @@ Paper = "https://arxiv.org/abs/2409.06662"
 [tool.uv]
 # pytorch3d's build imports torch, so it must build in the project env (not an isolated one).
 no-build-isolation-package = ["pytorch3d"]
+# The PyTorch CUDA-backend extras are mutually exclusive — only one torch build at a time.
+conflicts = [[
+    { extra = "cpu" },
+    { extra = "cu124" },
+    { extra = "cu126" },
+    { extra = "cu128" },
+]]
 
 # chumpy's legacy setup.py imports `pip` at build time but doesn't declare it as a build dependency,
 # so its isolated build env needs pip added explicitly (otherwise `uv sync` fails on clean CI runners).
 [tool.uv.extra-build-dependencies]
 chumpy = ["pip"]
 
+# PyTorch wheel indexes, one per backend; `explicit = true` means a package only resolves here when a
+# source below points to it (so non-torch packages still come from PyPI). Selected via the cuXXX/cpu
+# extras above. No marker here — the *extra* gates each (and the extras are Linux-only in practice;
+# don't enable one on macOS, which uses the default PyPI MPS wheel).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
 [tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu124", extra = "cu124" },
+    { index = "pytorch-cu126", extra = "cu126" },
+    { index = "pytorch-cu128", extra = "cu128" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu124", extra = "cu124" },
+    { index = "pytorch-cu126", extra = "cu126" },
+    { index = "pytorch-cu128", extra = "cu128" },
+]
 # No PyPI wheel for recent torch — build from git. uv pins the resolved commit in uv.lock.
 pytorch3d = { git = "https://github.com/facebookresearch/pytorch3d.git" }
-# (DPVO is not declared here — it's CUDA-only and installed out-of-band by scripts/setup_dpvo.sh,
-# which fits torch to the box via `uv pip --torch-backend=auto`. Keeping it out of the project graph
-# means the Mac/base `uv sync` never tries to build its CUDA extensions.)
+# (DPVO is not declared here — it's CUDA-only and installed out-of-band by scripts/setup_dpvo.sh.)
 
 # ---------------------------------------------------------------------------
 # Build backend (hatchling)

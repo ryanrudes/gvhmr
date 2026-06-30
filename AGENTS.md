@@ -71,12 +71,20 @@ or joint names/indices; a bone draws only when both endpoints are kept). Left si
 
 Extras: `preproc` (YOLO/ViTPose/pycolmap), `vis` (wis3d/viser), `notebook`, `render`
 (optional pytorch3d fallback). Mesh rendering works out of the box (moderngl is a base dep).
-**DPVO** (CUDA-only SLAM) is installed by `scripts/setup_dpvo.sh`, not a uv extra: uv (0.11) can't
-auto-select a CUDA torch for the `uv sync`/lock workflow (`--torch-backend=auto` is `uv pip`-only), so
-the script uses `uv pip --torch-backend=auto` to fit torch to the box's driver, then builds DPVO from a
-thin fork (`ryanrudes/DPVO`) that vendors Eigen 3.4.0 + carries minimal modern-PyTorch build patches
-(`.scalar_type()` in dispatch, `loop_closure` packaging). The vendored
-`gvhmr/utils/preproc/dpvo_default.yaml` lets the pip-installed `dpvo` find its config. See `docs/INSTALL.md`.
+
+**CUDA torch (Linux).** uv can't auto-pick a CUDA build for `uv sync` (`--torch-backend=auto` is
+`uv pip`-only) and a lock can't gate wheels on CUDA version — so the CUDA build is an explicit, mutually-
+exclusive **extra**: `cpu` / `cu124` / `cu126` / `cu128` (route torch/torchvision to a PyTorch index;
+declared `conflicts` in `[tool.uv]`). `uv sync --extra cu128` (pick nearest ≤ `nvidia-smi`'s CUDA;
+cu128 covers 12.8–13.x via back-compat). They pin **torch < 2.8** — newer wheels have a broken `nvshmem`
+dep that won't import. macOS uses bare `uv sync` (MPS). CI uses `--extra cpu`.
+
+**DPVO** (CUDA-only SLAM) is installed by `scripts/setup_dpvo.sh` (not a uv extra — it compiles CUDA
+extensions): the script detects the CUDA version → `uv sync --extra cuXXX` → builds DPVO from a thin fork
+(`ryanrudes/DPVO`) that vendors Eigen 3.4.0 + carries modern-PyTorch build patches (`.scalar_type()`
+dispatch, `loop_closure` packaging, `torch.amp`). The vendored `gvhmr/utils/preproc/dpvo_default.yaml`
+lets the pip-installed `dpvo` find its config. DPVO lives outside the lock, so use `UV_NO_SYNC=1` (or
+pass `--extra cuXXX` consistently) to keep a bare `uv sync` from pruning it. See `docs/INSTALL.md`.
 
 ## Device / MPS
 
