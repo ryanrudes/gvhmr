@@ -66,11 +66,15 @@ uv sync --extra render        # optional fallback; MACOSX_DEPLOYMENT_TARGET=11.0
   auto-select the CUDA torch for the project/lock workflow (`--torch-backend` is a `uv pip` feature
   only), so a committed lock would pin one CUDA for everyone.
 
-  Then fetch the weight to `inputs/checkpoints/dpvo/dpvo.pth` (see *Weights & data*) and run via the
-  venv (so `uv run`'s auto-sync doesn't swap the matched torch back):
-  ```bash
-  source .venv/bin/activate && gvhmr demo VIDEO --use-dpvo
-  ```
+  Then fetch the weight to `inputs/checkpoints/dpvo/dpvo.pth` (see *Weights & data*).
+
+  > ⚠️ **Don't let uv re-sync this env.** `uv sync` and plain `uv run` auto-sync to the committed
+  > lock, which pins torch to the default PyPI (cu13x) wheel — reverting the CUDA-matched torch and
+  > breaking DPVO's compiled extensions. On a CUDA box, set `export UV_NO_SYNC=1` once (e.g. in
+  > `~/.bashrc`) so uv never auto-reverts, then `uv run gvhmr demo VIDEO --use-dpvo` works normally;
+  > or just `source .venv/bin/activate && gvhmr demo VIDEO --use-dpvo`. If it ever gets reverted,
+  > re-running `scripts/setup_dpvo.sh` recovers (it's idempotent).
+
   On Mac/MPS, where DPVO can't build, use `gvhmr demo VIDEO --slam dust3r` instead.
 
 ## Apple Silicon (MPS)

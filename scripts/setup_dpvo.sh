@@ -64,7 +64,18 @@ print(f'[setup] OK — torch {torch.__version__}, DPVO CUDA extensions import, S
 "
 
 cat <<'NOTE'
-[setup] DPVO ready. Run via the project venv so `uv run`'s auto-sync doesn't swap the matched torch back:
-    source .venv/bin/activate && gvhmr demo VIDEO --use-dpvo
-  (equivalently: UV_NO_SYNC=1 uv run gvhmr demo VIDEO --use-dpvo)
+
+  ┌───────────────────────────────────────────────────────────────────────────────────────┐
+  │  IMPORTANT — don't let uv re-sync this env, or it will break DPVO.                       │
+  │  `uv sync` and plain `uv run` auto-sync to the committed lock, which pins torch to the   │
+  │  default PyPI (cu13x) wheel — reverting the CUDA-matched torch this script installed and │
+  │  mismatching DPVO's compiled extensions (CUDA-version error / disabled CUDA).            │
+  │                                                                                          │
+  │  On this box, set once so uv never auto-reverts:                                         │
+  │      echo 'export UV_NO_SYNC=1' >> ~/.bashrc && export UV_NO_SYNC=1                       │
+  │  Then run normally:   uv run gvhmr demo VIDEO --use-dpvo                                  │
+  │  Or just use the venv: source .venv/bin/activate && gvhmr demo VIDEO --use-dpvo          │
+  │                                                                                          │
+  │  If it ever does get reverted, just re-run this script — it's idempotent and recovers.   │
+  └───────────────────────────────────────────────────────────────────────────────────────┘
 NOTE
