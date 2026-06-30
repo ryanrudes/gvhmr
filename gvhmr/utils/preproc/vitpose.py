@@ -11,11 +11,16 @@ from gvhmr.utils.kpts.kp2d_utils import keypoints_from_heatmaps
 from .vitfeat_extractor import get_batch
 from .vitpose_pytorch import build_model
 
+# The released default; any estimator emitting COCO-17 (F,17,3) can replace this (see base.py).
+DEFAULT_VITPOSE_CKPT = "inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+DEFAULT_VITPOSE_MODEL = "ViTPose_huge_coco_256x192"
+
 
 class VitPoseExtractor:
-    def __init__(self, tqdm_leave=True):
-        ckpt_path = "inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
-        self.pose = build_model("ViTPose_huge_coco_256x192", ckpt_path)
+    """2D-keypoint estimator (ViTPose). Satisfies the ``Pose2D`` protocol (base.py); emits COCO-17."""
+
+    def __init__(self, ckpt_path=None, model_name: str = DEFAULT_VITPOSE_MODEL, tqdm_leave=True):
+        self.pose = build_model(model_name, ckpt_path or DEFAULT_VITPOSE_CKPT)
         self.device = get_device()
         self.pose.to(self.device).eval()
 

@@ -78,9 +78,15 @@ selector value → implementation. The COCO-17 / `imgseq_dim` invariants stay as
 Ordered by dependency and risk — earliest phases are self-contained and need no GPU/data.
 
 ### Phase A1 — pluggable detector + 2D pose  *(start here; no training/data)*
-- Define `Detector`/`Pose2D` protocols; wrap the current YOLO tracker + ViTPose as the default impls.
-- Add `detector` / `pose2d` config groups + `--detector` / `--pose2d` CLI flags (mirror `--slam`).
-- Lift hard-coded weight paths to config (`tracker.py:23`, `vitpose.py:17`); keep the COCO-17 assert
+- ✅ **Done:** `Detector`/`Pose2D` protocols + a lazy registry (`gvhmr/utils/preproc/base.py`); current
+  YOLO tracker + ViTPose wrapped as the defaults; hard-coded weights/knobs lifted to ctor args
+  (`tracker.py` `DEFAULT_YOLO_CKPT`, `vitpose.py` `DEFAULT_VITPOSE_*`) — **byte-identical defaults**;
+  guarded `preproc/__init__.py` so the registry imports on the base/CI install; demo wired to build via
+  `make_detector`/`make_pose2d` with `cfg.detector` / `cfg.detector_ckpt` / `cfg.pose2d` / `cfg.pose2d_ckpt`
+  overrides; `tests/test_preproc_pluggable.py` pins the contract (241 tests green, golden intact).
+  → You can already point at a different weight file via config (e.g. a `yolov11x.pt`).
+- ⏭ **Next:** `--detector` / `--pose2d` CLI flags (mirror `--slam`) + a first non-default implementation
+  (RTMPose, registered as `pose2d=rtmpose`, emitting COCO-17). Keep the COCO-17 assert
   (`relative_transformer.py:128`) as the contract guard.
 - Drop-ins enabled: YOLOv9/10/11/12/26 (ultralytics, same `.track()` API); RTMPose / RTMO / Sapiens / DWPose
   / MoveNet for 2D pose **iff configured to COCO-17**.

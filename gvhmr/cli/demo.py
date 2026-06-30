@@ -27,7 +27,8 @@ from gvhmr.utils.geo.rotations import quaternion_to_matrix
 from gvhmr.utils.geo_transform import apply_T_on_points, compute_cam_angvel, compute_T_ayfz2ay
 from gvhmr.utils.net_utils import detach_to_cpu
 from gvhmr.utils.postproc_world import compose_world_from_dust3r
-from gvhmr.utils.preproc import Extractor, SimpleVO, Tracker, VitPoseExtractor
+from gvhmr.utils.preproc import Extractor, SimpleVO
+from gvhmr.utils.preproc.base import make_detector, make_pose2d
 from gvhmr.utils.pylogger import Log
 from gvhmr.utils.smplx_utils import make_smplx
 from gvhmr.utils.video_io_utils import (
@@ -193,9 +194,9 @@ def run_preprocess(cfg, flip_test: bool = False, slam: str = "simplevo") -> None
     static_cam = cfg.static_cam
     verbose = cfg.verbose
 
-    # 1) bbox tracking (YOLO)
+    # 1) bbox tracking (pluggable detector; default YOLO). Select via cfg.detector / cfg.detector_ckpt.
     if not Path(paths.bbx).exists():
-        tracker = Tracker()
+        tracker = make_detector(cfg.get("detector", "yolo"), ckpt=cfg.get("detector_ckpt") or None)
         bbx_xyxy = tracker.get_one_track(video_path).float()  # (L, 4)
         bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy, base_enlarge=1.2).float()  # (L, 3)
         torch.save({"bbx_xyxy": bbx_xyxy, "bbx_xys": bbx_xys}, paths.bbx)
@@ -208,9 +209,9 @@ def run_preprocess(cfg, flip_test: bool = False, slam: str = "simplevo") -> None
         bbx_xyxy = torch.load(paths.bbx, weights_only=False)["bbx_xyxy"]
         save_video(draw_bbx_xyxy_on_image_batch(bbx_xyxy, video), cfg.paths.bbx_xyxy_video_overlay)
 
-    # 2) 2D keypoints (ViTPose)
+    # 2) 2D keypoints (pluggable 2D-pose; default ViTPose → COCO-17). Select via cfg.pose2d / cfg.pose2d_ckpt.
     if not Path(paths.vitpose).exists():
-        vitpose_extractor = VitPoseExtractor()
+        vitpose_extractor = make_pose2d(cfg.get("pose2d", "vitpose"), ckpt_path=cfg.get("pose2d_ckpt") or None)
         vitpose = vitpose_extractor.extract(video_path, bbx_xys)
         torch.save(vitpose, paths.vitpose)
         del vitpose_extractor

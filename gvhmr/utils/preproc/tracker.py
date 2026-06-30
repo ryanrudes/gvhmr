@@ -16,11 +16,17 @@ from gvhmr.utils.seq_utils import (
 )
 from gvhmr.utils.video_io_utils import get_video_lwh
 
+# The released default; any ultralytics-loadable detector (yolov8x … yolov11/12/26x.pt) drops in.
+DEFAULT_YOLO_CKPT = PROJ_ROOT / "inputs/checkpoints/yolo/yolov8x.pt"
+
 
 class Tracker:
-    def __init__(self) -> None:
+    """Person detector/tracker (ultralytics YOLO). Satisfies the ``Detector`` protocol (base.py)."""
+
+    def __init__(self, ckpt=None, conf: float = 0.5) -> None:
         # https://docs.ultralytics.com/modes/predict/
-        self.yolo = YOLO(PROJ_ROOT / "inputs/checkpoints/yolo/yolov8x.pt")
+        self.yolo = YOLO(ckpt or DEFAULT_YOLO_CKPT)
+        self.conf = conf  # default 0.25, wham/gvhmr 0.5
         # ultralytics device convention: 0 for cuda:0, else the type string ("mps"/"cpu").
         device = get_device()
         self.device = 0 if device.type == "cuda" else device.type
@@ -29,7 +35,7 @@ class Tracker:
         track_history = []
         cfg = {
             "device": self.device,
-            "conf": 0.5,  # default 0.25, wham 0.5
+            "conf": self.conf,
             "classes": 0,  # human
             "verbose": False,
             "stream": True,
