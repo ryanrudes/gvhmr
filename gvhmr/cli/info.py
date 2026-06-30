@@ -46,6 +46,7 @@ def run() -> None:
     for name, module in [
         ("preprocessing (YOLO)", "ultralytics"),
         ("camera / SimpleVO", "pycolmap"),
+        ("camera / DPVO (CUDA SLAM)", "dpvo"),  # scripts/setup_dpvo.sh
         ("body models", "smplx"),
         ("mesh rendering", "pytorch3d"),
         ("3D visualization", "wis3d"),
@@ -67,6 +68,7 @@ def run() -> None:
         ("YOLO", "yolo/yolov8x.pt"),
         ("SMPL-X", "body_models/smplx/SMPLX_NEUTRAL.npz"),
         ("SMPL", "body_models/smpl/SMPL_NEUTRAL.pkl"),
+        ("DPVO", "dpvo/dpvo.pth"),  # optional — only for --use-dpvo
     ]:
         ckpt.add_row(label, f"inputs/checkpoints/{rel}", _yn((base / rel).exists()))
     console.print(ckpt)
