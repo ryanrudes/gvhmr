@@ -130,10 +130,26 @@ Ordered by dependency and risk — earliest phases are self-contained and need n
   consistency guard** in the network forward (`relative_transformer.py`) so a feature/checkpoint dim mismatch
   is a clear error pointing at the backbone/retrain, not a cryptic `LayerNorm` failure or a silently-dropped
   condition. Test extended (241 green, golden intact).
-- ⏭ **Next:** a standalone offline-extraction tool (`frames + bbx → {features (N,D), …}.pt`) + at least one
-  **alternative** backbone (e.g. DINOv2 / Sapiens / a later 4D-Humans) registered behind `make_backbone`, to
-  produce alternate-`D` features for a retrain. (Acceptance: HMR2 features regenerate identically; an
-  alternate backbone yields declared-`D` features.)
+- ✅ **Alternative backbone landed & verified:** `DINOv2Backbone` (`dinov2_backbone.py`, `backbone=dinov2`,
+  vits14/vitb14/vitl14/vitg14 → 384/768/1024/1536-d) — ungated via torch.hub, reuses 4D-Humans' ImageNet-
+  normalized crop. **Verified on the GPU box:** produces `(F, 384)` CLS-token features. This is the concrete
+  proof the feature-swap works end-to-end (extract with a non-HMR2 backbone).
+- ⏭ **Next:** a small offline-extraction tool that writes the training cache format
+  (`imgfeats/<ds>_<backbone>/<vid>.pt = {features (N,D), bbx_xys, …}`) — the remaining plumbing before B3.
+
+### Phase B3 — retrain the core on a new backbone  *(ready-to-run plan)*
+The pieces are in place; the concrete recipe (a **smoke fine-tune** proving swapped-backbone training):
+1. **Co-locate** DINOv2 + data: the torch.hub cache (`~/.cache/torch/hub/facebookresearch_dinov2_main` +
+   `checkpoints/dinov2_vits14_pretrain.pth`, ~85 MB) downloads only where there's network; the 3DPW pack is
+   on the Mac. Copy the cache to wherever the data lives (or stage 3DPW on the box).
+2. **Parameterize** the 3DPW train dataset's feature dir (`threedpw_motion_train.py:41`
+   `imgfeats/3dpw_train_smplx_refit`) → a ctor arg, and register a `dinov2` variant.
+3. **Re-extract** a few 3DPW vids with `make_backbone("dinov2_vits14")` (reuse the bbx from the existing
+   cache), saving `imgfeats/3dpw_train_dinov2/<vid>.pt` in the same `{features, bbx_xys, …}` schema.
+4. **Fine-tune** with `network.imgseq_dim=384` + the dinov2 feature dir (from scratch, or from the released
+   ckpt — its 1024-d `imgseq_embedder` is dropped by `strict=False` and re-learns from zero-init). A
+   `smoke_3dpw_dinov2` config + `GVHMR_DEVICE=cpu` proves the loop; the box does the real run.
+- **Acceptance:** a checkpoint trained on DINOv2 features, with an eval number — the first swapped-backbone GVHMR.
 
 ### Phase B3 — retrain the core on a new backbone
 - Re-extract features for the available training data with the chosen backbone, set `imgseq_dim`, and train
