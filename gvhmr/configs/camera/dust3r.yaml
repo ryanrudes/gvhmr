@@ -1,0 +1,6 @@
+# Camera backend — DUSt3R scene-aware, metric camera. Reconstructs the scene (pure-PyTorch, runs on
+# MPS/CPU/CUDA) and fixes global scale against a Depth-Anything-V2 metric-depth prediction → a per-frame
+# metric T_w2c that recovers world translation (the moving/following-camera fix; DPVO does too but is
+# CUDA-only). Writes (L,4,4) metric T_w2c. See gvhmr/utils/preproc/dust3r_slam.py.
+name: dust3r
+max_depth: 80.0 # clamp (metres) for the metric-depth scale fit

@@ -112,11 +112,11 @@ def focal_mm_from_metadata(video_path) -> int | None:
     return None
 
 
-def ensure_assets(slam: str) -> None:
+def ensure_assets(camera: str) -> None:
     """Auto-fetch the checkpoints this run needs (so `gvhmr demo` just works); body models are gated."""
     from gvhmr.utils import assets
 
-    need = ["gvhmr", "hmr2", "vitpose", "yolo"] + (["dpvo"] if slam == "dpvo" else [])
+    need = ["gvhmr", "hmr2", "vitpose", "yolo"] + (["dpvo"] if camera == "dpvo" else [])
     todo = {n: assets.ASSETS[n] for n in need if not assets.is_present(assets.ASSETS[n])}
     if todo:
         sz = sum(a.size for a in todo.values()) / 1e9
@@ -222,7 +222,7 @@ def flip_feat_path(cfg) -> Path:
 
 
 @torch.no_grad()
-def run_preprocess(cfg, flip_test: bool = False, slam: str = "simplevo") -> None:
+def run_preprocess(cfg, flip_test: bool = False) -> None:
     tic = Log.time()
     video_path = cfg.video_path
     paths = cfg.paths
@@ -286,30 +286,33 @@ def run_preprocess(cfg, flip_test: bool = False, slam: str = "simplevo") -> None
         torch.save(feat_flip, flip_feat_path(cfg))
         del extractor
 
-    # 4) camera (SimpleVO / DPVO / DUSt3R-SLAM), unless static
+    # 4) camera (SimpleVO / DPVO / DUSt3R-SLAM), unless static. Config group cfg.camera — swap with --camera.
     if not static_cam:
         if not Path(paths.slam).exists():
-            if slam == "dust3r":
+            cam = cfg.camera
+            if cam.name == "dust3r":
                 # scene-aware, metric camera on MPS/CPU/CUDA — recovers translation (DPVO does too but
                 # is CUDA-only; SimpleVO's translation is unreliable). (L, 4, 4) metric T_w2c numpy.
                 from gvhmr.utils.preproc.dust3r_slam import run_dust3r_slam
 
                 with status("DUSt3R scene-aware camera tracking"):
-                    result = run_dust3r_slam(cfg.video_path, max_depth=cfg.get("scene_max_depth", 80.0))
+                    result = run_dust3r_slam(cfg.video_path, max_depth=cam.max_depth)
                 Log.info(f"DUSt3R camera: scale {result['scale']:.1f}, reconstruction conf {result['conf']:.2f}")
                 torch.save(result["T_w2c"], paths.slam)
-            elif slam == "dpvo":
+            elif cam.name == "dpvo":
                 from gvhmr.utils.preproc.slam import SLAMModel
 
                 length, width, height = get_video_lwh(cfg.video_path)
                 K_fullimg = estimate_K(width, height)
-                model = SLAMModel(video_path, width, height, convert_K_to_K4(K_fullimg), buffer=4000, resize=0.5)
+                model = SLAMModel(
+                    video_path, width, height, convert_K_to_K4(K_fullimg), buffer=cam.buffer, resize=cam.resize
+                )
                 with status("DPVO camera tracking"):
                     while model.track():
                         pass
                 torch.save(model.process(), paths.slam)  # (L, 7) numpy
             else:  # simplevo
-                simple_vo = SimpleVO(cfg.video_path, scale=0.5, step=8, method="sift", f_mm=cfg.f_mm)
+                simple_vo = SimpleVO(cfg.video_path, scale=cam.scale, step=cam.step, method=cam.method, f_mm=cfg.f_mm)
                 torch.save(simple_vo.compute(), paths.slam)  # (L, 4, 4) numpy
         else:
             Log.info(f"camera cached: [muted]{paths.slam}[/]")
@@ -317,14 +320,14 @@ def run_preprocess(cfg, flip_test: bool = False, slam: str = "simplevo") -> None
     Log.info(f"Preprocess done in [ok]{Log.time() - tic:.1f}s[/]")
 
 
-def load_data_dict(cfg, flip_test: bool = False, slam: str = "simplevo") -> dict:
+def load_data_dict(cfg, flip_test: bool = False) -> dict:
     paths = cfg.paths
     length, width, height = get_video_lwh(cfg.video_path)
     if cfg.static_cam:
         R_w2c = torch.eye(3).repeat(length, 1, 1)
     else:
         traj = torch.load(cfg.paths.slam, weights_only=False)
-        if slam == "dpvo":  # (L, 7) quaternion + translation
+        if cfg.camera.name == "dpvo":  # (L, 7) quaternion + translation
             R_w2c = quaternion_to_matrix(torch.from_numpy(traj[:, [6, 3, 4, 5]])).mT
         else:  # simplevo / dust3r: (L, 4, 4) T_w2c (dust3r's is metric)
             R_w2c = torch.from_numpy(traj[:, :3, :3])
@@ -499,7 +502,8 @@ def run(
     output_root: str | None = None,
     static_cam: bool = False,
     use_dpvo: bool = False,
-    slam: str = "simplevo",
+    slam: str | None = None,
+    camera: str | None = None,
     f_mm: int | None = None,
     verbose: bool = False,
     render_scale: float | None = None,
@@ -520,8 +524,8 @@ def run(
     """Run the full single-video demo with a Rich, staged display."""
     torch.set_num_threads(os.cpu_count() or 1)  # pytorch3d CPU rasterizer scales with torch threads
     joint_indices = resolve_joint_subset(skeleton_joints)  # validates the spec up front
-    if use_dpvo:  # deprecated flag → the slam selector
-        slam = "dpvo"
+    # Resolve the camera backend: --camera is the selector; --slam / --use-dpvo are deprecated aliases.
+    cam = camera or slam or ("dpvo" if use_dpvo else None)
 
     # Assemble the pluggable-stage config overrides (Tier A). Order matters for precedence: a --recipe
     # first (a committable bundle of choices), then explicit name selectors and weight tweaks, then the
@@ -535,6 +539,8 @@ def run(
         config_overrides.append(f"pose2d={pose2d}")
     if backbone is not None:
         config_overrides.append(f"backbone={backbone}")
+    if cam is not None:
+        config_overrides.append(f"camera={cam}")
     if detector_ckpt is not None:
         config_overrides.append(f"detector.ckpt={detector_ckpt}")
     if pose2d_ckpt is not None:
@@ -555,12 +561,13 @@ def run(
     device = get_device()
     Log.info(f"Device: [ok]{device_name(device)}[/] ({device})")
     paths = cfg.paths
+    cam_name = cfg.camera.name  # resolved camera backend (simplevo / dpvo / dust3r)
 
-    ensure_assets(slam)  # auto-fetch missing checkpoints (gated body models raise a clear error)
+    ensure_assets(cam_name)  # auto-fetch missing checkpoints (gated body models raise a clear error)
 
     rule("Preprocess")
-    run_preprocess(cfg, flip_test=flip_test, slam=slam)
-    data = load_data_dict(cfg, flip_test=flip_test, slam=slam)
+    run_preprocess(cfg, flip_test=flip_test)
+    data = load_data_dict(cfg, flip_test=flip_test)
 
     rule("Recover motion")
     if not Path(paths.hmr4d_results).exists():
@@ -585,7 +592,7 @@ def run(
             )
         # Moving + scene-aware: replace the world trajectory with the in-cam carry through the DUSt3R
         # metric camera (captures traversal a following camera induces; the velocity prior misses it).
-        if slam == "dust3r" and not cfg.static_cam:
+        if cam_name == "dust3r" and not cfg.static_cam:
             Log.info("Moving camera: world trajectory from the [ok]DUSt3R metric camera[/] (scene-aware)")
             compose_world_from_dust3r(pred, torch.load(paths.slam, weights_only=False))
         torch.save(pred, paths.hmr4d_results)

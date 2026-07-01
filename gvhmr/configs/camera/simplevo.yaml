@@ -1,0 +1,7 @@
+# Camera backend — SimpleVO (the released default for a moving camera): pycolmap SIFT visual odometry,
+# rotation only (translation is unreliable; use dpvo/dust3r for world translation). Writes R_w2c.
+# Runs on CPU/MPS/CUDA. No-op when --static-cam. Knobs below are SimpleVO ctor kwargs.
+name: simplevo
+scale: 0.5 # frame downscale for feature extraction
+step: 8 # keyframe stride
+method: sift

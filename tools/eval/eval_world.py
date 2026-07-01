@@ -85,7 +85,7 @@ def predict_sequence(gt, model, device):
         verbose=False,
         render_scale=None,
     )
-    run_preprocess(cfg, flip_test=False, slam="simplevo")
+    run_preprocess(cfg, flip_test=False)
 
     L = gt.length
     K = gt.K_fullimg

@@ -9,6 +9,7 @@ defaults:
   - detector: yolo
   - pose2d: vitpose
   - backbone: hmr2
+  - camera: simplevo
 
 pipeline:
   _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline

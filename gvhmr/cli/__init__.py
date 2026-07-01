@@ -46,15 +46,17 @@ def demo(
     output_root: Annotated[
         str | None, typer.Option("--output-root", "-o", help="Output root [dim](default outputs/demo)[/].")
     ] = None,
-    use_dpvo: Annotated[bool, typer.Option(help="Use DPVO for the camera (CUDA-only); default is SimpleVO.")] = False,
-    slam: Annotated[
-        str,
+    camera: Annotated[
+        str | None,
         typer.Option(
+            "--camera",
             help="Camera backend for a moving camera: [gvhmr]simplevo[/] (default, rotation only), "
             "[gvhmr]dpvo[/] (CUDA-only), or [gvhmr]dust3r[/] — scene-aware [bold]metric[/] camera on "
             "Apple-Silicon/CPU that also recovers world translation (the gliding/following-camera fix).",
         ),
-    ] = "simplevo",
+    ] = None,
+    use_dpvo: Annotated[bool, typer.Option(help="[dim]Deprecated alias for [/][gvhmr]--camera dpvo[/].")] = False,
+    slam: Annotated[str | None, typer.Option("--slam", help="[dim]Deprecated alias for [/][gvhmr]--camera[/].")] = None,
     f_mm: Annotated[
         int | None, typer.Option(help="Full-frame focal length in mm [dim](iPhone 1x≈24, 2x≈48)[/].")
     ] = None,
@@ -133,6 +135,7 @@ def demo(
         static_cam=static_cam,
         use_dpvo=use_dpvo,
         slam=slam,
+        camera=camera,
         f_mm=f_mm,
         verbose=verbose,
         render_scale=render_scale,
@@ -157,7 +160,10 @@ def demo_folder(
     folder: Annotated[Path, typer.Argument(help="Folder of .mp4 videos.", exists=True, file_okay=False)],
     static_cam: Annotated[bool, typer.Option("--static-cam", "-s", help="Cameras are static.")] = False,
     output_root: Annotated[str | None, typer.Option("--output-root", "-o", help="Output root.")] = None,
-    use_dpvo: Annotated[bool, typer.Option(help="Use DPVO (CUDA-only).")] = False,
+    camera: Annotated[
+        str | None, typer.Option("--camera", help="Camera backend [dim](simplevo/dpvo/dust3r)[/].")
+    ] = None,
+    use_dpvo: Annotated[bool, typer.Option(help="[dim]Deprecated alias for [/][gvhmr]--camera dpvo[/].")] = False,
     f_mm: Annotated[int | None, typer.Option(help="Focal length in mm.")] = None,
     render_scale: Annotated[float | None, typer.Option(help="Overlay resolution fraction.")] = None,
     no_render: Annotated[bool, typer.Option("--no-render", help="Skip overlays.")] = False,
@@ -169,6 +175,7 @@ def demo_folder(
         folder,
         output_root=output_root,
         static_cam=static_cam,
+        camera=camera,
         use_dpvo=use_dpvo,
         f_mm=f_mm,
         render_scale=render_scale,

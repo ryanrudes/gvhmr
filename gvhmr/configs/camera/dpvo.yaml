@@ -1,0 +1,6 @@
+# Camera backend — DPVO (deep patch visual odometry): recovers full 6-DoF camera motion incl.
+# translation. CUDA-only (compiled extensions; see scripts/setup_dpvo.sh). Writes (L,7) quat+transl.
+# On Apple-Silicon/CPU use `dust3r` instead. Knobs below are SLAMModel ctor kwargs.
+name: dpvo
+buffer: 4000 # patch/keyframe buffer size
+resize: 0.5 # frame downscale
