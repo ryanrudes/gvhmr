@@ -99,13 +99,14 @@ Ordered by dependency and risk — earliest phases are self-contained and need n
   DUSt3R and Depth-Anything. Optionally bump Depth-Anything-V2 → V3.
 - **Acceptance:** `--slam vggt` produces a `T_w2c`; world-compose path unchanged; documented in INSTALL/EVAL.
 
-### Phase C — body-model file flexibility
-- Make the SMPL-X path + variant explicit in config (today `make_smplx("supermotion")` hard-targets
-  `inputs/checkpoints/body_models`, neutral, 10 betas; `gvhmr/utils/smplx_utils.py:29`).
-- Document the hard constraint: the 151-d decode + regressors are co-trained to SMPL-X-neutral-10β-22joint;
-  you may swap the *file* (v1.0↔v1.1, same 10475-vert/54-joint topology) but not the model family/β-count
-  without retraining the decode.
-- **Acceptance:** body-model path is config-driven; a note in docs spells out what's interchangeable.
+### Phase C — body-model file flexibility  ✅ **Done**
+- The SMPL/SMPL-X root is now a single `BODY_MODEL_ROOT` constant (`gvhmr/utils/smplx_utils.py`), absolute
+  (cwd-independent — fixes the old relative-string paths) and **`$GVHMR_BODY_MODELS`-overridable** (relocate
+  to a shared datasets dir, or point at a v1.1 install). All 11 hard-coded `inputs/checkpoints/body_models`
+  paths route through it. 244 tests green, golden inference byte-identical (default resolves to the same path).
+- The hard constraint is documented at the constant: the 151-d decode + regressors are co-trained to
+  **SMPL-X neutral, 10 betas, 22-joint** topology — you may swap the *file* (v1.0↔v1.1, same 10475-vert /
+  54-joint topology) but **not** the model family / β-count without retraining the decode.
 
 ### Phase B1 — make training runnable + documented  *(keystone, de-risk first)*
 - ✅ **Done:** `docs/TRAINING.md` written; a **smoke `fit` runs end-to-end** (validated on macOS **CPU**) via
