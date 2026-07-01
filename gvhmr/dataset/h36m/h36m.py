@@ -5,6 +5,7 @@ import torch
 
 from gvhmr.configs import MainStore, builds
 from gvhmr.dataset.imgfeat_motion.base_dataset import ImgfeatMotionDatasetBase
+from gvhmr.utils.assets import DATA_ROOT
 from gvhmr.utils.geo.hmr_global import get_c_rootparam, get_R_c2gv
 from gvhmr.utils.geo_transform import compute_cam_angvel
 from gvhmr.utils.net_utils import get_valid_mask, repeat_to_max_len, repeat_to_max_len_dict
@@ -16,13 +17,13 @@ from gvhmr.utils.video_io_utils import read_video_np
 class H36mSmplDataset(ImgfeatMotionDatasetBase):
     def __init__(
         self,
-        root="inputs/H36M/hmr4d_support",
+        root=None,  # default honours $GVHMR_DATA_ROOT (below); pass a path to override
         original_coord="az",
         motion_frames=120,  # H36M's videos are 25fps and very long
         lazy_load=False,
     ):
         # Path
-        self.root = Path(root)
+        self.root = Path(root) if root is not None else DATA_ROOT / "H36M/hmr4d_support"
 
         # Coord
         self.original_coord = original_coord

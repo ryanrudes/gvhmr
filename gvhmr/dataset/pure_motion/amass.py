@@ -1,9 +1,8 @@
-from pathlib import Path
-
 import numpy as np
 import torch
 
 from gvhmr.configs import MainStore, builds
+from gvhmr.utils.assets import DATA_ROOT
 from gvhmr.utils.geo.hmr_global import get_tgtcoord_rootparam
 from gvhmr.utils.pylogger import Log
 
@@ -21,7 +20,7 @@ class AmassDataset(BaseDataset):
         random1024=False,  # DEBUG
         limit_size=None,
     ):
-        self.root = Path("inputs/AMASS/hmr4d_support")
+        self.root = DATA_ROOT / "AMASS/hmr4d_support"  # honours $GVHMR_DATA_ROOT (default inputs/)
         self.motion_frames = motion_frames
         self.l_factor = l_factor
         self.random1024 = random1024

@@ -1,9 +1,8 @@
-from pathlib import Path
-
 import torch
 from torch.utils import data
 
 from gvhmr.configs import MainStore, builds
+from gvhmr.utils.assets import DATA_ROOT
 from gvhmr.utils.geo.flip_utils import flip_kp2d_coco17
 from gvhmr.utils.geo.hmr_cam import estimate_K, resize_K
 from gvhmr.utils.geo_transform import compute_cam_angvel
@@ -21,7 +20,7 @@ class ThreedpwSmplFullSeqDataset(data.Dataset):
         Log.info(f"[{self.dataset_name}] Full sequence")
 
         # Load evaluation protocol from WHAM labels
-        self.threedpw_dir = Path("inputs/3DPW/hmr4d_support")
+        self.threedpw_dir = DATA_ROOT / "3DPW/hmr4d_support"  # honours $GVHMR_DATA_ROOT (default inputs/)
         # ['vname', 'K_fullimg', 'T_w2c', 'smpl_params', 'gender', 'mask_raw', 'mask_wham', 'img_wh']
         self.labels = torch.load(self.threedpw_dir / "test_3dpw_gt_labels.pt", weights_only=False)
         self.vid2bbx = torch.load(self.threedpw_dir / "preproc_test_bbx.pt", weights_only=False)

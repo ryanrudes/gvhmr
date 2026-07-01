@@ -1,8 +1,7 @@
-from pathlib import Path
-
 import torch
 from torch.utils import data
 
+from gvhmr.utils.assets import DATA_ROOT
 from gvhmr.utils.geo.flip_utils import flip_kp2d_coco17
 from gvhmr.utils.geo.hmr_cam import estimate_K, resize_K
 from gvhmr.utils.geo.rotations import quaternion_to_matrix
@@ -31,7 +30,7 @@ class EmdbSmplFullSeqDataset(data.Dataset):
 
         # Load evaluation protocol from WHAM labels
         tic = Log.time()
-        self.emdb_dir = Path("inputs/EMDB/hmr4d_support")
+        self.emdb_dir = DATA_ROOT / "EMDB/hmr4d_support"  # honours $GVHMR_DATA_ROOT (default inputs/)
         # 'name', 'gender', 'smpl_params', 'mask', 'K_fullimg', 'T_w2c', 'bbx_xys', 'kp2d', 'features'
         self.labels = torch.load(self.emdb_dir / "emdb_vit_v4.pt", weights_only=False)
         self.cam_traj = torch.load(self.emdb_dir / "emdb_dpvo_traj.pt", weights_only=False)  # estimated with DPVO

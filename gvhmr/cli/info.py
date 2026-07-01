@@ -71,3 +71,14 @@ def run() -> None:
     gap = assets.missing() + ([] if body_ok else ["body_models"])
     if gap:
         console.print(f"[warn]missing[/]: {', '.join(gap)} — run [gvhmr]gvhmr download[/] (body models are gated)")
+
+    # --- Training / eval data packs (fetch with `gvhmr download --data`; relocate with $GVHMR_DATA_ROOT) ---
+    data = Table(title=f"data packs  [dim]({assets.DATA_ROOT}  ·  $GVHMR_DATA_ROOT)[/]", expand=False)
+    data.add_column("pack")
+    data.add_column("role", style="muted")
+    data.add_column("status", justify="center")
+    roles = {"amass": "train", "bedlam": "train", "h36m": "train", "3dpw": "train+eval", "emdb": "eval", "rich": "eval"}
+    for name, (_, ds_dir, _) in assets.DATA_PACKS.items():
+        present = (assets.DATA_ROOT / ds_dir / "hmr4d_support").exists()
+        data.add_row(name, roles.get(name, ""), _yn(present))
+    console.print(data)

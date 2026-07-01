@@ -1,9 +1,8 @@
-from pathlib import Path
-
 import torch
 from torch.utils import data
 
 from gvhmr.configs import MainStore, builds
+from gvhmr.utils.assets import DATA_ROOT
 from gvhmr.utils.geo.hmr_cam import resize_K
 from gvhmr.utils.geo.rotations import axis_angle_to_matrix
 from gvhmr.utils.geo_transform import apply_T_on_points, compute_cam_angvel, transform_mat
@@ -43,7 +42,7 @@ class RichSmplFullSeqDataset(data.Dataset):
         tic = Log.time()
 
         # Load evaluation protocol from WHAM labels
-        self.rich_dir = Path("inputs/RICH/hmr4d_support")
+        self.rich_dir = DATA_ROOT / "RICH/hmr4d_support"  # honours $GVHMR_DATA_ROOT (default inputs/)
         self.labels = torch.load(self.rich_dir / "rich_test_labels.pt", weights_only=False)
         self.preproc_data = torch.load(self.rich_dir / "rich_test_preproc.pt", weights_only=False)
         vids = select_subset(self.labels, vid_presets)

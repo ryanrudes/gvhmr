@@ -1,4 +1,3 @@
-from pathlib import Path
 from time import time
 
 import numpy as np
@@ -7,6 +6,7 @@ import torch
 from gvhmr.configs import MainStore, builds
 from gvhmr.dataset.bedlam.utils import mid2featname, mid2vname
 from gvhmr.dataset.imgfeat_motion.base_dataset import ImgfeatMotionDatasetBase
+from gvhmr.utils.assets import DATA_ROOT
 from gvhmr.utils.geo.hmr_global import get_c_rootparam, get_R_c2gv, get_T_w2c_from_wcparams
 from gvhmr.utils.geo.rotations import axis_angle_to_matrix, matrix_to_axis_angle
 from gvhmr.utils.geo_transform import apply_T_on_points, compute_cam_angvel
@@ -32,7 +32,7 @@ class BedlamDatasetV2(ImgfeatMotionDatasetBase):
         lazy_load=True,  # Load from disk when needed
         random1024=False,  # Faster loading for debugging
     ):
-        self.root = Path("inputs/BEDLAM/hmr4d_support")
+        self.root = DATA_ROOT / "BEDLAM/hmr4d_support"  # honours $GVHMR_DATA_ROOT (default inputs/)
         self.min_motion_frames = 60
         self.max_motion_frames = 120
         self.lazy_load = lazy_load

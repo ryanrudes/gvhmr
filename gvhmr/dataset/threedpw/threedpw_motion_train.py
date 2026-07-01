@@ -1,10 +1,9 @@
-from pathlib import Path
-
 import numpy as np
 import torch
 
 from gvhmr.configs import MainStore, builds
 from gvhmr.dataset.imgfeat_motion.base_dataset import ImgfeatMotionDatasetBase
+from gvhmr.utils.assets import DATA_ROOT
 from gvhmr.utils.geo.hmr_cam import resize_K
 from gvhmr.utils.geo_transform import compute_cam_angvel
 from gvhmr.utils.net_utils import get_valid_mask, repeat_to_max_len, repeat_to_max_len_dict
@@ -18,7 +17,7 @@ class ThreedpwSmplDataset(ImgfeatMotionDatasetBase):
     def __init__(self, imgfeat_subdir="imgfeats/3dpw_train_smplx_refit"):
         # Path. `imgfeat_subdir` selects which cached-feature backbone to train on (default HMR2; e.g.
         # "imgfeats/3dpw_train_dinov2" for a re-extracted DINOv2 set — see docs/EXTENSIBILITY.md Tier B).
-        self.hmr4d_support_dir = Path("inputs/3DPW/hmr4d_support")
+        self.hmr4d_support_dir = DATA_ROOT / "3DPW/hmr4d_support"  # honours $GVHMR_DATA_ROOT (default inputs/)
         self.imgfeat_subdir = imgfeat_subdir
         self.dataset_name = "3DPW"
 

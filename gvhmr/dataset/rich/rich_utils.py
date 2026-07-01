@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import torch
 
+from gvhmr.utils.assets import DATA_ROOT
 from gvhmr.utils.geo_transform import apply_T_on_points, project_p2d
 
 # ----- Meta sample utils ----- #
@@ -284,13 +285,12 @@ def get_seqnames_of_split(splits=["train"], skip_multi_persons=True):
 
 def get_seqname_to_imgrange():
     """Each sequence has a different range of image ids."""
-    from tqdm import tqdm
 
     split_seqnames = {split: get_seqnames_of_split(split) for split in ["train", "val", "test"]}
     seqname_to_imgrange = {}
     for split in ["train", "val", "test"]:
         for seqname in track(split_seqnames[split]):
-            img_root = Path("inputs/RICH") / "images_ds4" / split  # compressed (not original)
+            img_root = DATA_ROOT / "RICH" / "images_ds4" / split  # compressed (not original); $GVHMR_DATA_ROOT
             img_dir = img_root / seqname
             img_names = sorted([n.name for n in img_dir.glob("**/*.jpeg")])
             if len(img_names) == 0:

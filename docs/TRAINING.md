@@ -43,10 +43,20 @@ uv run gvhmr train global/task=gvhmr/test_3dpw_emdb_rich exp=gvhmr/mixed/mixed \
 
 ## Data layout & gated downloads
 
-All training/eval data lives under `inputs/<DATASET>/hmr4d_support/` as precomputed `.pt`/`.pth` packs
-(motion params + **cached ViT features** + labels). GVHMR distributes these via the project
-**[Google Drive](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD)**; the underlying
-raw datasets are registration-gated. Extract so the `*/hmr4d_support/` dirs sit under `inputs/`.
+All training/eval data lives under `<DATA_ROOT>/<DATASET>/hmr4d_support/` as precomputed `.pt`/`.pth` packs
+(motion params + **cached ViT features** + labels). **Fetch them with one command** — they land in the
+right place and both `gvhmr download` and the dataset loaders honour the same root:
+
+```bash
+uv run gvhmr download --data 3dpw,amass,h36m       # + emdb,rich,bedlam ; from the HF mirror
+uv run gvhmr info                                  # shows the data root + which packs are present
+```
+
+`DATA_ROOT` defaults to `inputs/`; set **`$GVHMR_DATA_ROOT`** to keep the (large) packs elsewhere — e.g.
+`export GVHMR_DATA_ROOT=/big/disk/gvhmr` — and the download target *and* every dataset loader resolve there
+(no symlinks). Every loader path routes through `gvhmr/utils/assets.py::DATA_ROOT`. The packs are also on the
+project **[Google Drive](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD)**; the
+underlying raw datasets are registration-gated.
 
 | Dataset | Role | Provides | Gated |
 |---|---|---|---|

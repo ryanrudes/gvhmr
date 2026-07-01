@@ -61,6 +61,7 @@ def run(what: str = "demo", *, force: bool = False, data: str | None = None) -> 
 
     if data:
         rule("data packs")
+        console.print(f"data root: [muted]{assets.DATA_ROOT}[/]  [dim](override: $GVHMR_DATA_ROOT)[/]")
         for name in [s.strip() for s in data.split(",") if s.strip()]:
             if name not in assets.DATA_PACKS:
                 Log.warning(f"[warn]unknown data pack[/] {name!r}; known: {sorted(assets.DATA_PACKS)}")
