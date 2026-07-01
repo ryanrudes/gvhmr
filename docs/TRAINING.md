@@ -71,7 +71,10 @@ are **shipped in-repo** (`stats_compose.py`, `gvhmr/utils/body_model/`) — no d
 - **RNG order is load-bearing** (`docs/BEHAVIOR.md`): the augmentors mix `np.random`/`torch`/CUDA RNG across
   five layers; **don't reorder them** or the training stream shifts. (A snapshot test for this is planned —
   `docs/EXTENSIBILITY.md` Phase B1.)
-- **Retraining on a new feature backbone** (Tier B keystone): re-extract the cached features with the new
-  extractor, set `network.imgseq_dim`, and retrain. See `docs/EXTENSIBILITY.md` Phases B2–B4.
+- **Retraining on a new feature backbone** (Tier B keystone): re-extract the cached features with
+  `gvhmr extract-features VIDEOS OUT --backbone <name>` (writes the `imgfeats/<ds>_<backbone>` cache), point
+  a dataset's `imgfeat_subdir` at the output, set `network.imgseq_dim` to the backbone's width, and retrain.
+  `smoke_3dpw_dinov2` is a worked example (dinov2 vits14 → 384-d). See `docs/CONFIGURATION.md` and
+  `docs/EXTENSIBILITY.md` Phases B2–B4.
 - The broken `siga24_release.yaml` (references a non-existent `NetworkEncoderRoPEV2`) is **not** the training
   path — `mixed` composes the valid `relative_transformer` (`docs/BEHAVIOR.md`).

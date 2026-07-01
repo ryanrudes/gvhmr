@@ -1,0 +1,6 @@
+# @package _global_
+# "scene" recipe — scene-aware metric camera (DUSt3R): recovers world translation for a moving/following
+# camera and runs on Apple-Silicon/CPU (unlike CUDA-only DPVO). Shows a recipe selecting a config *group*.
+# Compose with:  gvhmr demo VIDEO --recipe scene
+defaults:
+  - override /camera: dust3r

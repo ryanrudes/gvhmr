@@ -113,12 +113,18 @@ landmines, and the upstream-sync workflow.
 This fork is being turned from a frozen checkpoint into a **re-trainable, swappable** system — see the
 roadmap in [`docs/EXTENSIBILITY.md`](docs/EXTENSIBILITY.md). Already landed:
 
-- **Pluggable preprocessing** — the detector, 2D-pose, and image-feature **backbone** are built through a
-  small registry (`gvhmr/utils/preproc/base.py`, mirroring the `--slam` camera selector). Point the demo at
-  a different weight today with `gvhmr demo … --detector-ckpt yolov11x.pt` / `--pose2d-ckpt …` (config keys
-  `cfg.detector`/`cfg.pose2d`/`cfg.backbone` select the implementation; name-selector flags land with the
-  first alternative impl). Swap the detector (any YOLO) or 2D-pose (any COCO-17 estimator) freely; the
-  feature backbone is *learned conditioning*, so swapping it needs a retrain (guarded by an `imgseq_dim` check).
+- **Swap any model by name** — the detector, 2D-pose, feature backbone, and camera are each a **Hydra config
+  group**, one config system shared with `train`. Pick an implementation, bundle choices into a *recipe*, or
+  tweak any knob — full guide in [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md):
+  ```shell
+  gvhmr demo clip.mp4 --detector yolo11 --pose2d rtmpose --camera dust3r   # pick implementations
+  gvhmr demo clip.mp4 --recipe accurate                                    # a committable bundle
+  gvhmr demo clip.mp4 --set detector.conf=0.4                              # tweak a knob
+  ```
+  RTMPose (`--extra rtmpose`) is a real, verified alternative 2D-pose backend. Detector (any YOLO) and 2D-pose
+  (any COCO-17 estimator) swap freely; the feature backbone is *learned conditioning*, so it needs a retrain.
+- **Retrain on a new backbone** — `gvhmr extract-features VIDEOS OUT --backbone dinov2` writes the training
+  feature cache; then `gvhmr train … network.imgseq_dim=<D>`. Verified end-to-end plumbing (Tier B).
 - **Training runs on any device** — [`docs/TRAINING.md`](docs/TRAINING.md). A smoke `fit` works even on
   CPU: `GVHMR_DEVICE=cpu uv run gvhmr train exp=gvhmr/mixed/smoke_3dpw`. Real runs are multi-GPU CUDA.
 - **Relocatable body models** — set `$GVHMR_BODY_MODELS` to point SMPL/SMPL-X anywhere.

@@ -49,6 +49,7 @@ dependency that fails to import). `gvhmr info` shows the resolved torch and `cud
 ```bash
 uv sync --extra dev           # tests + ruff + pyright
 uv sync --extra preproc       # YOLO + ViTPose + pycolmap (per-video preprocessing)
+uv sync --extra rtmpose       # RTMPose 2D-pose backend (`--pose2d rtmpose`; rtmlib + ONNXRuntime)
 uv sync --extra vis           # wis3d / viser (interactive 3D debugging)
 uv sync --extra notebook      # jupyter / ipython / ipdb
 uv sync --all-extras          # everything pip-resolvable
@@ -58,6 +59,7 @@ uv sync --all-extras          # everything pip-resolvable
 |---|---|---|
 | `dev` | pytest, ruff, pyright | runs the full test suite on CPU/MPS |
 | `preproc` | ultralytics, cython_bbox, lapx, pycolmap | needs model weights (below); SimpleVO uses pycolmap |
+| `rtmpose` | rtmlib, onnxruntime | alternative 2D-pose backend (`--pose2d rtmpose`); model auto-downloads |
 | `vis` | wis3d, viser | research visualization |
 | `notebook` | jupyter, ipython, ipdb | interactive work |
 

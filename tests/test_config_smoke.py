@@ -75,6 +75,18 @@ def test_preproc_groups_compose_and_swap_by_name() -> None:
         assert rec.render_scale == 0.25
 
 
+def test_recipes_bundle_fields_and_group_overrides() -> None:
+    with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):
+        # a field-setting recipe (benchmark quality)
+        acc = compose(config_name="demo", overrides=["video_name=x", "+recipe=accurate"])
+        assert acc.flip_test is True and acc.render_scale == 1.0
+        # a recipe can also select a config *group*; an explicit --camera still wins over it
+        scene = compose(config_name="demo", overrides=["video_name=x", "+recipe=scene"])
+        assert scene.camera.name == "dust3r"
+        scene_cli = compose(config_name="demo", overrides=["video_name=x", "+recipe=scene", "camera=simplevo"])
+        assert scene_cli.camera.name == "simplevo"
+
+
 @pytest.mark.filterwarnings("ignore")
 def test_demo_focal_length_override_propagates() -> None:
     with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):

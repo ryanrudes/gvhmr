@@ -57,19 +57,22 @@ common contract (`R_w2c`) in `load_data_dict` (`gvhmr/cli/demo.py:289`). We gene
 swappable stage:
 
 ```
-stage          interface (cache contract)                       selector            today
-─────          ──────────────────────────                       ────────            ─────
-detector    →  bbx_xyxy (L,4) → bbx_xys (L,3)                    --detector          hard-coded (tracker.py:23)
-pose2d      →  COCO-17 (L,17,3) [x,y,conf]                       --pose2d            hard-coded (vitpose.py:17)
-camera      →  R_w2c (L,3,3) [+ metric T_w2c for world]          --slam   ✅ done
-scene       →  T_w2c (L,4,4) metric                              --slam dust3r ✅     kwargs (dust3r_slam.py:61)
-backbone    →  f_imgseq (L, D) + declared D                      config imgseq_dim    offline cache
-body model  →  SMPL-X npz/pkl (fixed topology)                   config path
+stage          interface (cache contract)                       selector           today
+─────          ──────────────────────────                       ────────           ─────
+detector    →  bbx_xyxy (L,4) → bbx_xys (L,3)                    --detector    ✅   group; yolo, yolo11
+pose2d      →  COCO-17 (L,17,3) [x,y,conf]                       --pose2d      ✅   group; vitpose, rtmpose
+camera      →  R_w2c (L,3,3) [+ metric T_w2c for world]          --camera      ✅   group (was --slam)
+scene       →  T_w2c (L,4,4) metric                              --camera dust3r ✅
+backbone    →  f_imgseq (L, D) + declared D                      --backbone    ✅   group; extract-features + retrain
+body model  →  SMPL-X npz/pkl (fixed topology)                   $GVHMR_BODY_MODELS ✅
 ```
 
-Each stage gets: (1) a small **Protocol/ABC** declaring its `extract(...) -> <contract>`, (2) a **config
-group** + CLI flag mirroring `--slam`, (3) **weight paths in config** (not Python). A registry maps the
-selector value → implementation. The COCO-17 / `imgseq_dim` invariants stay as explicit guardrails.
+**This is now built** — see [`docs/CONFIGURATION.md`](CONFIGURATION.md) for the user-facing guide. Each
+stage is a config group under `gvhmr/configs/{detector,pose2d,backbone,camera}/`, selectable by name
+(`--detector`/`--pose2d`/`--backbone`/`--camera`), bundlable into a `--recipe`, and tweakable with `--set`.
+Every stage has a **Protocol** declaring its `extract(...) -> <contract>`, a registry mapping the selector
+name → implementation, and knobs in the config (not Python). The COCO-17 / `imgseq_dim` invariants stay as
+explicit guardrails. Defaults are the released models, so the golden path is byte-identical.
 
 ---
 
@@ -87,13 +90,17 @@ Ordered by dependency and risk — earliest phases are self-contained and need n
   → You can already point at a different weight file via config (e.g. a `yolov11x.pt`).
 - ✅ **CLI weight-swap:** `gvhmr demo … --detector-ckpt yolov11x.pt` / `--pose2d-ckpt …` thread through to the
   registry (`+detector_ckpt`/`+pose2d_ckpt` config overrides), so a newer weight is reachable from the CLI.
-- ⏭ **Next:** a first non-default *implementation* (e.g. RTMPose, registered as `pose2d=rtmpose`, emitting
-  COCO-17) + name-selector flags (`--detector`/`--pose2d`). Keep the COCO-17 assert
-  (`relative_transformer.py:128`) as the contract guard.
-- Drop-ins enabled: YOLOv9/10/11/12/26 (ultralytics, same `.track()` API); RTMPose / RTMO / Sapiens / DWPose
-  / MoveNet for 2D pose **iff configured to COCO-17**.
-- **Acceptance:** `gvhmr demo … --detector yolo11 --pose2d rtmpose` runs; golden test green; a unit test
-  asserts each impl emits the contract shape.
+- ✅ **Config groups + name selectors (done):** detector/pose2d/backbone/camera are first-class Hydra groups
+  (`gvhmr/configs/{detector,pose2d,backbone,camera}/`), selected by `--detector`/`--pose2d`/`--backbone`/
+  `--camera`, bundlable into `--recipe`, tweakable with `--set`. `--camera` subsumes `--slam`/`--use-dpvo`
+  (kept as aliases). One source of truth, shared with `train`. See [`docs/CONFIGURATION.md`](CONFIGURATION.md).
+- ✅ **First non-default implementation (done):** `pose2d=rtmpose` — RTMPose via rtmlib/ONNXRuntime (ungated,
+  no mmcv), a genuinely different architecture emitting COCO-17. Optional dep `uv sync --extra rtmpose`;
+  verified end-to-end. The COCO-17 assert (`relative_transformer.py`) stays the contract guard.
+- Drop-ins enabled: YOLOv9/10/11/12 (ultralytics, same `.track()` API, `--detector yolo11`); RTMPose landed,
+  and RTMO / Sapiens / DWPose / MoveNet fit **iff configured to COCO-17**.
+- **Acceptance:** ✅ `gvhmr demo … --detector yolo11 --pose2d rtmpose --camera dust3r` composes; golden green;
+  `test_preproc_pluggable` + `test_config_smoke` assert the registry, group composition, and name-swap.
 
 ### Phase A2 — newer scene-aware backend
 - Add a `vggt` (and/or `mast3r`) backend behind `--slam`, returning the same metric `T_w2c (L,4,4)`
@@ -134,8 +141,12 @@ Ordered by dependency and risk — earliest phases are self-contained and need n
   vits14/vitb14/vitl14/vitg14 → 384/768/1024/1536-d) — ungated via torch.hub, reuses 4D-Humans' ImageNet-
   normalized crop. **Verified on the GPU box:** produces `(F, 384)` CLS-token features. This is the concrete
   proof the feature-swap works end-to-end (extract with a non-HMR2 backbone).
-- ⏭ **Next:** a small offline-extraction tool that writes the training cache format
-  (`imgfeats/<ds>_<backbone>/<vid>.pt = {features (N,D), bbx_xys, …}`) — the remaining plumbing before B3.
+- ✅ **Offline-extraction tool (done):** `gvhmr extract-features VIDEOS OUT --backbone <name>` writes the
+  training cache format (`imgfeats/<ds>_<backbone>/<vid>.pt = {features (N,D), bbx_xys, img_wh}`). Two box
+  sources: run the detector (BYOD) or `--bbx-from` an existing cache (exact re-extraction on the released
+  boxes). Resolves the backbone through the same `configs/backbone` group as the demo (consistent feature
+  width). Verified end-to-end (dinov2 → (F,384)); CI-safe schema/resolution tests. This was the remaining
+  plumbing before B3 — a real retrain is now one `extract-features` + one `train` away (given raw frames).
 
 ### Phase B3 — retrain the core on a new backbone
 - ✅ **Swapped-backbone training PLUMBING proven:** the 3DPW dataset takes an `imgfeat_subdir` (a `dinov2`
@@ -233,10 +244,14 @@ bundles (the `.pt`/`.pth` packs the datasets load) via the project **Google Driv
 
 ## 8. Milestones
 
-- **M1** — Phase A1 (pluggable detector/pose2d) + Phase C (body-model config). *In progress.*
-- **M2** — Phase A2 (VGGT/MASt3R scene backend).
-- **M3** — Phase B1 (training runnable + `docs/TRAINING.md` + smoke run + RNG test).
-- **M4** — Phase B2 (backbone-pluggable feature extractor + dim guard).
-- **M5** — Phase B3/B4 (retrain on a new backbone; bring-your-own-data fine-tuning).
+- **M1** — Phase A1 (config groups + name selectors + RTMPose) + Phase C (body-model config). ✅ **done.**
+- **M2** — Phase A2 (VGGT/MASt3R scene backend). ⏳ *pending* — gated on the VGGT model; the `--camera`
+  group is ready for it to slot in.
+- **M3** — Phase B1 (training runnable + `docs/TRAINING.md` + smoke run + RNG test). ✅ **done.**
+- **M4** — Phase B2 (backbone-pluggable feature extractor + `gvhmr extract-features` + dim guard). ✅ **done.**
+- **M5** — Phase B3/B4 (retrain on a new backbone; bring-your-own-data fine-tuning). ⏳ plumbing proven
+  (synthetic-feature smoke); a *real* retrain is blocked only on gated raw frames.
 
-**Starting now:** Phase A1.
+**Remaining:** M2 (VGGT camera backend) and the *real* M5 retrain (needs raw training frames) — both gated
+on external resources. The config/extensibility framework itself is complete: see
+[`docs/CONFIGURATION.md`](CONFIGURATION.md).

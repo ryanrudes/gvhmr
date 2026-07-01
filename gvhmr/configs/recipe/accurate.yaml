@@ -1,0 +1,6 @@
+# @package _global_
+# "accurate" recipe — benchmark-style quality: mirror-averaging TTA (flip-test) + full-resolution
+# overlays. Slower (an extra feature pass + full-res render), better numbers.
+# Compose with:  gvhmr demo VIDEO --recipe accurate
+flip_test: true
+render_scale: 1.0

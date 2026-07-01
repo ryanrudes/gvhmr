@@ -545,6 +545,8 @@ def run(
         config_overrides.append(f"detector.ckpt={detector_ckpt}")
     if pose2d_ckpt is not None:
         config_overrides.append(f"pose2d.ckpt_path={pose2d_ckpt}")
+    if flip_test:  # the CLI flag forces flip-test on; a recipe/--set can also set cfg.flip_test
+        config_overrides.append("flip_test=true")
     config_overrides += list(set_overrides or [])
 
     console.print(Panel.fit("[gvhmr]GVHMR[/] · world-grounded human motion recovery", border_style="gvhmr"))
@@ -562,6 +564,7 @@ def run(
     Log.info(f"Device: [ok]{device_name(device)}[/] ({device})")
     paths = cfg.paths
     cam_name = cfg.camera.name  # resolved camera backend (simplevo / dpvo / dust3r)
+    flip_test = cfg.flip_test  # resolved from the CLI flag / a --recipe / --set
 
     ensure_assets(cam_name)  # auto-fetch missing checkpoints (gated body models raise a clear error)
 
