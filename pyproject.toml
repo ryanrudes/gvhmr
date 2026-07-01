@@ -57,6 +57,10 @@ dependencies = [
 # default SimpleVO and ships macOS wheels; YOLO + trackers need their own weights.
 preproc = ["ultralytics>=8.2", "cython_bbox", "lapx", "pycolmap>=0.6", "yacs"]
 
+# Alternative 2D-pose backend: RTMPose via rtmlib on ONNXRuntime (ungated, no mmcv). `--pose2d rtmpose`.
+# CPU/Apple-Silicon by default; on a CUDA box swap `onnxruntime` → `onnxruntime-gpu` for the GPU EP.
+rtmpose = ["rtmlib", "onnxruntime"]
+
 # Interactive 3D visualization / research debugging.
 vis = ["wis3d", "viser"]
 

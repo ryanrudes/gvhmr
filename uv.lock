@@ -808,7 +808,7 @@ name = "cuda-bindings"
 version = "13.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cuda-pathfinder", marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128')" },
+    { name = "cuda-pathfinder", marker = "(sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/51/6b/457ca12dad3ee9bfcc9a545cfd6b64b359ba49de40f776f6e028e678f262/cuda_bindings-13.3.1-cp311-cp311-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c5879712accf6e14bb01aa5e67440eb84998b8d104b509cc7a6dc0b8f656a474", size = 6053539, upload-time = "2026-05-29T23:11:43.19Z" },
@@ -846,34 +846,34 @@ wheels = [
 
 [package.optional-dependencies]
 cudart = [
-    { name = "nvidia-cuda-runtime", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cuda-runtime", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 cufft = [
-    { name = "nvidia-cufft", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cufft", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 cufile = [
     { name = "nvidia-cufile", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 cupti = [
-    { name = "nvidia-cuda-cupti", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cuda-cupti", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 curand = [
-    { name = "nvidia-curand", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-curand", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 cusolver = [
-    { name = "nvidia-cusolver", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cusolver", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 cusparse = [
-    { name = "nvidia-cusparse", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cusparse", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 nvjitlink = [
-    { name = "nvidia-nvjitlink", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 nvrtc = [
-    { name = "nvidia-cuda-nvrtc", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cuda-nvrtc", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 nvtx = [
-    { name = "nvidia-nvtx", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvtx", marker = "(sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 
 [[package]]
@@ -1019,6 +1019,14 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e6/dc/be6cbe99670cd6e4ad387123647cb08e0c32975e223f82551e914c5568a6/filelock-3.29.4.tar.gz", hash = "sha256:10cdb3656fc44541cdf30652a93fb10ec6b05325620eb316bd26893e4201538a", size = 63028, upload-time = "2026-06-13T16:12:00.744Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/13/37/a065dc3bd6e49423a6532c642ca7378d3f467b1ef44c2800c937af7f9739/filelock-3.29.4-py3-none-any.whl", hash = "sha256:dac1648087d5115554850d113e7dd8c83ab2d38e3435dde2d4f163847e57b767", size = 42757, upload-time = "2026-06-13T16:11:59.582Z" },
+]
+
+[[package]]
+name = "flatbuffers"
+version = "25.12.19"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/2d/d2a548598be01649e2d46231d151a6c56d10b964d94043a335ae56ea2d92/flatbuffers-25.12.19-py2.py3-none-any.whl", hash = "sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4", size = 26661, upload-time = "2025-12-19T23:16:13.622Z" },
 ]
 
 [[package]]
@@ -1327,6 +1335,10 @@ preproc = [
 render = [
     { name = "pytorch3d" },
 ]
+rtmpose = [
+    { name = "onnxruntime" },
+    { name = "rtmlib" },
+]
 vis = [
     { name = "viser" },
     { name = "wis3d" },
@@ -1353,6 +1365,7 @@ requires-dist = [
     { name = "moderngl", specifier = ">=5.10" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "omegaconf", specifier = ">=2.3" },
+    { name = "onnxruntime", marker = "extra == 'rtmpose'" },
     { name = "opencv-python", specifier = ">=4.9" },
     { name = "pycolmap", marker = "extra == 'preproc'", specifier = ">=0.6" },
     { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1.380" },
@@ -1361,6 +1374,7 @@ requires-dist = [
     { name = "pytorch-lightning", specifier = ">=2.3" },
     { name = "pytorch3d", marker = "extra == 'render'", git = "https://github.com/facebookresearch/pytorch3d.git" },
     { name = "rich", specifier = ">=13" },
+    { name = "rtmlib", marker = "extra == 'rtmpose'" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
     { name = "scikit-image" },
     { name = "scipy", specifier = ">=1.11" },
@@ -1385,7 +1399,7 @@ requires-dist = [
     { name = "wis3d", marker = "extra == 'vis'" },
     { name = "yacs", marker = "extra == 'preproc'" },
 ]
-provides-extras = ["preproc", "vis", "notebook", "dev", "render", "cpu", "cu124", "cu126", "cu128"]
+provides-extras = ["preproc", "rtmpose", "vis", "notebook", "dev", "render", "cpu", "cu124", "cu126", "cu128"]
 
 [[package]]
 name = "h11"
@@ -2892,7 +2906,7 @@ name = "nvidia-cublas"
 version = "13.1.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cuda-nvrtc", marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cuda-nvrtc", marker = "(sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/a1/0bd24ee8c8d03adac032fd2909426a00c88f8c57961b1277ded97f91119f/nvidia_cublas-13.1.1.3-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:b7a210458267ac818974c53038fbec2e969d5c99f305ab15c72522fa9f001dd5", size = 542848918, upload-time = "2026-04-08T18:46:22.985Z" },
@@ -3124,7 +3138,7 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "nvidia-cublas-cu12", version = "12.4.5.8", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu124' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cublas-cu12", version = "12.4.5.8", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/fd/713452cd72343f682b1c7b9321e23829f00b842ceaedcda96e742ea0b0b3/nvidia_cudnn_cu12-9.1.0.70-py3-none-manylinux2014_x86_64.whl", hash = "sha256:165764f44ef8c61fcdfdfdbe769d687e06374059fbb388b6c89ecb0e28793a6f", size = 664752741, upload-time = "2024-04-22T15:24:15.253Z" },
@@ -3141,7 +3155,7 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "nvidia-cublas-cu12", version = "12.6.4.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu126' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cublas-cu12", version = "12.6.4.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/99/93/a201a12d3ec1caa8c6ac34c1c2f9eeb696b886f0c36ff23c638b46603bd0/nvidia_cudnn_cu12-9.5.1.17-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:9fd4584468533c61873e5fda8ca41bac3a38bcb2d12350830c69b0a96a7e4def", size = 570523509, upload-time = "2024-10-25T19:53:03.148Z" },
@@ -3159,7 +3173,7 @@ resolution-markers = [
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "nvidia-cublas-cu12", version = "12.8.3.14", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cublas-cu12", version = "12.8.3.14", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/2e/ec5dda717eeb1de3afbbbb611ca556f9d6d057470759c6abd36d72f0063b/nvidia_cudnn_cu12-9.7.1.26-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:848a61d40ef3b32bd4e1fadb599f0cf04a4b942fbe5fb3be572ad75f9b8c53ef", size = 725862213, upload-time = "2025-02-06T22:14:57.169Z" },
@@ -3172,7 +3186,7 @@ name = "nvidia-cudnn-cu13"
 version = "9.20.0.48"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas", marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cublas", marker = "(sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/56/c5/83384d846b2fd17c44bd499b36c75a45ed4f095fbbb2252294e89cea5c5c/nvidia_cudnn_cu13-9.20.0.48-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:e31454ae00094b0c55319d9d15b6fa2fc50a9e1c0f5c8c80fb75258234e731e1", size = 444574296, upload-time = "2026-03-09T19:28:27.751Z" },
@@ -3185,7 +3199,7 @@ name = "nvidia-cufft"
 version = "12.0.0.61"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink", marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink", marker = "(sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8b/ae/f417a75c0259e85c1d2f83ca4e960289a5f814ed0cea74d18c353d3e989d/nvidia_cufft-12.0.0.61-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:2708c852ef8cd89d1d2068bdbece0aa188813a0c934db3779b9b1faa8442e5f5", size = 214053554, upload-time = "2025-09-04T08:31:38.196Z" },
@@ -3203,7 +3217,7 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu124' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/8a/0e728f749baca3fbeffad762738276e5df60851958be7783af121a7221e7/nvidia_cufft_cu12-11.2.1.3-py3-none-manylinux2014_aarch64.whl", hash = "sha256:5dad8008fc7f92f5ddfa2101430917ce2ffacd86824914c82e28990ad7f00399", size = 211422548, upload-time = "2024-06-18T19:33:39.396Z" },
@@ -3221,7 +3235,7 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", version = "12.6.85", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu126' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.6.85", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1f/37/c50d2b2f2c07e146776389e3080f4faf70bcc4fa6e19d65bb54ca174ebc3/nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d16079550df460376455cba121db6564089176d9bac9e4f360493ca4741b22a6", size = 200164144, upload-time = "2024-11-20T17:40:58.288Z" },
@@ -3241,7 +3255,7 @@ resolution-markers = [
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", version = "12.8.61", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.8.61", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/72/95/6157cb45a49f5090a470de42353a22a0ed5b13077886dca891b4b0e350fe/nvidia_cufft_cu12-11.3.3.41-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:68509dcd7e3306e69d0e2d8a6d21c8b25ed62e6df8aac192ce752f17677398b5", size = 193108626, upload-time = "2025-01-23T17:55:49.192Z" },
@@ -3348,9 +3362,9 @@ name = "nvidia-cusolver"
 version = "12.0.4.66"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas", marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128')" },
-    { name = "nvidia-cusparse", marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128')" },
-    { name = "nvidia-nvjitlink", marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cublas", marker = "(sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cusparse", marker = "(sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink", marker = "(sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/c3/b30c9e935fc01e3da443ec0116ed1b2a009bb867f5324d3f2d7e533e776b/nvidia_cusolver-12.0.4.66-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:02c2457eaa9e39de20f880f4bd8820e6a1cfb9f9a34f820eb12a155aa5bc92d2", size = 223467760, upload-time = "2025-09-04T08:33:04.222Z" },
@@ -3368,9 +3382,9 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "nvidia-cublas-cu12", version = "12.4.5.8", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu124' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
-    { name = "nvidia-cusparse-cu12", version = "12.3.1.170", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu124' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
-    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu124' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cublas-cu12", version = "12.4.5.8", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cusparse-cu12", version = "12.3.1.170", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/46/6b/a5c33cf16af09166845345275c34ad2190944bcc6026797a39f8e0a282e0/nvidia_cusolver_cu12-11.6.1.9-py3-none-manylinux2014_aarch64.whl", hash = "sha256:d338f155f174f90724bbde3758b7ac375a70ce8e706d70b018dd3375545fc84e", size = 127634111, upload-time = "2024-06-18T19:35:01.793Z" },
@@ -3388,9 +3402,9 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "nvidia-cublas-cu12", version = "12.6.4.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu126' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
-    { name = "nvidia-cusparse-cu12", version = "12.5.4.2", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu126' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
-    { name = "nvidia-nvjitlink-cu12", version = "12.6.85", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu126' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cublas-cu12", version = "12.6.4.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cusparse-cu12", version = "12.5.4.2", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.6.85", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/93/17/dbe1aa865e4fdc7b6d4d0dd308fdd5aaab60f939abfc0ea1954eac4fb113/nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux2014_aarch64.whl", hash = "sha256:0ce237ef60acde1efc457335a2ddadfd7610b892d94efee7b776c64bb1cac9e0", size = 157833628, upload-time = "2024-10-01T17:05:05.591Z" },
@@ -3410,9 +3424,9 @@ resolution-markers = [
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "nvidia-cublas-cu12", version = "12.8.3.14", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
-    { name = "nvidia-cusparse-cu12", version = "12.5.7.53", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
-    { name = "nvidia-nvjitlink-cu12", version = "12.8.61", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cublas-cu12", version = "12.8.3.14", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-cusparse-cu12", version = "12.5.7.53", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.8.61", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8c/ce/4214a892e804b20bf66d04f04a473006fc2d3dac158160ef85f1bc906639/nvidia_cusolver_cu12-11.7.2.55-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:0fd9e98246f43c15bee5561147ad235dfdf2d037f5d07c9d41af3f7f72feb7cc", size = 260094827, upload-time = "2025-01-23T17:58:17.586Z" },
@@ -3425,7 +3439,7 @@ name = "nvidia-cusparse"
 version = "12.6.3.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink", marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink", marker = "(sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f8/94/5c26f33738ae35276672f12615a64bd008ed5be6d1ebcb23579285d960a9/nvidia_cusparse-12.6.3.3-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:80bcc4662f23f1054ee334a15c72b8940402975e0eab63178fc7e670aa59472c", size = 162155568, upload-time = "2025-09-04T08:33:42.864Z" },
@@ -3443,7 +3457,7 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu124' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/96/a9/c0d2f83a53d40a4a41be14cea6a0bf9e668ffcf8b004bd65633f433050c0/nvidia_cusparse_cu12-12.3.1.170-py3-none-manylinux2014_aarch64.whl", hash = "sha256:9d32f62896231ebe0480efd8a7f702e143c98cfaa0e8a76df3386c1ba2b54df3", size = 207381987, upload-time = "2024-06-18T19:35:32.989Z" },
@@ -3461,7 +3475,7 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", version = "12.6.85", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-gvhmr-cu126' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.6.85", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/eb/eb/6681efd0aa7df96b4f8067b3ce7246833dd36830bb4cec8896182773db7d/nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d25b62fb18751758fe3c93a4a08eff08effedfe4edf1c6bb5afd0890fe88f887", size = 216451147, upload-time = "2024-11-20T17:44:18.055Z" },
@@ -3481,7 +3495,7 @@ resolution-markers = [
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", version = "12.8.61", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.8.61", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.14' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-5-gvhmr-cu128') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu128') or (sys_platform == 'win32' and extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2e/a2/313db0453087f5324a5900380ca2e57e050c8de76f407b5e11383dc762ae/nvidia_cusparse_cu12-12.5.7.53-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d869c6146ca80f4305b62e02d924b4aaced936f8173e3cef536a67eed2a91af1", size = 291963692, upload-time = "2025-01-23T17:59:40.325Z" },
@@ -3715,6 +3729,63 @@ wheels = [
 ]
 
 [[package]]
+name = "onnxruntime"
+version = "1.27.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flatbuffers" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "numpy", version = "2.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "packaging" },
+    { name = "protobuf" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d4/e4/5353d7e09ced4a8f473f843223fc75d726b2b5519dcefc12f22a6c92852d/onnxruntime-1.27.0-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:8ba14a38c570087f3cdb8cfba33f7a38a1e826c1e5b29e17c28ceda0cc910016", size = 18416484, upload-time = "2026-06-15T22:43:43.894Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/1f/a2117aa3f144fce88774efa37440d0ca72d0c9144854dfc0961f2b04c6fc/onnxruntime-1.27.0-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:2eb083321af8a236a84c7c140a7f4cecbfa2a987a18c07c78db471c20cd390ef", size = 16419330, upload-time = "2026-06-15T22:42:37.58Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/cd/74bb804170ceb622fda9111df31a07b3024f7491472256d3a90b5391a4d2/onnxruntime-1.27.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e4f7b0e90d2d212e2c2deaa6c8291616183ab815d3ec558ea12d3ac8b26d36f4", size = 18636930, upload-time = "2026-06-15T22:43:01.584Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/8f/5b8e2b85e81735696887175dbaf6409f215683f5ca9d4928fbb038211d32/onnxruntime-1.27.0-cp311-cp311-win_amd64.whl", hash = "sha256:ff050e4f6bf7f12918fa14dcb047c0b02e295f35e86d42532552be4b3d54e977", size = 13356110, upload-time = "2026-06-15T22:43:32.172Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/3a/4f568de678126b6a371a93862f015a82138359decd97fcac61fc84b5b774/onnxruntime-1.27.0-cp311-cp311-win_arm64.whl", hash = "sha256:75fbc1e1fb43a39a856c8209c544cca7817b5de7ac16b15b1bdf55d1cc67b9df", size = 13098635, upload-time = "2026-06-15T22:43:19.607Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/b7/dd3a524ed93a820dff1af902d0412957ab12499953333e9daa01af5bc480/onnxruntime-1.27.0-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:a14c2ce45312def86b77aea651f46565e45960cf5f0721bfdff449165086ab76", size = 18433506, upload-time = "2026-06-15T22:43:47.026Z" },
+    { url = "https://files.pythonhosted.org/packages/84/86/c3b6b17745a1997d784dadc9bd88d713d2e6721139a5a0e885b28cfb79b1/onnxruntime-1.27.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c6fddce0539a4898c7bef35b052ffd37935b2190e35488eab99ce91887743ea1", size = 16438140, upload-time = "2026-06-15T22:42:40.666Z" },
+    { url = "https://files.pythonhosted.org/packages/26/81/24dd9b31b0fb912ee19ca53ac1c9764bfd79d58a2ccef564eb693be831a5/onnxruntime-1.27.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:7c65a7438632d55dfbc8a02ee60bd6cf7dd9d1ba05a43d4b851452f32338e194", size = 18658316, upload-time = "2026-06-15T22:43:04.012Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/88/8ec9db1a4d126bb8b758992beb40d1249df171917d75f44a327eb5f20dda/onnxruntime-1.27.0-cp312-cp312-win_amd64.whl", hash = "sha256:20c321cf187ba496e648acf6b4cf90b4d398b0d17c2a77fdaeba365b908cc1c1", size = 13358769, upload-time = "2026-06-15T22:43:34.581Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/9f/fdad359dfcba7e7cd8815569b304a596531d4efa77a75d77f8b4981891a2/onnxruntime-1.27.0-cp312-cp312-win_arm64.whl", hash = "sha256:d0d1f68868e2ef30ef70998ba9bbbc5c305e9b17041e3936751c1b8aa6aade06", size = 13104440, upload-time = "2026-06-15T22:43:22.893Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/2b/54208fd03ad410480bc17edf4869376362da8bbf46fe186ddf4cb5cc20fe/onnxruntime-1.27.0-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:b3e5b58b8c89c2b20e086e890aa9527377e5c240dc3ecc1640d18e07705eeb1c", size = 18432958, upload-time = "2026-06-15T22:42:53.105Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/88/24fc51fcbb126da6d032372314e47b55c3faad58f2aa78c0e199ccd20b9c/onnxruntime-1.27.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:48b3d87eb560ff6a772240506f3c78d6d27c63cafedd5c775672e1194f968cfd", size = 16438180, upload-time = "2026-06-15T22:42:43.093Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/19/14929c3c2fe0b79b41cce24463062bf3afa4cdd3c19dccf00319caa92bff/onnxruntime-1.27.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6872443f236a554921cda6f318c900e2d0c226792cf3534d00e5057c6926e5d2", size = 18658445, upload-time = "2026-06-15T22:43:08.053Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/76/59ed932b0244acd7bbbd6449480053a6d958ea66357f022f932872e19287/onnxruntime-1.27.0-cp313-cp313-win_amd64.whl", hash = "sha256:760021bca514d64a811837820d351a08a41741f16f8b4c26450da708fecf14e6", size = 13357856, upload-time = "2026-06-15T22:43:37.315Z" },
+    { url = "https://files.pythonhosted.org/packages/79/51/d1ec60ec7b1e2ae2d7340ba52b8a13529140039cd4407ba8dddbbc046582/onnxruntime-1.27.0-cp313-cp313-win_arm64.whl", hash = "sha256:2fdfa9df40a0ded0028ce6f9cd863264237f3970559dea2b81456e9ac4622b94", size = 13104412, upload-time = "2026-06-15T22:43:27.457Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/7d/e6bb1c6445c94f708c38cd8fbb7bf0264108c33498b9445c93e60fe6d329/onnxruntime-1.27.0-cp313-cp313t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:54c0c4e9202c36c4ecdb1f3443f5dfbfd5ee3b54d1362c4b4c6134110e74fb32", size = 16443331, upload-time = "2026-06-15T22:42:45.649Z" },
+    { url = "https://files.pythonhosted.org/packages/72/1b/b18b31e806eabc41077810199fbbb36fbc2d5f19912416e5ccfbf73053d1/onnxruntime-1.27.0-cp313-cp313t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1b215aa662c8f983f7d6dedafe65a9be72c26e5338e0fe98b3e0422c32c85428", size = 18670967, upload-time = "2026-06-15T22:43:10.621Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/37/48ab79c39b58a7c9f6f5aac1fa0ff2b993eb2643393d6ed9e839ddb6f347/onnxruntime-1.27.0-cp314-cp314-macosx_14_0_arm64.whl", hash = "sha256:0874edc171f470fc4dd2bbb60bc0989612ed1a8b89b365cda016630a93227f13", size = 18433941, upload-time = "2026-06-15T22:42:58.867Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/24/d535ca8a09dbf697f853377c8dc0820dbcaae5f334316b400b953afbcba8/onnxruntime-1.27.0-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5b51c014cf1a4fcd93c29a97eac8071fa27710dae05a4d0380bb60a66d60a62c", size = 16439970, upload-time = "2026-06-15T22:42:48.023Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/b1/ea9ee80c0bdaa4efb13f29f8c236f3740f6655e8c092a2d119515a5a652c/onnxruntime-1.27.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:445fb702ea5241ba813a3ce2febe2e9408a64f6ad2eb610924322c536165f7cd", size = 18659240, upload-time = "2026-06-15T22:43:13.165Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/f2/1404507d76a21940e8bf46f414e3d1abd94dc888cb89a30f4a540275846f/onnxruntime-1.27.0-cp314-cp314-win_amd64.whl", hash = "sha256:49e416be0d717338b6d041b99911b716d70c397d277056450724f93bdded3fc2", size = 13685306, upload-time = "2026-06-15T22:43:40.416Z" },
+    { url = "https://files.pythonhosted.org/packages/10/e5/ca5cf012ccccb806c70e94aadfebca5606acc62b33eb88cec13352d0778f/onnxruntime-1.27.0-cp314-cp314-win_arm64.whl", hash = "sha256:856032937dd3bc7a7c141909c8d7ae4fde3e3f59bddf061ae627b9a051bda95c", size = 13456280, upload-time = "2026-06-15T22:43:29.693Z" },
+    { url = "https://files.pythonhosted.org/packages/67/7b/dca330a8397e9d816c976d7aed4e24a4a2d279bb1e551e3d0221d1389b1d/onnxruntime-1.27.0-cp314-cp314t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c6197a02e3f620c4dc13cff51b80672409fc1ffab3aa2593911b19fd322ff48b", size = 16443274, upload-time = "2026-06-15T22:42:50.467Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/f6/2bac21f722aa45d876d4a51f26bd0ef30e704068a3cd5021a5a7cd784271/onnxruntime-1.27.0-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:370d211e1ceeac4cd5f45301655463ac59e27cdc74d9f7aeb2d19ff4b7a76715", size = 18670781, upload-time = "2026-06-15T22:43:17.151Z" },
+]
+
+[[package]]
+name = "opencv-contrib-python"
+version = "4.13.0.92"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "numpy", version = "2.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7e/4c/a45c96b9fe90b2c48ee604f5176eb7deb46ce7c2e87c8d819d2945dbcab6/opencv_contrib_python-4.13.0.92-cp37-abi3-macosx_13_0_arm64.whl", hash = "sha256:53c8ab81376210dda5836307eb6bda7266f39a3820a9a070c7131510ba815fe1", size = 52041546, upload-time = "2026-02-05T07:01:29.918Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/6c/ba1f3177927deeb3002b62fb8db89daea3b5dc732d61de5bf4c73ed6ebf7/opencv_contrib_python-4.13.0.92-cp37-abi3-macosx_14_0_x86_64.whl", hash = "sha256:1973d0fc773873f9d1b5bf0d1b65895da2f47b06ba033b7d58393f5c28ba0778", size = 38830319, upload-time = "2026-02-05T07:01:47.222Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/7a/fe87eaf109b454af4a2579f46958b3cafb0f804b9c788c108760723a9bb7/opencv_contrib_python-4.13.0.92-cp37-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:5f9cb522dd9e465dfca3536c15288f7936b9827432fb9c885eaf94dc5f88c2a3", size = 53339457, upload-time = "2026-02-05T10:09:02.332Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/27/3665ca4b75ddfd218f9ab139f0463d9571e87aaf59391d3c4f5546c08df7/opencv_contrib_python-4.13.0.92-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:f9ceec5886419860a31b518991a99e978e5a6a78dca1470103ad4ede0155f156", size = 76591184, upload-time = "2026-02-05T10:11:51.298Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/11/10c46e9527c4591d5264117debd8fe0e21bb23dbf378ce760add6b1e85b6/opencv_contrib_python-4.13.0.92-cp37-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:a3c54377c5cf9c45d9b1a207df26dc8fe4f1042d07036cb17d80930c04b25d97", size = 52544155, upload-time = "2026-02-05T10:13:32.068Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/f6/3c645c21358079097201090de7c30d110f5ec3fa01008e3ee81b0a77a354/opencv_contrib_python-4.13.0.92-cp37-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:fc5ee50e2be9d40e913536f7f20cc6f87f25d8e413ebb32a3335ab6edf245d3e", size = 79150872, upload-time = "2026-02-05T10:16:03.465Z" },
+    { url = "https://files.pythonhosted.org/packages/90/d7/bf4622e0ed8a93f5a685c76933e287477cf185a160c66478cf144fece489/opencv_contrib_python-4.13.0.92-cp37-abi3-win32.whl", hash = "sha256:f5d02357f4d5575c300eab3ec1c7ecfed3a9a53e55a76927bab7cfc9e0a67b68", size = 36829959, upload-time = "2026-02-05T07:02:22.25Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/98/a03f69ff6fb86a67d584ecc990d85a95e6930b96e3f39ad1f8e019cb8ada/opencv_contrib_python-4.13.0.92-cp37-abi3-win_amd64.whl", hash = "sha256:cb694dcf76bb2c8d7fa573fc1a99339e8b6640194d7778381e74cc3445369e45", size = 46486178, upload-time = "2026-02-05T07:02:19.551Z" },
+]
+
+[[package]]
 name = "opencv-python"
 version = "4.13.0.92"
 source = { registry = "https://pypi.org/simple" }
@@ -3774,7 +3845,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "sys_platform != 'win32' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
@@ -4068,6 +4139,21 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/88/fb/46dad6c0ae49ed230ab1b16c890c2b6314e2403e6c412976f4a72d64a527/propcache-0.5.2-cp314-cp314t-win_amd64.whl", hash = "sha256:d447bb0b3054be5818458fbb171208b1d9ff11eba14e18ca18b90cbb45767370", size = 47764, upload-time = "2026-05-08T21:02:07.353Z" },
     { url = "https://files.pythonhosted.org/packages/e7/c4/a47d0a63aa309d10d59ede6e9d4cff03a344a79d1f0f4cd0cd74997b53e0/propcache-0.5.2-cp314-cp314t-win_arm64.whl", hash = "sha256:fe67a3d11cd9b4efabfa45c3d00ffba2b26811442a73a581a94b67c2b5faccf6", size = 41140, upload-time = "2026-05-08T21:02:09.065Z" },
     { url = "https://files.pythonhosted.org/packages/3a/ed/1cdcab6ba3d6ab7feca11fc14f0eeea80755bb53ef4e892079f31b10a25f/propcache-0.5.2-py3-none-any.whl", hash = "sha256:be1ddfcbb376e3de5d2e2db1d58d6d67463e6b4f9f040c000de8e300295465fe", size = 14036, upload-time = "2026-05-08T21:02:10.673Z" },
+]
+
+[[package]]
+name = "protobuf"
+version = "7.35.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/01/9ef0afd7999eb9badb3a768b4aedd78c86d4c65cfaf1958ab276199e76b4/protobuf-7.35.1.tar.gz", hash = "sha256:ce115a26fe0c39a2c29973d914d327e516a6455464489fe3cd1e51a1b354f81a", size = 458717, upload-time = "2026-06-11T21:55:40.257Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/03/8aeeb7458d22546bf64b5250ca1daeb5ff757d900e8e4a7476c6f0db843e/protobuf-7.35.1-cp310-abi3-macosx_10_9_universal2.whl", hash = "sha256:24f857477359a85c0c235261b8ba905fd51b2562f4a64ca1df5473f29850cbf6", size = 433226, upload-time = "2026-06-11T21:55:31.719Z" },
+    { url = "https://files.pythonhosted.org/packages/37/4b/dfb89eb0e652a1ff073c39a59fb5e3a83cfe9b57a2c83fa6d78270101767/protobuf-7.35.1-cp310-abi3-manylinux2014_aarch64.whl", hash = "sha256:11d6b0ec246892d85215b0a13ca6e0233cf5284b68f0ac02646427f4ff88a799", size = 328847, upload-time = "2026-06-11T21:55:34.035Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/58/dc12f2cd484951524af6e3382c785869b9b3fb5e52ee95ae23add53ee8f9/protobuf-7.35.1-cp310-abi3-manylinux2014_s390x.whl", hash = "sha256:b73f9489a4b8b1c9cb1f8ed951c736392592edb24b9d6819f36d2e10b171d5b4", size = 344030, upload-time = "2026-06-11T21:55:34.941Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/be/5b3cfe508bfab6761414ff944e3366eb13be4fd71efcd69450f89ba39f43/protobuf-7.35.1-cp310-abi3-manylinux2014_x86_64.whl", hash = "sha256:74758715c53d7158fb76caf4f0cfdacc5329a4b1bb994f865d6cf302d413a1c4", size = 327130, upload-time = "2026-06-11T21:55:35.921Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/bc/6d6c7ba8709c85f8f2c390b2b118d6fb08a783676a572271851bf45a7d22/protobuf-7.35.1-cp310-abi3-win32.whl", hash = "sha256:353652e4efd0bca5b5fc2656abf8307ef351f0cf938c9eba09f0e09c20a25c30", size = 428945, upload-time = "2026-06-11T21:55:37.034Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/19/8d0cb6f20a1ef7b18f1c8986ad5783f22f84cce39c6ce9a6e645ea55192e/protobuf-7.35.1-cp310-abi3-win_amd64.whl", hash = "sha256:230a75ddfc2de4806e56696ce9640c1cdfdb6543b7cfce98d42a4c0a0e7bdb87", size = 439996, upload-time = "2026-06-11T21:55:38.123Z" },
+    { url = "https://files.pythonhosted.org/packages/19/c7/5f7c636ec43e0c545e28d1f1db71990108306f7bdcb89f069ba97e428e7f/protobuf-7.35.1-py3-none-any.whl", hash = "sha256:4bc97768d8fe4ad6743c8a19403e314511ed9f6d13205b687e52421c023ac1b9", size = 171659, upload-time = "2026-06-11T21:55:39.155Z" },
 ]
 
 [[package]]
@@ -4627,6 +4713,23 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1d/6f/93831a3bfe789542ed0c1d0d74b78b440f055d6dc3ea4640eba2d95e6e23/rpds_py-2026.5.1-pp311-pypy311_pp73-musllinux_1_2_aarch64.whl", hash = "sha256:c74005a7bb87752acf351c93897ec63ad77a07a0da7ecad9c050e32e7286ba34", size = 557243, upload-time = "2026-05-28T12:02:08.013Z" },
     { url = "https://files.pythonhosted.org/packages/1f/ff/0b3d604614ffc77522c6b288fdbce68957eb583da1002aa65ba38ac0ee40/rpds_py-2026.5.1-pp311-pypy311_pp73-musllinux_1_2_i686.whl", hash = "sha256:8213afbe8a3a906fb9acb2014423fe3359ee783d0bf90995f70623a3217bfa6c", size = 623541, upload-time = "2026-05-28T12:02:09.661Z" },
     { url = "https://files.pythonhosted.org/packages/ea/ea/e7b0251441da9adfeaebcf29601d10f2a1455fcf0772fae9e7e19032bd96/rpds_py-2026.5.1-pp311-pypy311_pp73-musllinux_1_2_x86_64.whl", hash = "sha256:8c43a8a973270fd173bf48cdf80bbe66312421cba68d40845034f174f2389049", size = 586326, upload-time = "2026-05-28T12:02:11.47Z" },
+]
+
+[[package]]
+name = "rtmlib"
+version = "0.0.15"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "numpy", version = "2.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "onnxruntime" },
+    { name = "opencv-contrib-python" },
+    { name = "opencv-python" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/22/7a/1e332aaeedb36bc4167f44069072c29972fa798d7a35154b77812265831d/rtmlib-0.0.15.tar.gz", hash = "sha256:b299c64547a6d230d4a278ceaec19d7abf155b39ca2c34bef207b1e585c33fae", size = 52557, upload-time = "2026-02-10T16:38:42.812Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c3/0b/dcd6075be148d9904e77712474afbf36724e483e4cf6bde405d06a89f859/rtmlib-0.0.15-py3-none-any.whl", hash = "sha256:d336dd3bb2286ac9d07c7c14f918cbeca73e1d5e48f6a98929576f931dd0248c", size = 61125, upload-time = "2026-02-10T16:38:38.528Z" },
 ]
 
 [[package]]
@@ -5833,7 +5936,7 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
 ]
 dependencies = [
-    { name = "setuptools", marker = "(extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "setuptools", marker = "(sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu126') or (sys_platform != 'win32' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/21/2f/3e56ea7b58f80ff68899b1dbe810ff257c9d177d288c6b0f55bf2fe4eb50/triton-3.3.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b31e3aa26f8cb3cc5bf4e187bf737cbacf17311e1112b781d4a059353dfd731b", size = 155689937, upload-time = "2025-05-29T23:39:44.182Z" },

@@ -27,6 +27,8 @@ def test_registries_list_the_released_defaults():
     assert "yolo" in DETECTORS
     assert "vitpose" in POSE2D
     assert "hmr2" in BACKBONES
+    # a genuinely-different 2D-pose architecture registered alongside the default (proves the slot swaps)
+    assert "rtmpose" in POSE2D
 
 
 def test_unknown_backend_raises_keyerror():
@@ -72,5 +74,4 @@ def test_default_factory_names_match_lazy_impls_without_importing_them():
         # calling with a bogus kwarg would reach the impl ctor; instead just confirm name is dispatchable
         # by asserting it's NOT in the KeyError branch.
         assert name == "yolo"  # only one registered today; update when more land
-    for name in POSE2D:
-        assert name == "vitpose"
+    assert set(POSE2D) == {"vitpose", "rtmpose"}

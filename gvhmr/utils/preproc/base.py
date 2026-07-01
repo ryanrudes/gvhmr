@@ -53,7 +53,7 @@ class FeatureBackbone(Protocol):
 
 # Registered backend names (kept here so callers/tests can enumerate without importing the heavy impls).
 DETECTORS = ("yolo",)
-POSE2D = ("vitpose",)
+POSE2D = ("vitpose", "rtmpose")
 BACKBONES = ("hmr2", "dinov2")
 
 
@@ -72,6 +72,10 @@ def make_pose2d(name: str = "vitpose", **kwargs) -> Pose2D:
         from gvhmr.utils.preproc.vitpose import VitPoseExtractor
 
         return VitPoseExtractor(**kwargs)
+    if name == "rtmpose":
+        from gvhmr.utils.preproc.rtmpose import RTMPoseExtractor
+
+        return RTMPoseExtractor(**kwargs)
     raise KeyError(f"unknown pose2d {name!r}; registered: {POSE2D}")
 
 

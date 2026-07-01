@@ -1,0 +1,10 @@
+# 2D keypoints — RTMPose (rtmlib / ONNXRuntime): a modern, ungated alternative to ViTPose. Emits COCO-17,
+# the contract the trained network asserts. Genuinely different architecture (SimCC top-down), same slot.
+# Needs the optional dep:  uv sync --extra rtmpose   (rtmlib + onnxruntime)
+# Select with:  gvhmr demo VIDEO --pose2d rtmpose
+#
+# Defaults to RTMPose-m / body7 (17 COCO keypoints; the URL lives in gvhmr/utils/preproc/rtmpose.py).
+# To pick a larger variant, add e.g.:
+#   onnx_model: https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/onnx_sdk/rtmpose-x_....zip
+#   model_input_size: [288, 384]
+name: rtmpose
