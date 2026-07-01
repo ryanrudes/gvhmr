@@ -11,6 +11,8 @@ so we only resize the 256² crop to a patch-size (14) multiple and read the CLS 
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import torch
 import torch.nn.functional as F
 
@@ -28,7 +30,14 @@ class DINOv2Backbone:
     def __init__(self, model_name: str = "dinov2_vitb14", tqdm_leave: bool = True):
         assert model_name in _DIMS, f"unknown dinov2 model {model_name!r}; choose from {tuple(_DIMS)}"
         self.device = get_device()
-        self.model = torch.hub.load("facebookresearch/dinov2", model_name).to(self.device).eval()
+        # Prefer the local torch.hub cache (offline-friendly: `source="local"` skips the GitHub ref check),
+        # falling back to a fresh download. The cache can be copied between machines (~85 MB for vits14).
+        cached = Path(torch.hub.get_dir()) / "facebookresearch_dinov2_main"
+        if cached.exists():
+            self.model = torch.hub.load(str(cached), model_name, source="local")
+        else:
+            self.model = torch.hub.load("facebookresearch/dinov2", model_name)
+        self.model = self.model.to(self.device).eval()
         self.feat_dim = _DIMS[model_name]
         self.tqdm_leave = tqdm_leave
 

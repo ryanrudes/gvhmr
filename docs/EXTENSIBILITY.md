@@ -137,8 +137,17 @@ Ordered by dependency and risk — earliest phases are self-contained and need n
 - ⏭ **Next:** a small offline-extraction tool that writes the training cache format
   (`imgfeats/<ds>_<backbone>/<vid>.pt = {features (N,D), bbx_xys, …}`) — the remaining plumbing before B3.
 
-### Phase B3 — retrain the core on a new backbone  *(ready-to-run plan)*
-The pieces are in place; the concrete recipe (a **smoke fine-tune** proving swapped-backbone training):
+### Phase B3 — retrain the core on a new backbone
+- ✅ **Swapped-backbone training PLUMBING proven:** the 3DPW dataset takes an `imgfeat_subdir` (a `dinov2`
+  variant → `imgfeats/3dpw_train_dinov2/`) and skips vids without a feature file; `smoke_3dpw_dinov2.yaml`
+  sets `network.imgseq_dim=384` and a CPU `fit` **trained 2 steps end-to-end on 384-d features** (the
+  re-inited `imgseq_embedder(384)` + the dim guard + all losses compose and run). `DINOv2Backbone` loads
+  offline from the torch.hub cache. 244 tests green, golden intact.
+- ⚠️ **Blocked for a *real* retrain:** the smoke used **synthetic** 384-d features because the raw 3DPW
+  **frames are gated and absent** (the `videos/` dir is empty — only cached HMR2 features shipped). A real
+  DINOv2 retrain needs the 3DPW images (or another dataset with frames + GT): re-extract with
+  `make_backbone("dinov2_vits14")`, then a full `fit`. The offline-extraction path is otherwise ready.
+- **Ready-to-run recipe** (once raw frames are available):
 1. **Co-locate** DINOv2 + data: the torch.hub cache (`~/.cache/torch/hub/facebookresearch_dinov2_main` +
    `checkpoints/dinov2_vits14_pretrain.pth`, ~85 MB) downloads only where there's network; the 3DPW pack is
    on the Mac. Copy the cache to wherever the data lives (or stage 3DPW on the box).

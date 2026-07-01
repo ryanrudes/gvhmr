@@ -15,9 +15,11 @@ from gvhmr.utils.vis.renderer_utils import simple_render_mesh_background
 
 
 class ThreedpwSmplDataset(ImgfeatMotionDatasetBase):
-    def __init__(self):
-        # Path
+    def __init__(self, imgfeat_subdir="imgfeats/3dpw_train_smplx_refit"):
+        # Path. `imgfeat_subdir` selects which cached-feature backbone to train on (default HMR2; e.g.
+        # "imgfeats/3dpw_train_dinov2" for a re-extracted DINOv2 set — see docs/EXTENSIBILITY.md Tier B).
         self.hmr4d_support_dir = Path("inputs/3DPW/hmr4d_support")
+        self.imgfeat_subdir = imgfeat_subdir
         self.dataset_name = "3DPW"
 
         # Setting
@@ -38,8 +40,11 @@ class ThreedpwSmplDataset(ImgfeatMotionDatasetBase):
             for k, v in update_list.items():
                 self.refit_smplx[k]["valid_range_list"] = v
 
-        self.f_img_folder = self.hmr4d_support_dir / "imgfeats/3dpw_train_smplx_refit"
-        Log.info(f"[{self.dataset_name}] Train")
+        self.f_img_folder = self.hmr4d_support_dir / self.imgfeat_subdir
+        # Only keep sequences whose feature file exists — lets a partial re-extraction (e.g. a few vids
+        # with a new backbone) train without regenerating the whole set.
+        self.refit_smplx = {v: d for v, d in self.refit_smplx.items() if (self.f_img_folder / f"{v}.pt").exists()}
+        Log.info(f"[{self.dataset_name}] Train ({len(self.refit_smplx)} seqs with '{self.imgfeat_subdir}' features)")
 
     def _get_idx2meta(self):
         # We expect to see the entire sequence during one epoch,
@@ -159,3 +164,8 @@ class ThreedpwSmplDataset(ImgfeatMotionDatasetBase):
 
 # 3DPW
 MainStore.store(name="v1", node=builds(ThreedpwSmplDataset), group="train_datasets/imgfeat_3dpw")
+MainStore.store(  # re-extracted DINOv2 features (Tier B backbone swap)
+    name="dinov2",
+    node=builds(ThreedpwSmplDataset, imgfeat_subdir="imgfeats/3dpw_train_dinov2"),
+    group="train_datasets/imgfeat_3dpw",
+)

@@ -1,0 +1,74 @@
+# @package _global_
+# Swapped-backbone training SMOKE: trains the core on DINOv2 (384-d) features instead of HMR2 (1024-d),
+# proving the retrain plumbing for a new feature backbone — `network.imgseq_dim=384`, the re-inited
+# imgseq_embedder, and the dim guard all compose and train. Uses the `imgfeat_3dpw/dinov2` dataset
+# variant (imgfeats/3dpw_train_dinov2/). See docs/EXTENSIBILITY.md Tier B/B3.
+#
+#   GVHMR_DEVICE=cpu uv run gvhmr train exp=gvhmr/mixed/smoke_3dpw_dinov2
+#
+# NOTE: proves the *plumbing*, not DINOv2 quality — a real retrain needs DINOv2 features re-extracted from
+# the raw 3DPW frames (gated) via `make_backbone("dinov2_vits14")`, then a full `fit`.
+defaults:
+    - override /data: mocap/trainX_testY
+    - override /model: gvhmr/gvhmr_pl
+    - override /endecoder: gvhmr/v1_amass_local_bedlam_cam
+    - override /optimizer: adamw_2e-4
+    - override /scheduler_cfg: epoch_half_200_350
+    - override /train_datasets:
+          - imgfeat_3dpw/dinov2
+    - override /test_datasets:
+          - 3dpw/fliptest
+    - override /callbacks:
+          - prog_bar/prog_reporter_every0.1
+          - train_speed_timer/base
+    - override /network: gvhmr/relative_transformer
+
+exp_name_base: smoke_3dpw_dinov2
+exp_name_var: ""
+exp_name: ${exp_name_base}${exp_name_var}
+data_name: smoke_3dpw_dinov2
+
+# The swapped backbone changes the image-feature width the network conditions on.
+network:
+    imgseq_dim: 384
+
+pipeline:
+    _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline
+    args_denoiser3d: ${network}
+    args:
+        endecoder_opt: ${endecoder}
+        normalize_cam_angvel: True
+        weights:
+            cr_j3d: 500.
+            transl_c: 1.
+            cr_verts: 500.
+            j2d: 1000.
+            verts2d: 1000.
+            transl_w: 1.
+            static_conf_bce: 1.
+        static_conf:
+            vel_thr: 0.15
+
+data:
+    limit_each_trainset: 8
+    loader_opts:
+        train:
+            batch_size: 2
+            num_workers: 0
+        val:
+            batch_size: 1
+            num_workers: 0
+
+pl_trainer:
+    precision: 16-mixed # device-aware trainer forces 32 off-CUDA
+    log_every_n_steps: 1
+    gradient_clip_val: 0.5
+    max_epochs: 1
+    limit_train_batches: 2
+    limit_val_batches: 0
+    num_sanity_val_steps: 0
+    check_val_every_n_epoch: 1
+    enable_checkpointing: False
+    devices: 2 # device-aware forces 1 off-CUDA
+
+logger: null
