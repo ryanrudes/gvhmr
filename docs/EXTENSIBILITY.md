@@ -85,8 +85,10 @@ Ordered by dependency and risk — earliest phases are self-contained and need n
   `make_detector`/`make_pose2d` with `cfg.detector` / `cfg.detector_ckpt` / `cfg.pose2d` / `cfg.pose2d_ckpt`
   overrides; `tests/test_preproc_pluggable.py` pins the contract (241 tests green, golden intact).
   → You can already point at a different weight file via config (e.g. a `yolov11x.pt`).
-- ⏭ **Next:** `--detector` / `--pose2d` CLI flags (mirror `--slam`) + a first non-default implementation
-  (RTMPose, registered as `pose2d=rtmpose`, emitting COCO-17). Keep the COCO-17 assert
+- ✅ **CLI weight-swap:** `gvhmr demo … --detector-ckpt yolov11x.pt` / `--pose2d-ckpt …` thread through to the
+  registry (`+detector_ckpt`/`+pose2d_ckpt` config overrides), so a newer weight is reachable from the CLI.
+- ⏭ **Next:** a first non-default *implementation* (e.g. RTMPose, registered as `pose2d=rtmpose`, emitting
+  COCO-17) + name-selector flags (`--detector`/`--pose2d`). Keep the COCO-17 assert
   (`relative_transformer.py:128`) as the contract guard.
 - Drop-ins enabled: YOLOv9/10/11/12/26 (ultralytics, same `.track()` API); RTMPose / RTMO / Sapiens / DWPose
   / MoveNet for 2D pose **iff configured to COCO-17**.

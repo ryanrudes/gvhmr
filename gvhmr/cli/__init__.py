@@ -93,6 +93,13 @@ def demo(
             "hands, feet) and/or joint names/indices, comma-separated — e.g. [gvhmr]legs,left_arm[/].",
         ),
     ] = None,
+    detector_ckpt: Annotated[
+        str | None,
+        typer.Option("--detector-ckpt", help="Detector weight override [dim](e.g. a yolov11x.pt)[/]."),
+    ] = None,
+    pose2d_ckpt: Annotated[
+        str | None, typer.Option("--pose2d-ckpt", help="2D-pose weight override [dim](must emit COCO-17)[/].")
+    ] = None,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Also save intermediate-result overlays.")] = False,
 ) -> None:
     """Recover motion from a [bold]single video[/] and render in-cam + world overlays."""
@@ -113,6 +120,8 @@ def demo(
         skeleton=skeleton,
         skeleton_overlay=skeleton_overlay,
         skeleton_joints=skeleton_joints,
+        detector_ckpt=detector_ckpt,
+        pose2d_ckpt=pose2d_ckpt,
     )
 
 

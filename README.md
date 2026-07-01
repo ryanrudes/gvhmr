@@ -114,10 +114,11 @@ This fork is being turned from a frozen checkpoint into a **re-trainable, swappa
 roadmap in [`docs/EXTENSIBILITY.md`](docs/EXTENSIBILITY.md). Already landed:
 
 - **Pluggable preprocessing** — the detector, 2D-pose, and image-feature **backbone** are built through a
-  small registry (`gvhmr/utils/preproc/base.py`, mirroring the `--slam` camera selector), config-selectable
-  via `cfg.detector` / `cfg.pose2d` / `cfg.backbone` (`--detector`/`--pose2d` CLI flags are the next step).
-  Swap the detector (any YOLO) or 2D-pose (any COCO-17 estimator) freely; the feature backbone is *learned
-  conditioning*, so swapping it needs a retrain (guarded by an `imgseq_dim` check).
+  small registry (`gvhmr/utils/preproc/base.py`, mirroring the `--slam` camera selector). Point the demo at
+  a different weight today with `gvhmr demo … --detector-ckpt yolov11x.pt` / `--pose2d-ckpt …` (config keys
+  `cfg.detector`/`cfg.pose2d`/`cfg.backbone` select the implementation; name-selector flags land with the
+  first alternative impl). Swap the detector (any YOLO) or 2D-pose (any COCO-17 estimator) freely; the
+  feature backbone is *learned conditioning*, so swapping it needs a retrain (guarded by an `imgseq_dim` check).
 - **Training runs on any device** — [`docs/TRAINING.md`](docs/TRAINING.md). A smoke `fit` works even on
   CPU: `GVHMR_DEVICE=cpu uv run gvhmr train exp=gvhmr/mixed/smoke_3dpw`. Real runs are multi-GPU CUDA.
 - **Relocatable body models** — set `$GVHMR_BODY_MODELS` to point SMPL/SMPL-X anywhere.

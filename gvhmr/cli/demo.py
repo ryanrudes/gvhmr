@@ -120,6 +120,8 @@ def build_demo_cfg(
     f_mm: int | None,
     verbose: bool,
     render_scale: float | None,
+    detector_ckpt: str | None = None,
+    pose2d_ckpt: str | None = None,
 ):
     """Compose the demo ``DictConfig`` from typed CLI args and stage the input video."""
     video = Path(video)
@@ -147,6 +149,12 @@ def build_demo_cfg(
             overrides.append(f"render_scale={render_scale}")
         if output_root is not None:
             overrides.append(f"output_root={output_root}")
+        # Pluggable preproc weight overrides (Tier A): point the detector / 2D-pose at a different
+        # checkpoint (e.g. a newer YOLO). `+key` adds the key the demo config doesn't declare.
+        if detector_ckpt is not None:
+            overrides.append(f"+detector_ckpt={detector_ckpt}")
+        if pose2d_ckpt is not None:
+            overrides.append(f"+pose2d_ckpt={pose2d_ckpt}")
         register_store_gvhmr()
         cfg = compose(config_name="demo", overrides=overrides)
 
@@ -474,6 +482,8 @@ def run(
     skeleton: bool = False,
     skeleton_overlay: bool = False,
     skeleton_joints: str | None = None,
+    detector_ckpt: str | None = None,
+    pose2d_ckpt: str | None = None,
 ) -> None:
     """Run the full single-video demo with a Rich, staged display."""
     torch.set_num_threads(os.cpu_count() or 1)  # pytorch3d CPU rasterizer scales with torch threads
@@ -490,6 +500,8 @@ def run(
         f_mm=f_mm,
         verbose=verbose,
         render_scale=render_scale,
+        detector_ckpt=detector_ckpt,
+        pose2d_ckpt=pose2d_ckpt,
     )
     device = get_device()
     Log.info(f"Device: [ok]{device_name(device)}[/] ({device})")
