@@ -27,8 +27,8 @@ from gvhmr.utils.geo.rotations import quaternion_to_matrix
 from gvhmr.utils.geo_transform import apply_T_on_points, compute_cam_angvel, compute_T_ayfz2ay
 from gvhmr.utils.net_utils import detach_to_cpu
 from gvhmr.utils.postproc_world import compose_world_from_dust3r
-from gvhmr.utils.preproc import Extractor, SimpleVO
-from gvhmr.utils.preproc.base import make_detector, make_pose2d
+from gvhmr.utils.preproc import SimpleVO
+from gvhmr.utils.preproc.base import make_backbone, make_detector, make_pose2d
 from gvhmr.utils.pylogger import Log
 from gvhmr.utils.smplx_utils import make_smplx
 from gvhmr.utils.video_io_utils import (
@@ -222,9 +222,10 @@ def run_preprocess(cfg, flip_test: bool = False, slam: str = "simplevo") -> None
         video = read_video_np(video_path)
         save_video(draw_coco17_skeleton_batch(video, vitpose, 0.5), paths.vitpose_video_overlay)
 
-    # 3) image features (HMR2 ViT)
+    # 3) image features (pluggable backbone; default HMR2 ViT). Swapping it needs a retrain — see
+    #    docs/EXTENSIBILITY.md Tier B. Select via cfg.backbone.
     if not Path(paths.vit_features).exists():
-        extractor = Extractor()
+        extractor = make_backbone(cfg.get("backbone", "hmr2"))
         vit_features = extractor.extract_video_features(video_path, bbx_xys)
         torch.save(vit_features, paths.vit_features)
         del extractor
@@ -245,7 +246,7 @@ def run_preprocess(cfg, flip_test: bool = False, slam: str = "simplevo") -> None
                 writer.write_frame(np.ascontiguousarray(img[:, ::-1]))
             writer.close()
             reader.close()
-        extractor = Extractor()
+        extractor = make_backbone(cfg.get("backbone", "hmr2"))
         feat_flip = extractor.extract_video_features(str(flip_video), flip_bbx_xys(bbx_xys, width))
         torch.save(feat_flip, flip_feat_path(cfg))
         del extractor

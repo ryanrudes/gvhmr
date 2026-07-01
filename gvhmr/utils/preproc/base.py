@@ -34,9 +34,27 @@ class Pose2D(Protocol):
         ...
 
 
+@runtime_checkable
+class FeatureBackbone(Protocol):
+    """Per-frame image-feature extractor → ``f_imgseq`` (the network's *learned conditioning*).
+
+    Unlike the detector/pose stages, this is NOT freely swappable at inference: the trained GVHMR
+    checkpoint's ``imgseq_embedder`` is fit to a specific feature space (default HMR2, 1024-d). A new
+    backbone requires **retraining** the core (re-extract features with declared ``feat_dim``, set
+    ``network.imgseq_dim``, retrain). See ``docs/EXTENSIBILITY.md`` (Tier B) and ``docs/TRAINING.md``.
+    """
+
+    feat_dim: int  # declared output width D; must match the trained network's imgseq_dim
+
+    def extract_video_features(self, video_path, bbx_xys) -> torch.Tensor:
+        """Return ``(F, feat_dim)`` per-frame features."""
+        ...
+
+
 # Registered backend names (kept here so callers/tests can enumerate without importing the heavy impls).
 DETECTORS = ("yolo",)
 POSE2D = ("vitpose",)
+BACKBONES = ("hmr2",)
 
 
 def make_detector(name: str = "yolo", **kwargs) -> Detector:
@@ -55,3 +73,12 @@ def make_pose2d(name: str = "vitpose", **kwargs) -> Pose2D:
 
         return VitPoseExtractor(**kwargs)
     raise KeyError(f"unknown pose2d {name!r}; registered: {POSE2D}")
+
+
+def make_backbone(name: str = "hmr2", **kwargs) -> FeatureBackbone:
+    """Construct a registered image-feature backbone. Emits ``(F, feat_dim)``; swapping it needs a retrain."""
+    if name == "hmr2":
+        from gvhmr.utils.preproc.vitfeat_extractor import Extractor
+
+        return Extractor(**kwargs)
+    raise KeyError(f"unknown backbone {name!r}; registered: {BACKBONES}")

@@ -120,14 +120,16 @@ Ordered by dependency and risk — earliest phases are self-contained and need n
 - **Acceptance:** ✅ a few-step `fit` completes off-GPU; TRAINING.md merged. (RNG snapshot test outstanding.)
 
 ### Phase B2 — backbone-pluggable offline feature extractor
-- Factor `extract_video_features` (`gvhmr/utils/preproc/vitfeat_extractor.py:88`) into a reusable,
-  **backbone-selectable** tool: `frames + bbx → {features (N,D), bbx_xys, img_wh, …}.pt`, emitting the
-  declared dim `D`. Default backbone = HMR2 (byte-identical); add at least one alternative (e.g. a later
-  4D-Humans / a DINOv2 / Sapiens encoder) behind a `--backbone` selector.
-- Add an `imgseq_dim` consistency guard so a dim mismatch is a hard error, not a silently-dropped condition
-  (the `strict=False` load otherwise hides it, `gvhmr_pl_demo.py:126`).
-- **Acceptance:** the tool regenerates HMR2 features identically (checksum vs the cached `.pt`), and produces
-  alternate-backbone features with a declared `D`.
+- ✅ **Done (framework):** `FeatureBackbone` protocol + `make_backbone` registry (`base.py`), mirroring the
+  detector/pose2d pattern; the HMR2 `Extractor` registered as `hmr2` with a declared `feat_dim = 1024`; demo
+  wired to build via `make_backbone(cfg.backbone)` (default `hmr2`, byte-identical). Added the **`imgseq_dim`
+  consistency guard** in the network forward (`relative_transformer.py`) so a feature/checkpoint dim mismatch
+  is a clear error pointing at the backbone/retrain, not a cryptic `LayerNorm` failure or a silently-dropped
+  condition. Test extended (241 green, golden intact).
+- ⏭ **Next:** a standalone offline-extraction tool (`frames + bbx → {features (N,D), …}.pt`) + at least one
+  **alternative** backbone (e.g. DINOv2 / Sapiens / a later 4D-Humans) registered behind `make_backbone`, to
+  produce alternate-`D` features for a retrain. (Acceptance: HMR2 features regenerate identically; an
+  alternate backbone yields declared-`D` features.)
 
 ### Phase B3 — retrain the core on a new backbone
 - Re-extract features for the available training data with the chosen backbone, set `imgseq_dim`, and train

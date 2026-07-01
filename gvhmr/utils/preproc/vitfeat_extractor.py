@@ -57,6 +57,10 @@ def get_batch(input_path, bbx_xys, img_ds=0.5, img_dst_size=256, path_type="vide
 
 
 class Extractor:
+    """HMR2 (4D-Humans) ViT feature backbone. Satisfies the ``FeatureBackbone`` protocol (base.py)."""
+
+    feat_dim = 1024  # HMR2.0a SMPL-head token width; must match the trained network's imgseq_dim
+
     def __init__(self, tqdm_leave=True):
         self.device = get_device()
         self.extractor: HMR2 = load_hmr2().to(self.device).eval()

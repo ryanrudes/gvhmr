@@ -10,12 +10,23 @@ from __future__ import annotations
 import pytest
 import torch
 
-from gvhmr.utils.preproc.base import DETECTORS, POSE2D, Detector, Pose2D, make_detector, make_pose2d
+from gvhmr.utils.preproc.base import (
+    BACKBONES,
+    DETECTORS,
+    POSE2D,
+    Detector,
+    FeatureBackbone,
+    Pose2D,
+    make_backbone,
+    make_detector,
+    make_pose2d,
+)
 
 
 def test_registries_list_the_released_defaults():
     assert "yolo" in DETECTORS
     assert "vitpose" in POSE2D
+    assert "hmr2" in BACKBONES
 
 
 def test_unknown_backend_raises_keyerror():
@@ -23,6 +34,8 @@ def test_unknown_backend_raises_keyerror():
         make_detector("not-a-detector")
     with pytest.raises(KeyError):
         make_pose2d("not-a-pose2d")
+    with pytest.raises(KeyError):
+        make_backbone("not-a-backbone")
 
 
 def test_protocols_are_runtime_checkable_on_the_output_contract():
@@ -36,11 +49,19 @@ def test_protocols_are_runtime_checkable_on_the_output_contract():
         def extract(self, video_path, bbx_xys) -> torch.Tensor:
             return torch.zeros(10, 17, 3)
 
+    class FakeBackbone:
+        feat_dim = 512
+
+        def extract_video_features(self, video_path, bbx_xys) -> torch.Tensor:
+            return torch.zeros(10, self.feat_dim)
+
     assert isinstance(FakeDetector(), Detector)
     assert isinstance(FakePose2D(), Pose2D)
+    assert isinstance(FakeBackbone(), FeatureBackbone)
     # and something missing the method does not
     assert not isinstance(object(), Detector)
     assert not isinstance(object(), Pose2D)
+    assert not isinstance(object(), FeatureBackbone)
 
 
 def test_default_factory_names_match_lazy_impls_without_importing_them():

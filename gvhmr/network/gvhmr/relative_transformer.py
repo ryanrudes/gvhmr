@@ -141,6 +141,11 @@ class NetworkEncoderRoPE(nn.Module):
         if hasattr(self, "cam_angvel_embedder"):
             f_to_add.append(self.cam_angvel_embedder(f_cam_angvel))
         if f_imgseq is not None and hasattr(self, "imgseq_embedder"):
+            assert f_imgseq.shape[-1] == self.imgseq_dim, (
+                f"f_imgseq width {f_imgseq.shape[-1]} != network imgseq_dim {self.imgseq_dim} — the image "
+                f"features were extracted with a different backbone. Re-extract with a matching backbone, "
+                f"or set network.imgseq_dim and retrain (docs/EXTENSIBILITY.md Tier B)."
+            )
             f_to_add.append(self.imgseq_embedder(f_imgseq))
 
         for f_delta in f_to_add:
