@@ -102,11 +102,19 @@ Ordered by dependency and risk — earliest phases are self-contained and need n
 - **Acceptance:** ✅ `gvhmr demo … --detector yolo11 --pose2d rtmpose --camera dust3r` composes; golden green;
   `test_preproc_pluggable` + `test_config_smoke` assert the registry, group composition, and name-swap.
 
-### Phase A2 — newer scene-aware backend
-- Add a `vggt` (and/or `mast3r`) backend behind `--slam`, returning the same metric `T_w2c (L,4,4)`
-  (`dust3r_slam.py:56`). VGGT (1.2B) jointly predicts camera+depth in one pass — could replace *both*
-  DUSt3R and Depth-Anything. Optionally bump Depth-Anything-V2 → V3.
-- **Acceptance:** `--slam vggt` produces a `T_w2c`; world-compose path unchanged; documented in INSTALL/EVAL.
+### Phase A2 — newer scene-aware backend  ✅ **Done**
+- ✅ **`--camera vggt`** (`gvhmr/utils/preproc/vggt_slam.py`): VGGT (CVPR 2025) predicts camera + depth in
+  **one feed-forward pass** — replacing DUSt3R's pairwise inference + global-alignment optimizer (faster,
+  often more robust). Still scale-ambiguous, so it reuses the Depth-Anything-V2 metric-scale fix and the
+  slerp/lerp interpolation from the DUSt3R backend, returning the same metric `T_w2c (L,4,4)`. The
+  world-compose path fires for `dust3r`/`vggt` alike (unchanged).
+- **Verified end-to-end on CUDA:** VGGT API (extrinsic `(K,3,4)` w2c, depth `(K,H,W)`), and the full
+  `run_vggt_slam` on a real clip → `T_w2c (L,4,4)`, metric scale from Depth-Anything, orthonormal rotations.
+- **Install:** `scripts/setup_scene_aware.sh` clones VGGT into `third-party/vggt` (imported via sys.path;
+  weights auto-download `facebook/VGGT-1B`). **Do not `pip install -e` it** — its `numpy<2` pin downgrades
+  numpy and breaks scipy (`np.long`); VGGT runs fine on numpy 2.x and its runtime deps are already in the
+  base env (timm → safetensors). Documented in `docs/CONFIGURATION.md` + `docs/INSTALL.md`.
+- ⏭ Optional future: a `mast3r` backend the same way; bump Depth-Anything-V2 → V3.
 
 ### Phase C — body-model file flexibility  ✅ **Done**
 - The SMPL/SMPL-X root is now a single `BODY_MODEL_ROOT` constant (`gvhmr/utils/smplx_utils.py`), absolute
@@ -245,13 +253,13 @@ bundles (the `.pt`/`.pth` packs the datasets load) via the project **Google Driv
 ## 8. Milestones
 
 - **M1** — Phase A1 (config groups + name selectors + RTMPose) + Phase C (body-model config). ✅ **done.**
-- **M2** — Phase A2 (VGGT/MASt3R scene backend). ⏳ *pending* — gated on the VGGT model; the `--camera`
-  group is ready for it to slot in.
+- **M2** — Phase A2 (VGGT scene backend). ✅ **done** — `--camera vggt`, verified end-to-end on CUDA.
 - **M3** — Phase B1 (training runnable + `docs/TRAINING.md` + smoke run + RNG test). ✅ **done.**
 - **M4** — Phase B2 (backbone-pluggable feature extractor + `gvhmr extract-features` + dim guard). ✅ **done.**
 - **M5** — Phase B3/B4 (retrain on a new backbone; bring-your-own-data fine-tuning). ⏳ plumbing proven
   (synthetic-feature smoke); a *real* retrain is blocked only on gated raw frames.
 
-**Remaining:** M2 (VGGT camera backend) and the *real* M5 retrain (needs raw training frames) — both gated
-on external resources. The config/extensibility framework itself is complete: see
+**Remaining:** only the *real* M5 retrain (needs gated raw training frames) — the plumbing is proven, so
+it's a data problem, not a code one. Everything else (the full config/extensibility framework, all four
+pluggable stages with real alternatives, the offline extractor, both scene-aware cameras) is **done**: see
 [`docs/CONFIGURATION.md`](CONFIGURATION.md).

@@ -50,7 +50,7 @@ pose choice, and a `--set` overrides everything.
 |---|---|---|---|
 | **Detector** | `--detector` | `yolo` (yolov8x), `yolo11` | nothing — any ultralytics weight drops in |
 | **2D pose** | `--pose2d` | `vitpose`, `rtmpose` | nothing — **must emit COCO-17** |
-| **Camera** | `--camera` | `simplevo`, `dpvo` (CUDA), `dust3r` (scene-aware) | nothing |
+| **Camera** | `--camera` | `simplevo`, `dpvo` (CUDA), `dust3r` / `vggt` (scene-aware, metric) | nothing |
 | **Feature backbone** | `--backbone` | `hmr2` (released), `dinov2` | **a retrain** (see below) |
 | **Body model** | `$GVHMR_BODY_MODELS` | SMPL / SMPL-X file | file-swap within topology only |
 
@@ -58,8 +58,10 @@ pose choice, and a `--set` overrides everything.
   `--detector-ckpt path/to.pt`.
 - **2D pose:** `rtmpose` needs the extra — `uv sync --extra rtmpose` (rtmlib + ONNXRuntime, ungated). Any
   estimator emitting **COCO-17** `(F,17,3)` fits the slot; the network asserts `J==17`.
-- **Camera:** `dpvo` is CUDA-only; on Apple-Silicon/CPU use `dust3r` (scene-aware, recovers world
-  translation). `--slam` / `--use-dpvo` are deprecated aliases for `--camera`.
+- **Camera:** `dpvo` is CUDA-only; on Apple-Silicon/CPU use a scene-aware **metric** camera — `dust3r`
+  or `vggt` (both recover world translation; VGGT is a single feed-forward pass, often faster/more
+  robust). Set them up with `scripts/setup_scene_aware.sh` (VGGT weights auto-download). `--slam` /
+  `--use-dpvo` are deprecated aliases for `--camera`.
 - **Backbone:** the released checkpoint's `imgseq_embedder` is fit to HMR2's 1024-d features, so a different
   backbone is **not** a drop-in at inference — it needs a retrain (next section).
 
@@ -86,7 +88,7 @@ gvhmr/configs/
 ├── detector/   yolo.yaml  yolo11.yaml
 ├── pose2d/     vitpose.yaml  rtmpose.yaml
 ├── backbone/   hmr2.yaml  dinov2.yaml
-├── camera/     simplevo.yaml  dpvo.yaml  dust3r.yaml
+├── camera/     simplevo.yaml  dpvo.yaml  dust3r.yaml  vggt.yaml
 └── recipe/     hq.yaml  accurate.yaml  scene.yaml
 ```
 

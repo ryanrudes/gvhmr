@@ -1,0 +1,7 @@
+# Camera backend — VGGT scene-aware, metric camera. One feed-forward pass jointly predicts camera + depth
+# (VGGT, CVPR 2025); Depth-Anything-V2 fixes the metric scale → per-frame metric T_w2c. Like dust3r, but a
+# single forward instead of pairwise inference + a global-alignment optimizer (faster, often more robust).
+# Pure-PyTorch (MPS/CPU/CUDA); VGGT weights auto-download (facebook/VGGT-1B). Set up with
+# scripts/setup_scene_aware.sh. Writes (L,4,4) metric T_w2c. See gvhmr/utils/preproc/vggt_slam.py.
+name: vggt
+max_depth: 80.0 # clamp (metres) for the Depth-Anything metric-depth scale fit

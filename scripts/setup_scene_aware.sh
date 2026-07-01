@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Set up the optional scene-aware camera backend used by `gvhmr demo --slam dust3r`.
+# Set up the optional scene-aware camera backends used by `gvhmr demo --camera dust3r|vggt`.
 #
-# DPVO (the only built-in backend that recovers camera *translation*) is CUDA-only. The dust3r
-# backend is the device-agnostic alternative (Apple-Silicon MPS / CPU / CUDA): it reconstructs the
-# scene with DUSt3R and fixes the metric scale with Depth-Anything-V2. Neither is vendored into the
-# repo (they are large and carry their own licenses), so this script clones them into third-party/
-# and downloads their weights into ~/Datasets/GVHMR (override with $GVHMR_DATA). Safe to re-run.
+# DPVO (the only built-in backend that recovers camera *translation*) is CUDA-only. The dust3r/vggt
+# backends are the device-agnostic alternatives (Apple-Silicon MPS / CPU / CUDA): they reconstruct the
+# scene (DUSt3R's global-aligner, or VGGT's single forward pass) and fix the metric scale with
+# Depth-Anything-V2. None is vendored into the repo (large, own licenses), so this script clones them
+# into third-party/ and downloads weights into ~/Datasets/GVHMR (override with $GVHMR_DATA). Safe to
+# re-run. VGGT weights auto-download from the HuggingFace hub on first use.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -26,10 +27,22 @@ if ! grep -q "weights_only=False" "$MODEL_PY"; then
   perl -pi -e "s/torch\.load\(model_path, map_location='cpu'\)/torch.load(model_path, map_location='cpu', weights_only=False)/" "$MODEL_PY"
 fi
 
-# 2) Depth-Anything-V2 (metric) — standalone PyTorch, no transformers dependency.
+# 2) Depth-Anything-V2 (metric) — standalone PyTorch, no transformers dependency. Used by BOTH scene
+#    backends to fix the metric scale.
 if [ ! -d "$TP/depth_anything_v2_repo" ]; then
   echo "[setup] cloning Depth-Anything-V2…"
   git clone --depth 1 https://github.com/DepthAnything/Depth-Anything-V2 "$TP/depth_anything_v2_repo"
+fi
+
+# 2b) VGGT — single feed-forward camera+depth pass (used by `--camera vggt`). Pure-PyTorch. Cloned only
+#     and imported via sys.path (vggt_slam.py adds third-party/vggt). Do NOT `pip install -e` it: VGGT's
+#     requirements pin numpy<2, which downgrades numpy and breaks scipy (needs >=2 for np.long) — and the
+#     slerp pose-interpolation depends on scipy. VGGT runs fine on numpy 2.x (verified), and its runtime
+#     deps (safetensors, huggingface_hub, einops, Pillow) are already provided by GVHMR's base env
+#     (timm → safetensors). VGGT weights auto-download from the HF hub (facebook/VGGT-1B) on first use.
+if [ ! -d "$TP/vggt" ]; then
+  echo "[setup] cloning VGGT…"
+  git clone --depth 1 https://github.com/facebookresearch/vggt "$TP/vggt"
 fi
 
 # 3) weights
@@ -47,4 +60,4 @@ if [ ! -f "$DA_CKPT" ]; then
     "https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-VKITTI-Base/resolve/main/depth_anything_v2_metric_vkitti_vitb.pth?download=true"
 fi
 
-echo "[setup] done. Try:  gvhmr demo VIDEO --slam dust3r"
+echo "[setup] done. Try:  gvhmr demo VIDEO --camera dust3r   (or --camera vggt)"

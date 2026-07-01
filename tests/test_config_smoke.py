@@ -75,6 +75,8 @@ def test_preproc_groups_compose_and_swap_by_name() -> None:
         # the camera backend (formerly the --slam selector) is a group too, carrying its knobs
         cam = compose(config_name="demo", overrides=["video_name=x", "camera=dust3r"])
         assert cam.camera.name == "dust3r" and cam.camera.max_depth == 80.0
+        vggt = compose(config_name="demo", overrides=["video_name=x", "camera=vggt"])
+        assert vggt.camera.name == "vggt" and vggt.camera.max_depth == 80.0
         # a recipe applies a bundle of choices; an explicit override still takes precedence
         rec = compose(config_name="demo", overrides=["video_name=x", "+recipe=hq", "render_scale=0.25"])
         assert rec.render_scale == 0.25

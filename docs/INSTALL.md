@@ -100,7 +100,13 @@ uv sync --extra render        # optional fallback; MACOSX_DEPLOYMENT_TARGET=11.0
   > `source .venv/bin/activate && gvhmr demo VIDEO --use-dpvo`. When you *do* re-sync, keep your
   > backend (`uv sync --extra cuXXX`). Re-running `scripts/setup_dpvo.sh` recovers it (idempotent).
 
-  On Mac/MPS, where DPVO can't build, use `gvhmr demo VIDEO --slam dust3r` instead.
+  On Mac/MPS, where DPVO can't build, use a **scene-aware metric camera** instead — it recovers world
+  translation and runs on Apple-Silicon/CPU. Set up with `scripts/setup_scene_aware.sh` (clones DUSt3R +
+  VGGT + Depth-Anything into `third-party/`; VGGT weights auto-download), then:
+  ```bash
+  gvhmr demo VIDEO --camera dust3r     # DUSt3R + global aligner
+  gvhmr demo VIDEO --camera vggt       # VGGT — one feed-forward pass (often faster/more robust)
+  ```
 
 ## Apple Silicon (MPS)
 

@@ -299,6 +299,15 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
                     result = run_dust3r_slam(cfg.video_path, max_depth=cam.max_depth)
                 Log.info(f"DUSt3R camera: scale {result['scale']:.1f}, reconstruction conf {result['conf']:.2f}")
                 torch.save(result["T_w2c"], paths.slam)
+            elif cam.name == "vggt":
+                # VGGT: one feed-forward pass for camera + depth (scale-ambiguous), Depth-Anything fixes
+                # the metric scale — same T_w2c contract as dust3r, faster/no global-alignment optimizer.
+                from gvhmr.utils.preproc.vggt_slam import run_vggt_slam
+
+                with status("VGGT scene-aware camera tracking"):
+                    result = run_vggt_slam(cfg.video_path, max_depth=cam.max_depth)
+                Log.info(f"VGGT camera: scale {result['scale']:.1f}, depth conf {result['conf']:.2f}")
+                torch.save(result["T_w2c"], paths.slam)
             elif cam.name == "dpvo":
                 from gvhmr.utils.preproc.slam import SLAMModel
 
@@ -595,8 +604,8 @@ def run(
             )
         # Moving + scene-aware: replace the world trajectory with the in-cam carry through the DUSt3R
         # metric camera (captures traversal a following camera induces; the velocity prior misses it).
-        if cam_name == "dust3r" and not cfg.static_cam:
-            Log.info("Moving camera: world trajectory from the [ok]DUSt3R metric camera[/] (scene-aware)")
+        if cam_name in ("dust3r", "vggt") and not cfg.static_cam:
+            Log.info(f"Moving camera: world trajectory from the [ok]{cam_name} metric camera[/] (scene-aware)")
             compose_world_from_dust3r(pred, torch.load(paths.slam, weights_only=False))
         torch.save(pred, paths.hmr4d_results)
         Log.info(f"Recovered [ok]{data['length'] / 30:.1f}s[/] of motion in [ok]{Log.sync_time() - tic:.2f}s[/]")

@@ -51,8 +51,8 @@ def demo(
         typer.Option(
             "--camera",
             help="Camera backend for a moving camera: [gvhmr]simplevo[/] (default, rotation only), "
-            "[gvhmr]dpvo[/] (CUDA-only), or [gvhmr]dust3r[/] — scene-aware [bold]metric[/] camera on "
-            "Apple-Silicon/CPU that also recovers world translation (the gliding/following-camera fix).",
+            "[gvhmr]dpvo[/] (CUDA-only), or the scene-aware [bold]metric[/] cameras [gvhmr]dust3r[/] / "
+            "[gvhmr]vggt[/] — run on Apple-Silicon/CPU and recover world translation (the following-camera fix).",
         ),
     ] = None,
     use_dpvo: Annotated[bool, typer.Option(help="[dim]Deprecated alias for [/][gvhmr]--camera dpvo[/].")] = False,
@@ -161,7 +161,7 @@ def demo_folder(
     static_cam: Annotated[bool, typer.Option("--static-cam", "-s", help="Cameras are static.")] = False,
     output_root: Annotated[str | None, typer.Option("--output-root", "-o", help="Output root.")] = None,
     camera: Annotated[
-        str | None, typer.Option("--camera", help="Camera backend [dim](simplevo/dpvo/dust3r)[/].")
+        str | None, typer.Option("--camera", help="Camera backend [dim](simplevo/dpvo/dust3r/vggt)[/].")
     ] = None,
     use_dpvo: Annotated[bool, typer.Option(help="[dim]Deprecated alias for [/][gvhmr]--camera dpvo[/].")] = False,
     f_mm: Annotated[int | None, typer.Option(help="Focal length in mm.")] = None,
