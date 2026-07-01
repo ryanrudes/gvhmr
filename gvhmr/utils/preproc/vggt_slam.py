@@ -16,7 +16,8 @@ DUSt3R — Depth-Anything-V2 (metric) fixes the one global scale.
 
 VGGT weights auto-download from the HuggingFace hub (``facebook/VGGT-1B``, non-commercial) on first use.
 The code is cloned into ``third-party/vggt`` by ``scripts/setup_scene_aware.sh`` and imported via sys.path
-at call time. Depth-Anything weights default to ``~/Datasets/GVHMR/depth_anything/`` (see the DUSt3R backend).
+at call time. Depth-Anything weights live under ``$GVHMR_DATA`` (default ``~/Datasets/GVHMR/depth_anything/``;
+see the DUSt3R backend).
 """
 
 from __future__ import annotations

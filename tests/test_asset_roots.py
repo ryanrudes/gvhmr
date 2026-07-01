@@ -37,3 +37,17 @@ def _resolve(var: str, attr: str, value: str) -> str:
 )
 def test_root_honours_env(tmp_path, var, attr):
     assert _resolve(var, attr, str(tmp_path)) == str(tmp_path)
+
+
+def test_scene_weights_honour_gvhmr_data(tmp_path):
+    # The DUSt3R / VGGT scene-camera weights resolve under $GVHMR_DATA — the same root
+    # scripts/setup_scene_aware.sh downloads them to (dust3r_slam has light module-level imports only).
+    env = {**os.environ, "GVHMR_DATA": str(tmp_path)}
+    out = subprocess.run(
+        [sys.executable, "-c", "from gvhmr.utils.preproc.dust3r_slam import _DA_CKPT; print(_DA_CKPT)"],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert out.returncode == 0, out.stderr
+    assert str(tmp_path) in out.stdout.strip()

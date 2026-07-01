@@ -13,7 +13,7 @@ alternative — it runs on Apple-Silicon MPS (and CUDA) with no custom kernels:
    unchanged, except the translation is now real metres.
 
 Heavy deps (torch, the two vendored models) are imported lazily so importing this module stays cheap.
-Weights default to ``~/Datasets/GVHMR/{dust3r,depth_anything}/``. The indoor/outdoor metric model is
+Weights live under ``$GVHMR_DATA`` (default ``~/Datasets/GVHMR/{dust3r,depth_anything}/``). The indoor/outdoor metric model is
 selected by ``max_depth`` (80 = outdoor/VKITTI, 20 = indoor/Hypersim).
 """
 
@@ -28,8 +28,11 @@ from pathlib import Path
 import numpy as np
 
 _THIRD_PARTY = Path(__file__).resolve().parents[3] / "third-party"
-_DUST3R_CKPT = Path("~/Datasets/GVHMR/dust3r/DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth").expanduser()
-_DA_CKPT = Path("~/Datasets/GVHMR/depth_anything/depth_anything_v2_metric_vkitti_vitb.pth").expanduser()
+# Scene-model weights live under $GVHMR_DATA (default ~/Datasets/GVHMR) — the SAME root scripts/
+# setup_scene_aware.sh downloads them to, so relocation is one env var (set it before both).
+_SCENE_DATA = Path(os.environ.get("GVHMR_DATA", "~/Datasets/GVHMR")).expanduser()
+_DUST3R_CKPT = _SCENE_DATA / "dust3r/DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth"
+_DA_CKPT = _SCENE_DATA / "depth_anything/depth_anything_v2_metric_vkitti_vitb.pth"
 _DA_CFG = {"encoder": "vitb", "features": 128, "out_channels": [96, 192, 384, 768]}
 
 
