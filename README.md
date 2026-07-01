@@ -108,6 +108,22 @@ uv run pyright
 See [`AGENTS.md`](AGENTS.md) for architecture, conventions, the behaviour-preservation
 landmines, and the upstream-sync workflow.
 
+## Extend & retrain
+
+This fork is being turned from a frozen checkpoint into a **re-trainable, swappable** system — see the
+roadmap in [`docs/EXTENSIBILITY.md`](docs/EXTENSIBILITY.md). Already landed:
+
+- **Pluggable preprocessing** — the detector, 2D-pose, and image-feature **backbone** are built through a
+  small registry (`gvhmr/utils/preproc/base.py`, mirroring the `--slam` camera selector), config-selectable
+  via `cfg.detector` / `cfg.pose2d` / `cfg.backbone` (`--detector`/`--pose2d` CLI flags are the next step).
+  Swap the detector (any YOLO) or 2D-pose (any COCO-17 estimator) freely; the feature backbone is *learned
+  conditioning*, so swapping it needs a retrain (guarded by an `imgseq_dim` check).
+- **Training runs on any device** — [`docs/TRAINING.md`](docs/TRAINING.md). A smoke `fit` works even on
+  CPU: `GVHMR_DEVICE=cpu uv run gvhmr train exp=gvhmr/mixed/smoke_3dpw`. Real runs are multi-GPU CUDA.
+- **Relocatable body models** — set `$GVHMR_BODY_MODELS` to point SMPL/SMPL-X anywhere.
+
+All of it is golden-guarded: the released model's inference stays byte-identical.
+
 # Citation
 
 If you find this code useful for your research, please use the following BibTeX entry.
