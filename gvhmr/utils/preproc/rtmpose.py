@@ -62,7 +62,9 @@ class RTMPoseExtractor:
 
         reader = get_video_reader(video_path)
         out = []
-        for i, img in enumerate(track(reader, total=get_video_lwh(video_path)[0], desc="RTMPose", leave=self.tqdm_leave)):
+        for i, img in enumerate(
+            track(reader, total=get_video_lwh(video_path)[0], desc="RTMPose", leave=self.tqdm_leave)
+        ):
             img_bgr = np.ascontiguousarray(img[:, :, ::-1])  # rtmlib/ONNX expect BGR (cv2 convention)
             kpts, scores = self.pose(img_bgr, bboxes=xyxy[i : i + 1])  # (1,17,2), (1,17)
             out.append(torch.from_numpy(np.concatenate([kpts[0], scores[0][:, None]], axis=-1)).float())  # (17,3)

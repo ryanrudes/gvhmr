@@ -31,7 +31,9 @@ class MetricMocap(pl.Callback):
         # SMPLX and SMPL
         self.smplx = make_smplx("supermotion_EVAL3DPW")
         self.smpl = {"male": make_smplx("smpl", gender="male"), "female": make_smplx("smpl", gender="female")}
-        self.J_regressor = torch.load("gvhmr/utils/body_model/smpl_3dpw14_J_regressor_sparse.pt", weights_only=False).to_dense()
+        self.J_regressor = torch.load(
+            "gvhmr/utils/body_model/smpl_3dpw14_J_regressor_sparse.pt", weights_only=False
+        ).to_dense()
         self.J_regressor24 = torch.load("gvhmr/utils/body_model/smpl_neutral_J_regressor.pt", weights_only=False)
         self.smplx2smpl = torch.load("gvhmr/utils/body_model/smplx2smpl_sparse.pt", weights_only=False)
         self.faces_smplx = self.smplx.faces

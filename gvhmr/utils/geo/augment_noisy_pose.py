@@ -4,7 +4,10 @@ import gvhmr.utils.matrix as matrix
 from gvhmr import PROJ_ROOT
 from gvhmr.utils.geo.rotations import axis_angle_to_matrix, matrix_to_axis_angle, matrix_to_rotation_6d
 
-COCO17_AUG = {k: v.flatten() for k, v in torch.load(PROJ_ROOT / "gvhmr/utils/body_model/coco_aug_dict.pth", weights_only=False).items()}
+COCO17_AUG = {
+    k: v.flatten()
+    for k, v in torch.load(PROJ_ROOT / "gvhmr/utils/body_model/coco_aug_dict.pth", weights_only=False).items()
+}
 COCO17_AUG_CUDA = {}
 COCO17_TREE = [[5, 6], 0, 0, 1, 2, -1, -1, 5, 6, 7, 8, -1, -1, 11, 12, 13, 14, 15, 15, 15, 16, 16, 16]
 

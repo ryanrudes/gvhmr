@@ -172,7 +172,9 @@ class SmplxLiteCoco17(SmplxLite):
 
         # Compute mapping
         smplx2smpl = torch.load(PROJ_ROOT / "gvhmr/utils/body_model/smplx2smpl_sparse.pt", weights_only=False)
-        COCO17_regressor = torch.load(PROJ_ROOT / "gvhmr/utils/body_model/smpl_coco17_J_regressor.pt", weights_only=False)
+        COCO17_regressor = torch.load(
+            PROJ_ROOT / "gvhmr/utils/body_model/smpl_coco17_J_regressor.pt", weights_only=False
+        )
         smplx2coco17 = torch.matmul(COCO17_regressor, smplx2smpl.to_dense())
 
         jids, smplx_vids = torch.where(smplx2coco17 != 0)
@@ -201,7 +203,9 @@ class SmplxLiteV437Coco17(SmplxLite):
 
         # Compute mapping (COCO17)
         smplx2smpl = torch.load(PROJ_ROOT / "gvhmr/utils/body_model/smplx2smpl_sparse.pt", weights_only=False)
-        COCO17_regressor = torch.load(PROJ_ROOT / "gvhmr/utils/body_model/smpl_coco17_J_regressor.pt", weights_only=False)
+        COCO17_regressor = torch.load(
+            PROJ_ROOT / "gvhmr/utils/body_model/smpl_coco17_J_regressor.pt", weights_only=False
+        )
         smplx2coco17 = torch.matmul(COCO17_regressor, smplx2smpl.to_dense())
 
         jids, smplx_vids = torch.where(smplx2coco17 != 0)
