@@ -54,7 +54,7 @@ class FeatureBackbone(Protocol):
 # Registered backend names (kept here so callers/tests can enumerate without importing the heavy impls).
 DETECTORS = ("yolo",)
 POSE2D = ("vitpose",)
-BACKBONES = ("hmr2",)
+BACKBONES = ("hmr2", "dinov2")
 
 
 def make_detector(name: str = "yolo", **kwargs) -> Detector:
@@ -81,4 +81,8 @@ def make_backbone(name: str = "hmr2", **kwargs) -> FeatureBackbone:
         from gvhmr.utils.preproc.vitfeat_extractor import Extractor
 
         return Extractor(**kwargs)
+    if name == "dinov2":
+        from gvhmr.utils.preproc.dinov2_backbone import DINOv2Backbone
+
+        return DINOv2Backbone(**kwargs)
     raise KeyError(f"unknown backbone {name!r}; registered: {BACKBONES}")
