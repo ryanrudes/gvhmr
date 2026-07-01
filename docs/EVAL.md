@@ -1,7 +1,7 @@
 # World-frame evaluation on real datasets
 
 The fork's headline addition — recovering a *metric* world trajectory for a moving/following camera
-(`--slam dust3r`, and the static-camera in-cam carry) — needs **ground-truth world motion** to measure,
+(`--camera dust3r|vggt`, and the static-camera in-cam carry) — needs **ground-truth world motion** to measure,
 which the golden tests can't provide. `tools/eval/eval_world.py` is a trainer-free harness (CPU/MPS, no
 Lightning) that scores the EMDB-2 *global* protocol on real-video datasets and, critically, **A/B's how
 the human is placed in the world**:

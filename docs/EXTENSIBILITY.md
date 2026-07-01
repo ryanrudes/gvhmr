@@ -51,7 +51,7 @@ The per-model swappability contracts are detailed in §6.
 
 ## 3. The pluggability architecture (one pattern everywhere)
 
-The camera slot already shows the target pattern: a Hydra config group + a `--slam {simplevo|dpvo|dust3r}`
+The camera slot already shows the target pattern: a Hydra config group + a `--camera {simplevo|dpvo|dust3r|vggt}`
 selector (`gvhmr/cli/__init__.py:50`), each backend writing the same `paths.slam` cache, normalized to a
 common contract (`R_w2c`) in `load_data_dict` (`gvhmr/cli/demo.py:289`). We generalize that to every
 swappable stage:
@@ -224,7 +224,7 @@ bundles (the `.pt`/`.pth` packs the datasets load) via the project **Google Driv
 - **2D pose** → **COCO-17** `(L,17,3)` (`vitpose.py:74`); `J==17` hard-asserted (`relative_transformer.py:128`);
   **inference-only** (training synthesizes kp2d). Path hard-coded.
 - **Camera** → `R_w2c (L,3,3)` for the net (translation only feeds the optional world-compose); already
-  pluggable via `--slam` (`demo.py:253-298`, `postproc_world.py:30`).
+  pluggable via `--camera` (`demo.py`, `postproc_world.py:30`).
 - **Scene-aware** → metric `T_w2c (L,4,4)` (`dust3r_slam.py:56`); two vendored models behind one function.
 
 **Learned conditioning / retrain-locked:**

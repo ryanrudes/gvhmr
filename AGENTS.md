@@ -22,13 +22,16 @@ video ─► preproc ─► load_data_dict ─► DemoPL.predict ─► Pipeline
          │            f_imgseq, cam)                      │  (the RoPE denoiser)
          │                                                ▼  EnDecoder: 151-dim latent
          ▼                                                   ⇄ in-cam + world SMPL
-   YOLO track → ViTPose 2D kp → HMR2 ViT features → SimpleVO/DPVO camera
+   YOLO track → ViTPose 2D kp → HMR2 ViT features → SimpleVO/DPVO/DUSt3R/VGGT camera
 ```
+
+Each preprocessing stage (detector / 2D-pose / feature-backbone / camera) is a **swappable Hydra config
+group** — pick an implementation by name, or bundle choices into a recipe (see CLI, and `docs/CONFIGURATION.md`).
 
 | Area | Path | Role |
 |---|---|---|
 | Package | `gvhmr/` | all library code (import name `gvhmr`; distribution name `gvhmr`) |
-| Configs | `gvhmr/configs/` | Hydra + hydra-zen. `register_store_gvhmr()` populates the `MainStore` by importing modules that self-register via `MainStore.store(...)` |
+| Configs | `gvhmr/configs/` | Hydra + hydra-zen. `register_store_gvhmr()` populates the `MainStore` (Python-defined model/network groups); swappable **preproc stages are YAML config groups** under `configs/{detector,pose2d,backbone,camera}/` (+ `recipe/`) |
 | Network | `gvhmr/network/` | `gvhmr/relative_transformer.py::NetworkEncoderRoPE` (trained denoiser); `hmr2/` (vendored ViT feature extractor) |
 | Model | `gvhmr/model/gvhmr/` | Lightning modules, `pipeline/`, `utils/endecoder.py` (151-dim latent ⇄ SMPL), `utils/postprocess.py`, metric `callbacks/` |
 | Core utils | `gvhmr/utils/` | geometry, body models, eval, vis, device, IO |
@@ -54,13 +57,24 @@ uv run pyright               # type-check (vendored trees excluded)
 
 ## CLI & console output
 
-The CLI is a **Typer** app in `gvhmr/cli/` (`gvhmr demo`/`demo-folder`/`train`/`bench`/`info`);
-the `tools/` scripts are thin backward-compat shims. **All console output goes through the
+The CLI is a **Typer** app in `gvhmr/cli/`
+(`gvhmr demo`/`demo-folder`/`train`/`bench`/`info`/`download`/`extract-features`); the `tools/` scripts are
+thin backward-compat shims. **All console output goes through the
 one shared Rich console in `gvhmr/utils/console.py`** — use `Log` (Rich-backed logging),
 `track(...)` for progress bars (drop-in for tqdm), `status(...)` for spinners, `rule(...)`
 for section dividers, and `console.print(...)`. Don't use bare `print()` or `tqdm` in
 first-party code (vendored trees keep theirs). Command bodies in `gvhmr/cli/__init__.py`
 lazy-import their heavy implementations so `--help`/`info` stay instant.
+
+**Swappable preprocessing (config groups).** The detector, 2D-pose, feature backbone, and camera are each a
+Hydra config **group** (`gvhmr/configs/{detector,pose2d,backbone,camera}/`), shared with `train` — the same
+mechanism as the model/network groups. Choose an implementation by name (`--detector`/`--pose2d`/
+`--backbone`/`--camera`), bundle a set of choices into a committable `--recipe` (`configs/recipe/`), or tweak
+any knob with `--set key=val` (precedence: recipe → name flag → `--set`). Defaults are the released models,
+so the default `predict` path stays **golden-byte-identical**. Real alternatives today: `--detector yolo11`,
+`--pose2d rtmpose` (needs `--extra rtmpose`), `--camera dust3r|vggt`, `--backbone dinov2` (needs a retrain).
+`gvhmr extract-features VIDEOS OUT --backbone <name>` writes the training feature cache for a backbone swap.
+Full guide `docs/CONFIGURATION.md`; roadmap/rationale `docs/EXTENSIBILITY.md`; training `docs/TRAINING.md`.
 
 **Skeleton overlays.** Besides the in-cam/world *mesh* videos, `gvhmr demo` can export the SMPL
 24-joint skeleton (`gvhmr/utils/vis/skeleton.py` → spheres-at-joints + cylinders-at-bones, a normal
@@ -69,8 +83,9 @@ mesh the moderngl renderer draws): `--skeleton` (world-frame skeleton-only video
 `render_mesh`/`render_with_ground`), and `--skeleton-joints` for a subset (groups like `legs`/`left_arm`,
 or joint names/indices; a bone draws only when both endpoints are kept). Left side warm, right cool.
 
-Extras: `preproc` (YOLO/ViTPose/pycolmap), `vis` (wis3d/viser), `notebook`, `render`
-(optional pytorch3d fallback). Mesh rendering works out of the box (moderngl is a base dep).
+Extras: `preproc` (YOLO/ViTPose/pycolmap), `rtmpose` (rtmlib/onnxruntime — the alt 2D-pose backend),
+`vis` (wis3d/viser), `notebook`, `render` (optional pytorch3d fallback). Mesh rendering works out of the
+box (moderngl is a base dep).
 
 **CUDA torch (Linux).** uv can't auto-pick a CUDA build for `uv sync` (`--torch-backend=auto` is
 `uv pip`-only) and a lock can't gate wheels on CUDA version — so the CUDA build is an explicit, mutually-
@@ -86,6 +101,13 @@ dispatch, `loop_closure` packaging, `torch.amp`). The vendored `gvhmr/utils/prep
 lets the pip-installed `dpvo` find its config. DPVO lives outside the lock, so use `UV_NO_SYNC=1` (or
 pass `--extra cuXXX` consistently) to keep a bare `uv sync` from pruning it. See `docs/INSTALL.md`.
 
+**Asset roots & fetching.** All weights + data resolve through `gvhmr/utils/assets.py`, each relocatable
+with one env var: `$GVHMR_CHECKPOINTS` (checkpoints), `$GVHMR_BODY_MODELS` (SMPL/SMPL-X, registration-gated),
+`$GVHMR_DATA_ROOT` (training/eval packs — every dataset loader routes through it). `gvhmr download [demo|slam|
+all]` fetches checkpoints and `gvhmr download --data <DS,…>` the data packs (from the HF mirror
+`camenduru/GVHMR`) into those roots; `gvhmr demo` auto-fetches missing checkpoints; `gvhmr info` shows what's
+present. Body models are gated (can't auto-download — the tooling prints the sign-up + target path).
+
 ## Device / MPS
 
 Never hard-code `.cuda()`. Use `gvhmr/utils/device.py`:
@@ -95,13 +117,18 @@ Core inference + geometry run on MPS; **mesh rendering runs on the GPU** via a m
 (Metal/OpenGL) renderer (`gvhmr/utils/vis/renderer_gl.py`, picked by `make_renderer`); only
 **DPVO is CUDA-only**. The legacy pytorch3d renderer is a CPU/CUDA fallback.
 
-**Scene-aware camera on Mac.** DPVO (the only camera backend that recovers *translation*) is CUDA-only,
-so `gvhmr demo --slam dust3r` provides a device-agnostic alternative: `gvhmr/utils/preproc/dust3r_slam.py`
-reconstructs the scene with vendored **DUSt3R** (pure-PyTorch, MPS) and fixes the global scale against a
-**Depth-Anything-V2** metric-depth prediction → a per-frame *metric* `T_w2c`. For a moving camera the demo
-then composes `world = T_c2w_metric · in-cam` (the in-cam carry through the metric camera, gravity-aligned
-+ frame-aligned-fused with the prior's local motion) — recovering the global traversal a following camera
-induces, which the velocity prior misses. Weights live in `~/Datasets/GVHMR/{dust3r,depth_anything}/`.
+**Scene-aware camera on Mac.** DPVO (the only *built-in* backend that recovers *translation*) is CUDA-only,
+so `gvhmr demo --camera dust3r` (or `--camera vggt`) provides device-agnostic alternatives that run on
+Apple-Silicon MPS: `dust3r_slam.py` reconstructs the scene with vendored **DUSt3R** + a global-alignment
+optimizer, while `vggt_slam.py` uses **VGGT** (one feed-forward pass, often faster/more robust). Both are
+scale-ambiguous, so **Depth-Anything-V2** metric depth fixes the global scale → a per-frame *metric* `T_w2c`.
+For a moving camera the demo then composes `world = T_c2w_metric · in-cam` (the in-cam carry through the
+metric camera, gravity-aligned + frame-aligned-fused with the prior's local motion) — recovering the global
+traversal a following camera induces, which the velocity prior misses. Set both up with
+`scripts/setup_scene_aware.sh` (clones into `third-party/`; DUSt3R/Depth-Anything weights →
+`~/Datasets/GVHMR/{dust3r,depth_anything}/`, VGGT auto-downloads `facebook/VGGT-1B`). **Note:** don't
+`pip install -e` VGGT — its `numpy<2` pin breaks scipy; it's imported via sys.path and runs on numpy 2.x.
+`--slam` / `--use-dpvo` remain as deprecated aliases for `--camera`.
 
 ## Debugging
 

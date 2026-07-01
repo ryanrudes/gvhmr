@@ -5,8 +5,8 @@
 > **Modernized fork** of [`zju3dv/GVHMR`](https://github.com/zju3dv/GVHMR) by
 > [@ryanrudes](https://github.com/ryanrudes) — runs on **Apple Silicon (MPS)**, with `uv`/`pyproject`
 > packaging, a Typer + Rich `gvhmr` CLI, a GPU mesh renderer, skeleton-overlay exports, and a
-> device-agnostic **scene-aware SLAM** backend (`gvhmr demo --slam dust3r`, a Mac-friendly DPVO
-> alternative that recovers a *metric* camera). The released model's behaviour is preserved
+> device-agnostic **scene-aware metric cameras** (`gvhmr demo --camera dust3r|vggt`, Mac-friendly DPVO
+> alternatives that recover a *metric* camera). The released model's behaviour is preserved
 > (golden-guarded). Details: [`AGENTS.md`](AGENTS.md) · upstream: [`zju3dv/GVHMR`](https://github.com/zju3dv/GVHMR).
 
 > World-Grounded Human Motion Recovery via Gravity-View Coordinates  
@@ -33,9 +33,9 @@
 > **This is a modernized fork** of [zju3dv/GVHMR](https://github.com/zju3dv/GVHMR): `uv` +
 > `pyproject.toml` packaging, Python 3.13 / modern typing, a CPU/MPS test suite,
 > **Apple-Silicon (MPS) support**, a **Typer + Rich `gvhmr` CLI**, a GPU mesh renderer
-> (moderngl/Metal), skeleton-overlay video exports, a device-agnostic **DUSt3R + Depth-Anything-V2
-> scene-aware SLAM backend** (`--slam dust3r` — recovers a metric camera on Mac, where DPVO is
-> CUDA-only; set it up with [`scripts/setup_scene_aware.sh`](scripts/setup_scene_aware.sh)), and
+> (moderngl/Metal), skeleton-overlay video exports, device-agnostic **scene-aware metric cameras**
+> (`--camera dust3r|vggt` — DUSt3R or VGGT + Depth-Anything-V2, recovering a metric camera on Mac where
+> DPVO is CUDA-only; set up with [`scripts/setup_scene_aware.sh`](scripts/setup_scene_aware.sh)), and
 > agent tooling — with model behaviour preserved (golden-guarded).
 > See [`AGENTS.md`](AGENTS.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and
 > [`docs/PROVENANCE.md`](docs/PROVENANCE.md).
@@ -46,8 +46,13 @@ Please see [installation](docs/INSTALL.md). In short:
 
 ```bash
 uv sync                 # base install (CPU / Apple-Silicon MPS); add --extra preproc for the demo
+uv run gvhmr download   # fetch model checkpoints (→ inputs/checkpoints; set $GVHMR_CHECKPOINTS to relocate)
 uv run gvhmr info       # check device, installed features, and checkpoint status
 ```
+
+`gvhmr demo` also auto-fetches any missing checkpoints on first run. SMPL/SMPL-X **body models are
+registration-gated** — `gvhmr download` prints the sign-up + target path. One env var relocates each asset
+class: `$GVHMR_CHECKPOINTS`, `$GVHMR_BODY_MODELS`, `$GVHMR_DATA_ROOT` (no symlinks).
 
 On **Linux/CUDA**, add the extra matching your GPU (uv can't auto-detect it for `uv sync`) — check
 `nvidia-smi` and pick the nearest ≤ your CUDA: `uv sync --extra cu128` (covers 12.8–13.x), `cu126`,
@@ -71,8 +76,10 @@ uv run gvhmr demo-folder inputs/demo/folder_in -o outputs/demo/folder_out -s
 uv run gvhmr bench                                            # inference latency benchmark
 ```
 
-Use `-s` for a static camera (skip visual odometry); otherwise the camera is estimated by
-SimpleVO (or DPVO with `--use-dpvo`). The device is auto-selected (CUDA → MPS → CPU);
+Use `-s` for a static camera (skip visual odometry); otherwise the camera is estimated by SimpleVO
+(rotation only). For world **translation** on a moving/following camera, use `--camera dpvo` (CUDA) or the
+scene-aware **metric** cameras `--camera dust3r` / `--camera vggt` (Apple-Silicon/CPU; see
+[Setup](docs/INSTALL.md)). The device is auto-selected (CUDA → MPS → CPU);
 override with `GVHMR_DEVICE=mps|cpu|cuda`. `--render-scale` trades overlay resolution for
 speed, `--no-render` skips overlays. (The old `python tools/demo/demo.py …` scripts still
 work as thin shims.)
@@ -82,6 +89,12 @@ benchmark-time setting) and pass the true `--f_mm` if you know the camera's foca
 [docs/ACCURACY.md](docs/ACCURACY.md) for the techniques, the evidence, and how they're measured.
 
 ### Reproduce
+
+> **Data:** the eval/train sets are gated preprocessed packs — fetch them with
+> `uv run gvhmr download --data 3dpw,emdb,rich` (add `amass,h36m,bedlam` for training). They extract under
+> `inputs/` by default; set `$GVHMR_DATA_ROOT` to keep them elsewhere — both the download and every dataset
+> loader honor it. See [docs/TRAINING.md](docs/TRAINING.md).
+
 1. **Test**:
 To reproduce the 3DPW, RICH, and EMDB results in a single run, use the following command:
     ```shell
@@ -121,13 +134,16 @@ roadmap in [`docs/EXTENSIBILITY.md`](docs/EXTENSIBILITY.md). Already landed:
   gvhmr demo clip.mp4 --recipe accurate                                    # a committable bundle
   gvhmr demo clip.mp4 --set detector.conf=0.4                              # tweak a knob
   ```
-  RTMPose (`--extra rtmpose`) is a real, verified alternative 2D-pose backend. Detector (any YOLO) and 2D-pose
-  (any COCO-17 estimator) swap freely; the feature backbone is *learned conditioning*, so it needs a retrain.
+  RTMPose (`--extra rtmpose`) and two scene-aware **metric cameras** (`--camera dust3r` / `vggt`, which
+  recover world translation on Apple-Silicon/CPU) are real, verified alternatives. Detector (any YOLO) and
+  2D-pose (any COCO-17 estimator) swap freely; the feature backbone is *learned conditioning* → needs a retrain.
 - **Retrain on a new backbone** — `gvhmr extract-features VIDEOS OUT --backbone dinov2` writes the training
   feature cache; then `gvhmr train … network.imgseq_dim=<D>`. Verified end-to-end plumbing (Tier B).
 - **Training runs on any device** — [`docs/TRAINING.md`](docs/TRAINING.md). A smoke `fit` works even on
   CPU: `GVHMR_DEVICE=cpu uv run gvhmr train exp=gvhmr/mixed/smoke_3dpw`. Real runs are multi-GPU CUDA.
-- **Relocatable body models** — set `$GVHMR_BODY_MODELS` to point SMPL/SMPL-X anywhere.
+- **Relocatable assets** — one env var each moves checkpoints (`$GVHMR_CHECKPOINTS`), body models
+  (`$GVHMR_BODY_MODELS`), and training/eval data (`$GVHMR_DATA_ROOT`) anywhere; `gvhmr download [--data …]`
+  fetches into them and every loader reads from them.
 
 All of it is golden-guarded: the released model's inference stays byte-identical.
 
