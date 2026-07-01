@@ -110,30 +110,38 @@ end-to-end video rendering still needs a CUDA box.
 
 ## Weights & data
 
+**Fetch the checkpoints with one command** — they land in the right place automatically (no manual
+download / placement):
+
 ```bash
-mkdir -p inputs/checkpoints outputs
+uv run gvhmr download            # demo checkpoints: gvhmr + hmr2 + vitpose + yolo
+uv run gvhmr download slam       # + DPVO
+uv run gvhmr download all        # every checkpoint
+uv run gvhmr info                # verify what's present / missing
 ```
 
-**Body models** — sign up for [SMPL](https://smpl.is.tue.mpg.de/) and
-[SMPL-X](https://smpl-x.is.tue.mpg.de/), then place:
+Files go to `inputs/checkpoints/` by default; set **`$GVHMR_CHECKPOINTS`** to keep large weights
+elsewhere (e.g. a shared `~/Datasets` dir) — one env var, no symlinks. Every checkpoint path in the code
+resolves through that root (`gvhmr/utils/assets.py`). Source: the HuggingFace mirror
+[`camenduru/GVHMR`](https://huggingface.co/camenduru/GVHMR) (resumable, checksummed).
+
+**Body models are registration-gated** and can't be auto-fetched — sign up for
+[SMPL](https://smpl.is.tue.mpg.de/) + [SMPL-X](https://smpl-x.is.tue.mpg.de/), then place them under
+`$GVHMR_BODY_MODELS` (default `inputs/checkpoints/body_models/`):
 
 ```
-inputs/checkpoints/body_models/
+body_models/
 ├── smplx/SMPLX_{GENDER}.npz
 └── smpl/SMPL_{GENDER}.pkl
 ```
 
-**Pretrained models** — from the project's
-[Google Drive](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD):
+`gvhmr download` prints these instructions when they're missing.
 
-```
-inputs/checkpoints/
-├── gvhmr/gvhmr_siga24_release.ckpt
-├── hmr2/epoch=10-step=25000.ckpt
-├── vitpose/vitpose-h-multi-coco.pth
-├── yolo/yolov8x.pt
-└── dpvo/dpvo.pth            # only if using DPVO
+**Training/eval data packs** (the `hmr4d_support` bundles) are on the same mirror:
+
+```bash
+uv run gvhmr download --data 3dpw,amass,h36m    # downloads + extracts under inputs/<DS>/hmr4d_support/
 ```
 
-**Training/eval data** — see the project Drive; extract under `inputs/` so the
-`*/hmr4d_support/` directories sit alongside (these dataset dir names are unchanged).
+Available: `3dpw amass h36m emdb rich bedlam` (BEDLAM is ~21 GB). See [`docs/TRAINING.md`](TRAINING.md)
+for the full matrix + which raw datasets are registration-gated.

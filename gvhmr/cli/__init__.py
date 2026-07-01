@@ -179,3 +179,24 @@ def info() -> None:
     from gvhmr.cli.info import run
 
     run()
+
+
+@app.command()
+def download(
+    what: Annotated[
+        str,
+        typer.Argument(
+            help="Group ([gvhmr]demo[/] = gvhmr+hmr2+vitpose+yolo, [gvhmr]slam[/] = dpvo, [gvhmr]all[/]) "
+            "or comma-separated asset names.",
+        ),
+    ] = "demo",
+    force: Annotated[bool, typer.Option("--force", help="Re-download even if already present.")] = False,
+    data: Annotated[
+        str | None,
+        typer.Option("--data", help="Also fetch training/eval data packs [dim](3dpw,amass,h36m,emdb,rich,bedlam)[/]."),
+    ] = None,
+) -> None:
+    """Fetch model checkpoints into the right place [dim](no manual download/placement)[/]."""
+    from gvhmr.cli.download import run
+
+    run(what, force=force, data=data)

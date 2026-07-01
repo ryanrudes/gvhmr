@@ -1,0 +1,127 @@
+"""Model checkpoints & assets — one configurable root, one manifest, one fetch path.
+
+Every released asset the code needs is mirrored on the HuggingFace repo ``camenduru/GVHMR`` with the exact
+on-disk layout, so ``gvhmr download`` drops each file where the code expects it — no scavenger hunt, no
+manual placement. **All** checkpoint paths in the codebase resolve through :data:`CHECKPOINT_ROOT`
+(env ``$GVHMR_CHECKPOINTS``, default ``<repo>/inputs/checkpoints``), so you can keep large weights outside
+the working tree (e.g. a shared ``~/Datasets``) by setting one env var — no symlink hacks.
+
+SMPL/SMPL-X **body models are registration-gated** and can't be auto-fetched; see :data:`GATED`.
+"""
+
+from __future__ import annotations
+
+import os
+import tarfile
+from dataclasses import dataclass
+from pathlib import Path
+
+from gvhmr import PROJ_ROOT
+
+# --- Roots (env-overridable, absolute → cwd-independent) ------------------------------------------
+#: Root of all model checkpoints. Layout under it mirrors the HF repo (gvhmr/ hmr2/ vitpose/ yolo/ dpvo/).
+CHECKPOINT_ROOT = Path(os.environ.get("GVHMR_CHECKPOINTS", str(PROJ_ROOT / "inputs/checkpoints")))
+#: Root of the SMPL/SMPL-X body models (a `smplx/` and `smpl/` subfolder). Defaults under CHECKPOINT_ROOT.
+BODY_MODEL_ROOT = Path(os.environ.get("GVHMR_BODY_MODELS", str(CHECKPOINT_ROOT / "body_models")))
+#: Root for downloaded training/eval data packs (the `inputs/<DS>/hmr4d_support/` bundles).
+DATA_ROOT = Path(os.environ.get("GVHMR_DATA_ROOT", str(PROJ_ROOT / "inputs")))
+
+# Named checkpoint paths — import these instead of hard-coding "inputs/checkpoints/...".
+GVHMR_CKPT = CHECKPOINT_ROOT / "gvhmr/gvhmr_siga24_release.ckpt"
+HMR2_CKPT = CHECKPOINT_ROOT / "hmr2/epoch=10-step=25000.ckpt"
+VITPOSE_CKPT = CHECKPOINT_ROOT / "vitpose/vitpose-h-multi-coco.pth"
+YOLO_CKPT = CHECKPOINT_ROOT / "yolo/yolov8x.pt"
+DPVO_CKPT = CHECKPOINT_ROOT / "dpvo/dpvo.pth"
+
+HF_REPO = "camenduru/GVHMR"  # community mirror of the GVHMR checkpoints + preprocessed data packs
+
+
+@dataclass(frozen=True)
+class Asset:
+    """A fetchable checkpoint: its path in the HF repo, its on-disk destination, size, and feature group."""
+
+    hf_path: str
+    path: Path
+    size: int
+    group: str  # "demo" (core inference), "slam" (DPVO)
+
+
+#: The fetchable checkpoints, by short name. `size` is the exact byte count (used to skip/validate).
+ASSETS: dict[str, Asset] = {
+    "gvhmr": Asset("gvhmr/gvhmr_siga24_release.ckpt", GVHMR_CKPT, 163_508_011, "demo"),
+    "hmr2": Asset("hmr2/epoch=10-step=25000.ckpt", HMR2_CKPT, 2_709_494_041, "demo"),
+    "vitpose": Asset("vitpose/vitpose-h-multi-coco.pth", VITPOSE_CKPT, 2_549_075_546, "demo"),
+    "yolo": Asset("yolo/yolov8x.pt", YOLO_CKPT, 136_867_539, "demo"),
+    "dpvo": Asset("dpvo/dpvo.pth", DPVO_CKPT, 14_167_743, "slam"),
+}
+
+#: Registration-gated assets we can't auto-fetch: name → (description, target dir, sign-up URLs).
+GATED: dict[str, tuple[str, Path, tuple[str, ...]]] = {
+    "body_models": (
+        "SMPL + SMPL-X body models (smplx/SMPLX_{GENDER}.npz, smpl/SMPL_{GENDER}.pkl)",
+        BODY_MODEL_ROOT,
+        ("https://smpl.is.tue.mpg.de/", "https://smpl-x.is.tue.mpg.de/"),
+    ),
+}
+
+#: Preprocessed training/eval packs on the same HF repo: name → (hf tar.gz, extracted dir under DATA_ROOT, size).
+DATA_PACKS: dict[str, tuple[str, str, int]] = {
+    "3dpw": ("preproc_data/3DPW_hmr4d_support.tar.gz", "3DPW", 388_384_435),
+    "amass": ("preproc_data/AMASS_hmr4d_support.tar.gz", "AMASS", 1_710_718_630),
+    "bedlam": ("preproc_data/BEDLAM_hmr4d_support.tar.gz", "BEDLAM", 21_069_046_288),
+    "emdb": ("preproc_data/EMDB_hmr4d_support.tar.gz", "EMDB", 511_561_664),
+    "h36m": ("preproc_data/H36M_hmr4d_support.tar.gz", "H36M", 3_022_581_043),
+    "rich": ("preproc_data/RICH_hmr4d_support.tar.gz", "RICH", 454_219_419),
+}
+
+
+def is_present(a: Asset) -> bool:
+    """True if the asset file exists at full size (a size mismatch ⇒ partial/corrupt ⇒ re-fetch)."""
+    try:
+        return a.path.exists() and a.path.stat().st_size == a.size
+    except OSError:
+        return False
+
+
+def select(group: str | None = None, names: list[str] | None = None) -> dict[str, Asset]:
+    """Resolve the asset set from a group ("demo"/"slam"/"all") and/or explicit names."""
+    if names:
+        unknown = set(names) - set(ASSETS)
+        if unknown:
+            raise KeyError(f"unknown asset(s) {sorted(unknown)}; known: {sorted(ASSETS)}")
+        return {n: ASSETS[n] for n in names}
+    if group in (None, "all"):
+        return dict(ASSETS)
+    return {n: a for n, a in ASSETS.items() if a.group == group}
+
+
+def missing(group: str | None = None) -> list[str]:
+    """Names of assets in the group that aren't fully present on disk."""
+    return [n for n, a in select(group).items() if not is_present(a)]
+
+
+def fetch(assets: dict[str, Asset], force: bool = False) -> list[Path]:
+    """Download the given assets from HF into CHECKPOINT_ROOT (skips present ones unless ``force``)."""
+    from huggingface_hub import hf_hub_download
+
+    out = []
+    for a in assets.values():
+        if is_present(a) and not force:
+            continue
+        hf_hub_download(HF_REPO, a.hf_path, local_dir=str(CHECKPOINT_ROOT))
+        out.append(a.path)
+    return out
+
+
+def fetch_data_pack(name: str, force: bool = False) -> Path:
+    """Download + extract a preprocessed data pack under DATA_ROOT (e.g. inputs/3DPW/hmr4d_support/)."""
+    from huggingface_hub import hf_hub_download
+
+    hf_path, ds_dir, _ = DATA_PACKS[name]
+    target = DATA_ROOT / ds_dir / "hmr4d_support"
+    if target.exists() and not force:
+        return target
+    tar = hf_hub_download(HF_REPO, hf_path, local_dir=str(DATA_ROOT))
+    with tarfile.open(tar) as t:
+        t.extractall(DATA_ROOT)  # noqa: S202 — trusted mirror; packs extract to <DS>/hmr4d_support/
+    return target

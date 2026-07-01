@@ -2,9 +2,9 @@ import torch
 from .hmr2 import HMR2
 from pathlib import Path
 from .configs import get_config
-from gvhmr import PROJ_ROOT
+from gvhmr.utils.assets import HMR2_CKPT  # [GVHMR vendor patch] route through the configurable checkpoint root
 
-HMR2A_CKPT = PROJ_ROOT / f"inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt"  # this is HMR2.0a, follow WHAM
+HMR2A_CKPT = HMR2_CKPT  # this is HMR2.0a, follow WHAM
 
 
 def load_hmr2(checkpoint_path=HMR2A_CKPT):

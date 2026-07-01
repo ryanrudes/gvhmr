@@ -16,6 +16,7 @@ except ImportError:
 
 
 from gvhmr import PROJ_ROOT
+from gvhmr.utils.assets import DPVO_CKPT
 from gvhmr.utils.geo.hmr_cam import estimate_focal_length
 
 
@@ -35,7 +36,7 @@ class SLAMModel:
         # Vendored alongside this module so it works with a pip/uv-installed `dpvo` (the upstream
         # config/ dir isn't part of the installed package); override with $GVHMR_DPVO_CFG if needed.
         self.dpvo_cfg = os.environ.get("GVHMR_DPVO_CFG", str(PROJ_ROOT / "gvhmr/utils/preproc/dpvo_default.yaml"))
-        self.dpvo_ckpt = os.environ.get("GVHMR_DPVO_CKPT", "inputs/checkpoints/dpvo/dpvo.pth")
+        self.dpvo_ckpt = os.environ.get("GVHMR_DPVO_CKPT", str(DPVO_CKPT))
 
         self.buffer = buffer
         self.times = []

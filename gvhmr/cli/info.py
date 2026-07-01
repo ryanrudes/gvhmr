@@ -55,20 +55,19 @@ def run() -> None:
         feats.add_row(name, module, _yn(_has(module)))
     console.print(feats)
 
-    # --- Checkpoints / assets ---
-    ckpt = Table(title="checkpoints & body models", expand=False)
+    # --- Checkpoints / assets (from the manifest; fetch with `gvhmr download`) ---
+    from gvhmr.utils import assets
+
+    ckpt = Table(title=f"checkpoints  [dim]({assets.CHECKPOINT_ROOT})[/]", expand=False)
     ckpt.add_column("asset")
-    ckpt.add_column("path", style="muted")
+    ckpt.add_column("group", style="muted")
     ckpt.add_column("status", justify="center")
-    base = PROJ_ROOT / "inputs/checkpoints"
-    for label, rel in [
-        ("GVHMR", "gvhmr/gvhmr_siga24_release.ckpt"),
-        ("HMR2", "hmr2/epoch=10-step=25000.ckpt"),
-        ("ViTPose", "vitpose/vitpose-h-multi-coco.pth"),
-        ("YOLO", "yolo/yolov8x.pt"),
-        ("SMPL-X", "body_models/smplx/SMPLX_NEUTRAL.npz"),
-        ("SMPL", "body_models/smpl/SMPL_NEUTRAL.pkl"),
-        ("DPVO", "dpvo/dpvo.pth"),  # optional — only for --use-dpvo
-    ]:
-        ckpt.add_row(label, f"inputs/checkpoints/{rel}", _yn((base / rel).exists()))
+    for name, a in assets.ASSETS.items():
+        ckpt.add_row(name, a.group, _yn(assets.is_present(a)))
+    body_ok = (assets.BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
+    ckpt.add_row("body_models", "demo (gated)", _yn(body_ok))
     console.print(ckpt)
+
+    gap = assets.missing() + ([] if body_ok else ["body_models"])
+    if gap:
+        console.print(f"[warn]missing[/]: {', '.join(gap)} — run [gvhmr]gvhmr download[/] (body models are gated)")

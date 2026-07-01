@@ -1,8 +1,9 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from gvhmr.utils.console import track
 
+from gvhmr.utils.assets import VITPOSE_CKPT
+from gvhmr.utils.console import track
 from gvhmr.utils.device import get_device
 from gvhmr.utils.geo.flip_utils import flip_heatmap_coco17
 from gvhmr.utils.geo_transform import cvt_p2d_from_pm1_to_i
@@ -12,7 +13,7 @@ from .vitfeat_extractor import get_batch
 from .vitpose_pytorch import build_model
 
 # The released default; any estimator emitting COCO-17 (F,17,3) can replace this (see base.py).
-DEFAULT_VITPOSE_CKPT = "inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+DEFAULT_VITPOSE_CKPT = str(VITPOSE_CKPT)
 DEFAULT_VITPOSE_MODEL = "ViTPose_huge_coco_256x192"
 
 

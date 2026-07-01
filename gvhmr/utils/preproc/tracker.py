@@ -2,10 +2,10 @@ from collections import defaultdict
 
 import numpy as np
 import torch
-from gvhmr.utils.console import track
 from ultralytics import YOLO
 
-from gvhmr import PROJ_ROOT
+from gvhmr.utils.assets import YOLO_CKPT
+from gvhmr.utils.console import track
 from gvhmr.utils.device import get_device
 from gvhmr.utils.net_utils import moving_average_smooth
 from gvhmr.utils.seq_utils import (
@@ -17,7 +17,7 @@ from gvhmr.utils.seq_utils import (
 from gvhmr.utils.video_io_utils import get_video_lwh
 
 # The released default; any ultralytics-loadable detector (yolov8x … yolov11/12/26x.pt) drops in.
-DEFAULT_YOLO_CKPT = PROJ_ROOT / "inputs/checkpoints/yolo/yolov8x.pt"
+DEFAULT_YOLO_CKPT = YOLO_CKPT
 
 
 class Tracker:

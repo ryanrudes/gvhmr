@@ -6,6 +6,7 @@ import torch.nn as nn
 from einops import einsum, rearrange
 from smplx.utils import Struct, to_np, to_tensor
 
+from gvhmr.utils.assets import BODY_MODEL_ROOT
 from gvhmr.utils.geo.rotations import axis_angle_to_matrix
 
 from .smplx_lite import batch_rigid_transform_v2
@@ -14,7 +15,7 @@ from .smplx_lite import batch_rigid_transform_v2
 class SmplLite(nn.Module):
     def __init__(
         self,
-        model_path="inputs/checkpoints/body_models/smpl",
+        model_path=BODY_MODEL_ROOT / "smpl",
         gender="neutral",
         num_betas=10,
     ):

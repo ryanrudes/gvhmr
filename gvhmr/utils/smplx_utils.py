@@ -1,6 +1,4 @@
-import os
 import pickle
-from pathlib import Path
 
 import numpy as np
 import smplx
@@ -8,15 +6,9 @@ import torch
 import torch.nn.functional as F
 from smplx import SMPLXLayer
 
-from gvhmr import PROJ_ROOT
+from gvhmr.utils.assets import BODY_MODEL_ROOT  # $GVHMR_BODY_MODELS-overridable root (see assets.py)
 from gvhmr.utils.body_model import BodyModelSMPLH, BodyModelSMPLX
 from gvhmr.utils.body_model.smplx_lite import SmplxLiteCoco17, SmplxLiteSmplN24, SmplxLiteV437Coco17
-
-# Root of the SMPL/SMPL-X body-model files (a `smplx/` and `smpl/` subfolder with the {GENDER}.npz/.pkl).
-# Override with $GVHMR_BODY_MODELS to relocate (e.g. a shared datasets dir); absolute so it's cwd-independent.
-# NOTE: the trained model is fit to SMPL-X **neutral, 10 betas** — you can swap the *file* within the same
-# topology (SMPL-X v1.0 ↔ v1.1, both 10475-vert/54-joint) but not the model family/β-count without retraining.
-BODY_MODEL_ROOT = Path(os.environ.get("GVHMR_BODY_MODELS", str(PROJ_ROOT / "inputs/checkpoints/body_models")))
 
 # fmt: off
 SMPLH_PARENTS = torch.tensor([-1,  0,  0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  9,  9, 12, 13, 14,

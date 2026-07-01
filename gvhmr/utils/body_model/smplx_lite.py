@@ -9,13 +9,14 @@ from einops import einsum, rearrange
 from smplx.utils import Struct, to_np, to_tensor
 
 from gvhmr import PROJ_ROOT
+from gvhmr.utils.assets import BODY_MODEL_ROOT
 from gvhmr.utils.geo.rotations import axis_angle_to_matrix, rotation_6d_to_matrix
 
 
 class SmplxLite(nn.Module):
     def __init__(
         self,
-        model_path=PROJ_ROOT / "inputs/checkpoints/body_models/smplx",
+        model_path=BODY_MODEL_ROOT / "smplx",
         gender="neutral",
         num_betas=10,
     ):
