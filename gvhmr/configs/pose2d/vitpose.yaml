@@ -1,0 +1,6 @@
+# 2D keypoints — ViTPose-Huge (the released default). Emits COCO-17 (F,17,3), the skeleton the trained
+# network asserts (relative_transformer.py). Any estimator emitting COCO-17 can replace it (see the
+# pose2d group). Keys below are ctor kwargs; `null` ⇒ the ctor default.
+name: vitpose
+ckpt_path: null # null → the released vitpose-h checkpoint (assets.VITPOSE_CKPT)
+model_name: ViTPose_huge_coco_256x192

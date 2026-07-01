@@ -1,0 +1,6 @@
+# Person detector/tracker — ultralytics YOLO (the released default: yolov8x).
+# Emits one smoothed bbox track (the Detector contract). Any ultralytics-loadable weight drops in
+# (yolov8/9/10/11/12x.pt) — see configs/detector/yolo11.yaml. Keys below are ctor kwargs; `null` ⇒ default.
+name: yolo
+ckpt: null # null → the released yolov8x.pt (assets.YOLO_CKPT); or a path / an ultralytics weight name
+conf: 0.5 # detection confidence (ultralytics default 0.25; GVHMR/WHAM use 0.5)

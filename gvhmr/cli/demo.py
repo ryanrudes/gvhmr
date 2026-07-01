@@ -14,6 +14,7 @@ import hydra
 import torch
 from einops import einsum
 from hydra import compose, initialize_config_module
+from omegaconf import OmegaConf
 from rich.panel import Panel
 from rich.table import Table
 
@@ -130,6 +131,14 @@ def ensure_assets(slam: str) -> None:
         )
 
 
+def _ctor_kwargs(node) -> dict:
+    """A pluggable-stage config node → ctor kwargs: drop the ``name`` selector and any ``null``
+    (⇒ let the implementation's ctor default stand). Keeps a group whose knobs match today's defaults
+    byte-identical to the old direct construction."""
+    d = OmegaConf.to_container(node, resolve=True)
+    return {k: v for k, v in d.items() if k != "name" and v is not None}
+
+
 def build_demo_cfg(
     video: Path,
     *,
@@ -139,10 +148,13 @@ def build_demo_cfg(
     f_mm: int | None,
     verbose: bool,
     render_scale: float | None,
-    detector_ckpt: str | None = None,
-    pose2d_ckpt: str | None = None,
+    config_overrides: list[str] | None = None,
 ):
-    """Compose the demo ``DictConfig`` from typed CLI args and stage the input video."""
+    """Compose the demo ``DictConfig`` from typed CLI args and stage the input video.
+
+    ``config_overrides`` are extra raw Hydra overrides (the pluggable-stage selections, ``--recipe``,
+    and ``--set`` passthrough) assembled by :func:`run`; they are applied *after* the base options so a
+    ``--set`` can override anything, and a name selector (``detector=yolo11``) overrides a ``--recipe``."""
     video = Path(video)
     assert video.exists(), f"Video not found at {video}"
     length, width, height = get_video_lwh(video)
@@ -168,12 +180,8 @@ def build_demo_cfg(
             overrides.append(f"render_scale={render_scale}")
         if output_root is not None:
             overrides.append(f"output_root={output_root}")
-        # Pluggable preproc weight overrides (Tier A): point the detector / 2D-pose at a different
-        # checkpoint (e.g. a newer YOLO). `+key` adds the key the demo config doesn't declare.
-        if detector_ckpt is not None:
-            overrides.append(f"+detector_ckpt={detector_ckpt}")
-        if pose2d_ckpt is not None:
-            overrides.append(f"+pose2d_ckpt={pose2d_ckpt}")
+        # Pluggable-stage selections / --recipe / --set (assembled by run()), applied last.
+        overrides += list(config_overrides or [])
         register_store_gvhmr()
         cfg = compose(config_name="demo", overrides=overrides)
 
@@ -221,9 +229,9 @@ def run_preprocess(cfg, flip_test: bool = False, slam: str = "simplevo") -> None
     static_cam = cfg.static_cam
     verbose = cfg.verbose
 
-    # 1) bbox tracking (pluggable detector; default YOLO). Select via cfg.detector / cfg.detector_ckpt.
+    # 1) bbox tracking (pluggable detector; default YOLO). Config group cfg.detector — swap with --detector.
     if not Path(paths.bbx).exists():
-        tracker = make_detector(cfg.get("detector", "yolo"), ckpt=cfg.get("detector_ckpt") or None)
+        tracker = make_detector(cfg.detector.name, **_ctor_kwargs(cfg.detector))
         bbx_xyxy = tracker.get_one_track(video_path).float()  # (L, 4)
         bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy, base_enlarge=1.2).float()  # (L, 3)
         torch.save({"bbx_xyxy": bbx_xyxy, "bbx_xys": bbx_xys}, paths.bbx)
@@ -236,9 +244,9 @@ def run_preprocess(cfg, flip_test: bool = False, slam: str = "simplevo") -> None
         bbx_xyxy = torch.load(paths.bbx, weights_only=False)["bbx_xyxy"]
         save_video(draw_bbx_xyxy_on_image_batch(bbx_xyxy, video), cfg.paths.bbx_xyxy_video_overlay)
 
-    # 2) 2D keypoints (pluggable 2D-pose; default ViTPose → COCO-17). Select via cfg.pose2d / cfg.pose2d_ckpt.
+    # 2) 2D keypoints (pluggable 2D-pose; default ViTPose → COCO-17). Config group cfg.pose2d — swap with --pose2d.
     if not Path(paths.vitpose).exists():
-        vitpose_extractor = make_pose2d(cfg.get("pose2d", "vitpose"), ckpt_path=cfg.get("pose2d_ckpt") or None)
+        vitpose_extractor = make_pose2d(cfg.pose2d.name, **_ctor_kwargs(cfg.pose2d))
         vitpose = vitpose_extractor.extract(video_path, bbx_xys)
         torch.save(vitpose, paths.vitpose)
         del vitpose_extractor
@@ -250,9 +258,9 @@ def run_preprocess(cfg, flip_test: bool = False, slam: str = "simplevo") -> None
         save_video(draw_coco17_skeleton_batch(video, vitpose, 0.5), paths.vitpose_video_overlay)
 
     # 3) image features (pluggable backbone; default HMR2 ViT). Swapping it needs a retrain — see
-    #    docs/EXTENSIBILITY.md Tier B. Select via cfg.backbone.
+    #    docs/EXTENSIBILITY.md Tier B. Config group cfg.backbone — swap with --backbone.
     if not Path(paths.vit_features).exists():
-        extractor = make_backbone(cfg.get("backbone", "hmr2"))
+        extractor = make_backbone(cfg.backbone.name, **_ctor_kwargs(cfg.backbone))
         vit_features = extractor.extract_video_features(video_path, bbx_xys)
         torch.save(vit_features, paths.vit_features)
         del extractor
@@ -273,7 +281,7 @@ def run_preprocess(cfg, flip_test: bool = False, slam: str = "simplevo") -> None
                 writer.write_frame(np.ascontiguousarray(img[:, ::-1]))
             writer.close()
             reader.close()
-        extractor = make_backbone(cfg.get("backbone", "hmr2"))
+        extractor = make_backbone(cfg.backbone.name, **_ctor_kwargs(cfg.backbone))
         feat_flip = extractor.extract_video_features(str(flip_video), flip_bbx_xys(bbx_xys, width))
         torch.save(feat_flip, flip_feat_path(cfg))
         del extractor
@@ -501,14 +509,37 @@ def run(
     skeleton: bool = False,
     skeleton_overlay: bool = False,
     skeleton_joints: str | None = None,
+    detector: str | None = None,
+    pose2d: str | None = None,
+    backbone: str | None = None,
     detector_ckpt: str | None = None,
     pose2d_ckpt: str | None = None,
+    recipe: str | None = None,
+    set_overrides: list[str] | None = None,
 ) -> None:
     """Run the full single-video demo with a Rich, staged display."""
     torch.set_num_threads(os.cpu_count() or 1)  # pytorch3d CPU rasterizer scales with torch threads
     joint_indices = resolve_joint_subset(skeleton_joints)  # validates the spec up front
     if use_dpvo:  # deprecated flag → the slam selector
         slam = "dpvo"
+
+    # Assemble the pluggable-stage config overrides (Tier A). Order matters for precedence: a --recipe
+    # first (a committable bundle of choices), then explicit name selectors and weight tweaks, then the
+    # raw --set passthrough last — so --set wins over everything and --detector wins over a --recipe.
+    config_overrides: list[str] = []
+    if recipe is not None:
+        config_overrides.append(f"+recipe={recipe}")
+    if detector is not None:
+        config_overrides.append(f"detector={detector}")
+    if pose2d is not None:
+        config_overrides.append(f"pose2d={pose2d}")
+    if backbone is not None:
+        config_overrides.append(f"backbone={backbone}")
+    if detector_ckpt is not None:
+        config_overrides.append(f"detector.ckpt={detector_ckpt}")
+    if pose2d_ckpt is not None:
+        config_overrides.append(f"pose2d.ckpt_path={pose2d_ckpt}")
+    config_overrides += list(set_overrides or [])
 
     console.print(Panel.fit("[gvhmr]GVHMR[/] · world-grounded human motion recovery", border_style="gvhmr"))
     cfg = build_demo_cfg(
@@ -519,8 +550,7 @@ def run(
         f_mm=f_mm,
         verbose=verbose,
         render_scale=render_scale,
-        detector_ckpt=detector_ckpt,
-        pose2d_ckpt=pose2d_ckpt,
+        config_overrides=config_overrides,
     )
     device = get_device()
     Log.info(f"Device: [ok]{device_name(device)}[/] ({device})")

@@ -1,0 +1,7 @@
+# Image-feature backbone — HMR2.0a ViT (the released default): 1024-d per-frame features (f_imgseq),
+# the network's learned conditioning.
+#
+# NOT freely swappable at inference: the released checkpoint's imgseq_embedder is fit to this 1024-d
+# space, so a different backbone needs a RETRAIN (re-extract features with `gvhmr extract-features`, set
+# network.imgseq_dim to the new width, retrain the core). See docs/EXTENSIBILITY.md Tier B.
+name: hmr2

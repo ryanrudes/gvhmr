@@ -54,6 +54,23 @@ def test_train_config_composes() -> None:
     assert cfg.exp_name
 
 
+def test_preproc_groups_compose_and_swap_by_name() -> None:
+    # The pluggable stages are first-class Hydra config groups. Defaults are the released models
+    # (so composition stays byte-identical); a name selector swaps the group; a recipe bundles
+    # field values; and a raw override still wins over a recipe.
+    with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):
+        cfg = compose(config_name="demo", overrides=["video_name=x"])
+        assert cfg.detector.name == "yolo"
+        assert cfg.pose2d.name == "vitpose"
+        assert cfg.backbone.name == "hmr2"
+        # name selection swaps the whole group (here: a newer YOLO weight)
+        swapped = compose(config_name="demo", overrides=["video_name=x", "detector=yolo11"])
+        assert swapped.detector.ckpt.endswith("yolo11x.pt")
+        # a recipe applies a bundle of choices; an explicit override still takes precedence
+        rec = compose(config_name="demo", overrides=["video_name=x", "+recipe=hq", "render_scale=0.25"])
+        assert rec.render_scale == 0.25
+
+
 @pytest.mark.filterwarnings("ignore")
 def test_demo_focal_length_override_propagates() -> None:
     with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):

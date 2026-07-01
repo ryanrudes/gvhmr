@@ -1,0 +1,6 @@
+# @package _global_
+# "hq" recipe — full-resolution overlays (slower render, crisper video).
+# Compose with:  gvhmr demo VIDEO --recipe hq
+# A recipe bundles a set of choices (group selections + field values) into one committable file that
+# `gvhmr demo` and `gvhmr train` both understand. See configs/recipe/ for more.
+render_scale: 1.0

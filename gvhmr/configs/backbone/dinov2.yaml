@@ -1,0 +1,6 @@
+# Image-feature backbone — DINOv2 (ungated, via torch.hub). vits14/vitb14/vitl14/vitg14 → 384/768/1024/
+# 1536-d CLS features. This is the concrete alternative backbone the Tier-B feature-swap was built for:
+# extract features with it (`gvhmr extract-features --backbone dinov2`) then RETRAIN with a matching
+# network.imgseq_dim. NOT usable with the released 1024-d checkpoint at inference. See Tier B.
+name: dinov2
+model_name: dinov2_vits14 # 384-d; the smallest/fastest variant (the one verified end-to-end)

@@ -3,6 +3,12 @@ defaults:
   - model: gvhmr/gvhmr_pl_demo
   - network: gvhmr/relative_transformer
   - endecoder: gvhmr/v1_amass_local_bedlam_cam
+  # Pluggable preprocessing stages (Tier A) — each a config group you can swap by name
+  # (gvhmr demo … --detector/--pose2d/--backbone) or override in a --recipe. Defaults are the
+  # released models, so composition stays byte-identical. See docs/EXTENSIBILITY.md.
+  - detector: yolo
+  - pose2d: vitpose
+  - backbone: hmr2
 
 pipeline:
   _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline

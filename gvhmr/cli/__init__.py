@@ -7,7 +7,7 @@ stay instant (no torch import until a command actually runs).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -93,12 +93,34 @@ def demo(
             "hands, feet) and/or joint names/indices, comma-separated — e.g. [gvhmr]legs,left_arm[/].",
         ),
     ] = None,
+    detector: Annotated[
+        str | None,
+        typer.Option("--detector", help="Detector backend by name [dim](e.g. [gvhmr]yolo[/], [gvhmr]yolo11[/])[/]."),
+    ] = None,
+    pose2d: Annotated[
+        str | None,
+        typer.Option("--pose2d", help="2D-pose backend by name [dim](e.g. [gvhmr]vitpose[/], [gvhmr]rtmpose[/])[/]."),
+    ] = None,
+    backbone: Annotated[
+        str | None,
+        typer.Option("--backbone", help="Feature backbone by name [dim](hmr2; others need a retrain)[/]."),
+    ] = None,
     detector_ckpt: Annotated[
         str | None,
         typer.Option("--detector-ckpt", help="Detector weight override [dim](e.g. a yolov11x.pt)[/]."),
     ] = None,
     pose2d_ckpt: Annotated[
         str | None, typer.Option("--pose2d-ckpt", help="2D-pose weight override [dim](must emit COCO-17)[/].")
+    ] = None,
+    recipe: Annotated[
+        str | None,
+        typer.Option(
+            "--recipe", help="Apply a bundled config recipe [dim](e.g. [gvhmr]hq[/]; see configs/recipe/)[/]."
+        ),
+    ] = None,
+    set_: Annotated[
+        list[str] | None,
+        typer.Option("--set", help="Raw Hydra override(s), repeatable [dim](e.g. --set detector.conf=0.4)[/]."),
     ] = None,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Also save intermediate-result overlays.")] = False,
 ) -> None:
@@ -120,8 +142,13 @@ def demo(
         skeleton=skeleton,
         skeleton_overlay=skeleton_overlay,
         skeleton_joints=skeleton_joints,
+        detector=detector,
+        pose2d=pose2d,
+        backbone=backbone,
         detector_ckpt=detector_ckpt,
         pose2d_ckpt=pose2d_ckpt,
+        recipe=recipe,
+        set_overrides=set_,
     )
 
 
