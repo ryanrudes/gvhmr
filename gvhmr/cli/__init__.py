@@ -207,6 +207,44 @@ def train(
     run(overrides or [])
 
 
+@app.command(name="extract-features")
+def extract_features(
+    videos: Annotated[Path, typer.Argument(help="A video file or a folder of them.", exists=True)],
+    out: Annotated[Path, typer.Argument(help="Output feature dir [dim](e.g. imgfeats/<ds>_<backbone>)[/].")],
+    backbone: Annotated[str, typer.Option("--backbone", help="Feature backbone [dim](hmr2, dinov2)[/].")] = "hmr2",
+    detector: Annotated[
+        str, typer.Option("--detector", help="Detector for the person box [dim](when not --bbx-from)[/].")
+    ] = "yolo",
+    bbx_from: Annotated[
+        Path | None,
+        typer.Option("--bbx-from", help="Reuse bbx_xys/img_wh from an existing feature-cache dir (exact re-extract)."),
+    ] = None,
+    pattern: Annotated[
+        str, typer.Option("--pattern", help="Glob for videos when [gvhmr]videos[/] is a folder.")
+    ] = "*.mp4",
+    overwrite: Annotated[bool, typer.Option("--overwrite", help="Recompute even if the .pt already exists.")] = False,
+    set_: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--set", help="Raw Hydra override(s) on the backbone [dim](e.g. backbone.model_name=dinov2_vitl14)[/]."
+        ),
+    ] = None,
+) -> None:
+    """Extract image features to the training-cache format [dim](Tier B: retrain on a new backbone)[/]."""
+    from gvhmr.cli.extract_features import run
+
+    run(
+        videos,
+        out,
+        backbone=backbone,
+        detector=detector,
+        bbx_from=bbx_from,
+        pattern=pattern,
+        overwrite=overwrite,
+        set_overrides=set_,
+    )
+
+
 @app.command()
 def info() -> None:
     """Show device, installed features, and checkpoint status."""
