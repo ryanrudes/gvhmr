@@ -22,7 +22,7 @@ def load_pretrained_model(model: nn.Module, ckpt_path: str | Path) -> None:
         model.load_pretrained_model(ckpt_path)
     else:
         Log.info(f"Loading ckpt: {ckpt_path}")
-        ckpt = torch.load(ckpt_path, "cpu")
+        ckpt = torch.load(ckpt_path, "cpu", weights_only=False)
         model.load_state_dict(ckpt, strict=True)
 
 

@@ -54,7 +54,7 @@ class BedlamDatasetV2(ImgfeatMotionDatasetBase):
         self.mid_to_imgfeat_dir = {}
         for m in self.mid_indices:
             fn, feat_dir = self.MIDINDEX_TO_LOAD[m]
-            mid_to_valid_range_ = torch.load(self.root / fn)
+            mid_to_valid_range_ = torch.load(self.root / fn, weights_only=False)
             self.mid_to_valid_range.update(mid_to_valid_range_)
             self.mid_to_imgfeat_dir.update({mid: self.root / feat_dir for mid in mid_to_valid_range_})
 
@@ -63,17 +63,17 @@ class BedlamDatasetV2(ImgfeatMotionDatasetBase):
         if self.random1024:  # Debug, faster loading
             try:
                 Log.info("[BEDLAM] Loading 1024 samples for debugging ...")
-                self.motion_files = torch.load(self.root / "smplpose_v2_random1024.pth")
+                self.motion_files = torch.load(self.root / "smplpose_v2_random1024.pth", weights_only=False)
             except:
                 Log.info("[BEDLAM] Not found, saving 1024 samples to disk ...")
-                self.motion_files = torch.load(self.root / "smplpose_v2.pth")
+                self.motion_files = torch.load(self.root / "smplpose_v2.pth", weights_only=False)
                 keys = list(self.motion_files.keys())
                 keys = np.random.choice(keys, 1024, replace=False)
                 self.motion_files = {k: self.motion_files[k] for k in keys}
                 torch.save(self.motion_files, self.root / "smplpose_v2_random1024.pth")
             self.mid_to_valid_range = {k: v for k, v in self.mid_to_valid_range.items() if k in self.motion_files}
         else:
-            self.motion_files = torch.load(self.root / "smplpose_v2.pth")
+            self.motion_files = torch.load(self.root / "smplpose_v2.pth", weights_only=False)
         Log.info(f"[BEDLAM] Motion files loaded. Elapsed: {time() - tic:.2f}s")
 
     def _get_idx2meta(self):
@@ -111,7 +111,7 @@ class BedlamDatasetV2(ImgfeatMotionDatasetBase):
 
         # Load img(as feature) : {mid -> 'features', 'bbx_xys', 'img_wh', 'start_end'}
         imgfeat_dir = self.mid_to_imgfeat_dir[mid]
-        f_img_dict = torch.load(imgfeat_dir / mid2featname(mid))
+        f_img_dict = torch.load(imgfeat_dir / mid2featname(mid), weights_only=False)
 
         # remap (start, end)
         start_mapped = start - f_img_dict["start_end"][0]

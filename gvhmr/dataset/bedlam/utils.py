@@ -36,4 +36,4 @@ def featname2mid(featname):
 
 
 def load_vname2lwh():
-    return torch.load(resource_dir / "vname2lwh.pt")
+    return torch.load(resource_dir / "vname2lwh.pt", weights_only=False)

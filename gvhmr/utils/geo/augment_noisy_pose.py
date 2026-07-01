@@ -4,7 +4,7 @@ import gvhmr.utils.matrix as matrix
 from gvhmr import PROJ_ROOT
 from gvhmr.utils.geo.rotations import axis_angle_to_matrix, matrix_to_axis_angle, matrix_to_rotation_6d
 
-COCO17_AUG = {k: v.flatten() for k, v in torch.load(PROJ_ROOT / "gvhmr/utils/body_model/coco_aug_dict.pth").items()}
+COCO17_AUG = {k: v.flatten() for k, v in torch.load(PROJ_ROOT / "gvhmr/utils/body_model/coco_aug_dict.pth", weights_only=False).items()}
 COCO17_AUG_CUDA = {}
 COCO17_TREE = [[5, 6], 0, 0, 1, 2, -1, -1, 5, 6, 7, 8, -1, -1, 11, 12, 13, 14, 15, 15, 15, 16, 16, 16]
 
@@ -117,10 +117,13 @@ def get_bias_cuda(shape=(8, 120), s_bias=1e-1):
     return bias_noise
 
 
-def get_wham_aug_kp3d(shape=(8, 120)):
-    # aug = get_bias(shape).cuda() + get_lfhp(shape).cuda() + get_jitter(shape).cuda()
-    aug = get_bias_cuda(shape) + get_lfhp_cuda(shape) + get_jitter_cuda(shape)
-    return aug
+def get_wham_aug_kp3d(shape=(8, 120), device=None):
+    # On CUDA, use the cached device-pinned variants (byte-preserved training path). Off-CUDA (CPU/MPS
+    # smoke training), generate on the given device via the CPU variants. `device=None` ⇒ CUDA.
+    dev = torch.device(device) if device is not None else torch.device("cuda")
+    if dev.type == "cuda":
+        return get_bias_cuda(shape) + get_lfhp_cuda(shape) + get_jitter_cuda(shape)
+    return (get_bias(shape) + get_lfhp(shape) + get_jitter(shape)).to(dev)
 
 
 def get_visible_mask(shape=(8, 120), s_mask=0.03):

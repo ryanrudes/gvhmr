@@ -57,8 +57,8 @@ class MetricMocap(pl.Callback):
         self.smplx = make_smplx("supermotion")
         self.smpl_model = {"male": make_smplx("smpl", gender="male"), "female": make_smplx("smpl", gender="female")}
 
-        self.J_regressor = torch.load("gvhmr/utils/body_model/smpl_neutral_J_regressor.pt")
-        self.smplx2smpl = torch.load("gvhmr/utils/body_model/smplx2smpl_sparse.pt")
+        self.J_regressor = torch.load("gvhmr/utils/body_model/smpl_neutral_J_regressor.pt", weights_only=False)
+        self.smplx2smpl = torch.load("gvhmr/utils/body_model/smplx2smpl_sparse.pt", weights_only=False)
         self.faces_smpl = self.smpl_model["male"].faces
         self.faces_smplx = self.smplx.faces
 

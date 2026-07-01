@@ -58,8 +58,8 @@ class MetricMocap(pl.Callback):
             "female": make_smplx("rich-smplx", gender="female"),
             "neutral": make_smplx("rich-smplx", gender="neutral"),
         }
-        self.J_regressor = torch.load("gvhmr/utils/body_model/smpl_neutral_J_regressor.pt")
-        self.smplx2smpl = torch.load("gvhmr/utils/body_model/smplx2smpl_sparse.pt")
+        self.J_regressor = torch.load("gvhmr/utils/body_model/smpl_neutral_J_regressor.pt", weights_only=False)
+        self.smplx2smpl = torch.load("gvhmr/utils/body_model/smplx2smpl_sparse.pt", weights_only=False)
         self.faces_smpl = make_smplx("smpl").faces
         self.faces_smplx = self.smplx_model["neutral"].faces
 

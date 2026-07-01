@@ -214,7 +214,7 @@ def get_cam2params(scene_info_root=None):
             cam_key = f"{cap_name}_{cam_id}"
             cam_params[cam_key] = (T_w2c, K)
     else:
-        cam_params = torch.load(Path(__file__).parent / "resource/cam2params.pt")
+        cam_params = torch.load(Path(__file__).parent / "resource/cam2params.pt", weights_only=False)
     return cam_params
 
 

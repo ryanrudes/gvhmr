@@ -26,8 +26,8 @@ class ThreedpwSmplDataset(ImgfeatMotionDatasetBase):
         super().__init__()
 
     def _load_dataset(self):
-        self.train_labels = torch.load(self.hmr4d_support_dir / "train_3dpw_gt_labels.pt")
-        self.refit_smplx = torch.load(self.hmr4d_support_dir / "train_refit_smplx.pt")
+        self.train_labels = torch.load(self.hmr4d_support_dir / "train_3dpw_gt_labels.pt", weights_only=False)
+        self.refit_smplx = torch.load(self.hmr4d_support_dir / "train_refit_smplx.pt", weights_only=False)
         if True:  # Remove clips that have obvious error
             update_list = {
                 "courtyard_basketball_00_1": [(0, 300), (340, 468)],
@@ -84,7 +84,7 @@ class ThreedpwSmplDataset(ImgfeatMotionDatasetBase):
         data["T_w2c"] = self.train_labels[vid]["T_w2c"][start:end]
 
         # Img (as feature):
-        f_img_dict = torch.load(self.f_img_folder / f"{vid}.pt")
+        f_img_dict = torch.load(self.f_img_folder / f"{vid}.pt", weights_only=False)
         data["bbx_xys"] = f_img_dict["bbx_xys"][start:end]  # (F, 3)
         data["f_imgseq"] = f_img_dict["features"][start:end].float()  # (F, 3)
         data["img_wh"] = f_img_dict["img_wh"]  # (2)

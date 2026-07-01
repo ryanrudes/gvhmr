@@ -1,0 +1,65 @@
+# @package _global_
+# Tiny 3DPW-only training SMOKE test — proves the `fit` loop runs end-to-end without the full gated
+# dataset mix (AMASS/BEDLAM/H36M). Needs only `inputs/3DPW/hmr4d_support/*` + the SMPL-X/SMPL body
+# models. Device-aware: `GVHMR_DEVICE=cpu gvhmr train exp=gvhmr/mixed/smoke_3dpw` runs it off-GPU
+# (the trainer forces fp32 + a single device off-CUDA). Not for real training — see docs/TRAINING.md.
+defaults:
+    - override /data: mocap/trainX_testY
+    - override /model: gvhmr/gvhmr_pl
+    - override /endecoder: gvhmr/v1_amass_local_bedlam_cam
+    - override /optimizer: adamw_2e-4
+    - override /scheduler_cfg: epoch_half_200_350
+    - override /train_datasets:
+          - imgfeat_3dpw/v1
+    - override /test_datasets:
+          - 3dpw/fliptest
+    - override /callbacks:
+          - prog_bar/prog_reporter_every0.1
+          - train_speed_timer/base
+    - override /network: gvhmr/relative_transformer
+
+exp_name_base: smoke_3dpw
+exp_name_var: ""
+exp_name: ${exp_name_base}${exp_name_var}
+data_name: smoke_3dpw
+
+pipeline:
+    _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline
+    args_denoiser3d: ${network}
+    args:
+        endecoder_opt: ${endecoder}
+        normalize_cam_angvel: True
+        weights:
+            cr_j3d: 500.
+            transl_c: 1.
+            cr_verts: 500.
+            j2d: 1000.
+            verts2d: 1000.
+            transl_w: 1.
+            static_conf_bce: 1.
+        static_conf:
+            vel_thr: 0.15
+
+data:
+    limit_each_trainset: 8
+    loader_opts:
+        train:
+            batch_size: 2
+            num_workers: 0
+        val:
+            batch_size: 1
+            num_workers: 0
+
+pl_trainer:
+    precision: 16-mixed # device-aware trainer forces 32 off-CUDA
+    log_every_n_steps: 1
+    gradient_clip_val: 0.5
+    max_epochs: 1
+    limit_train_batches: 2
+    limit_val_batches: 0
+    num_sanity_val_steps: 0
+    check_val_every_n_epoch: 1
+    enable_checkpointing: False
+    devices: 2 # device-aware forces 1 off-CUDA
+
+logger: null

@@ -108,14 +108,16 @@ Ordered by dependency and risk — earliest phases are self-contained and need n
 - **Acceptance:** body-model path is config-driven; a note in docs spells out what's interchangeable.
 
 ### Phase B1 — make training runnable + documented  *(keystone, de-risk first)*
-- Write `docs/TRAINING.md`: the data layout (`inputs/<DS>/hmr4d_support/…`), the gated-download checklist
-  (§5), the exact `gvhmr train exp=gvhmr/mixed/mixed` recipe, multi-GPU/precision, eval.
-- Stand up a **smoke training run** on the box using the existing debug configs (`limit_each_trainset`,
-  `*_random1024` variants, `configs/global/debug/debug_train.yaml`) — confirms the loop runs end-to-end on a
-  tiny slice without the full datasets.
-- Pin the **RNG-order landmine** (`docs/BEHAVIOR.md:66`) with a characterization test that snapshots the
-  augmentation stream for a fixed seed, so future refactors can't silently shift training.
-- **Acceptance:** a few-step `fit` completes on the box; smoke + RNG tests added; TRAINING.md merged.
+- ✅ **Done:** `docs/TRAINING.md` written; a **smoke `fit` runs end-to-end** (validated on macOS **CPU**) via
+  a new `gvhmr/configs/exp/gvhmr/mixed/smoke_3dpw.yaml` (3DPW-only, needs just the 3DPW pack + body models).
+  Getting there required real **training cleanup**, all behaviour-preserving on CUDA (241 tests green, golden
+  intact): (a) **device-aware trainer** (`gvhmr/cli/train.py` honours `$GVHMR_DEVICE`; off-CUDA → fp32 + 1
+  device); (b) **torch ≥ 2.6 `weights_only=False`** on all 32 dataset/model `torch.load` of trusted packs;
+  (c) **`.cuda()` → device** in `gvhmr_pl.training_step` + a **device-dispatching `get_wham_aug_kp3d`**
+  (CUDA path byte-preserved, CPU/MPS uses the CPU variants).
+- ⏭ **Next:** pin the **RNG-order landmine** (`docs/BEHAVIOR.md`) with a characterization test that snapshots
+  the augmentation stream for a fixed seed, so future refactors can't silently shift training.
+- **Acceptance:** ✅ a few-step `fit` completes off-GPU; TRAINING.md merged. (RNG snapshot test outstanding.)
 
 ### Phase B2 — backbone-pluggable offline feature extractor
 - Factor `extract_video_features` (`gvhmr/utils/preproc/vitfeat_extractor.py:88`) into a reusable,

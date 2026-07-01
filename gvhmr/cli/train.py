@@ -1,8 +1,10 @@
 """``gvhmr train`` — train / test the model (Hydra-driven).
 
-Training is GPU-only and Hydra-managed (output dirs, logging, sweeps), so this keeps the
-``@hydra.main`` entry point intact and the Typer command just forwards key=value
-overrides into it (e.g. ``gvhmr train exp=gvhmr/mixed/mixed``).
+Real training runs on CUDA (multi-GPU, fp16-mixed), but the accelerator is **device-aware**
+(``get_device()`` → cuda/mps/cpu, honouring ``$GVHMR_DEVICE``) so a small ``fit`` smoke test can run
+on CPU/MPS. Off-CUDA it forces full precision + a single device (fp16 autocast is CUDA-only). Hydra
+manages output dirs/logging/sweeps; the Typer command forwards ``key=value`` overrides into the
+``@hydra.main`` entry point (e.g. ``gvhmr train exp=gvhmr/mixed/mixed``).
 """
 
 from __future__ import annotations
@@ -15,9 +17,13 @@ from omegaconf import DictConfig
 from pytorch_lightning.callbacks.checkpoint import Checkpoint
 
 from gvhmr.configs import register_store_gvhmr
+from gvhmr.utils.device import device_name, get_device
 from gvhmr.utils.net_utils import get_resume_ckpt_path, load_pretrained_model
 from gvhmr.utils.pylogger import Log
 from gvhmr.utils.vis.rich_logger import print_cfg
+
+# torch device type → PyTorch-Lightning accelerator string.
+_PL_ACCELERATOR = {"cuda": "gpu", "mps": "mps", "cpu": "cpu"}
 
 
 def get_callbacks(cfg: DictConfig) -> list | None:
@@ -38,8 +44,14 @@ def get_callbacks(cfg: DictConfig) -> list | None:
 def train(cfg: DictConfig) -> None:
     """Train/Test."""
     Log.info(f"Experiment: [gvhmr]{cfg.exp_name}[/]")
+    device = get_device()
+    accelerator = _PL_ACCELERATOR[device.type]
+    # fp16-mixed autocast + multi-device are CUDA-only; off-CUDA force 32-bit on a single device.
+    if device.type != "cuda":
+        cfg.pl_trainer = {**cfg.pl_trainer, "precision": 32, "devices": 1}
     if cfg.task == "fit":
-        Log.info(f"[GPU x Batch] = {cfg.pl_trainer.devices} x {cfg.data.loader_opts.train.batch_size}")
+        Log.info(f"[{device_name(device)} x Batch] = {cfg.pl_trainer.get('devices', 1)} x "
+                 f"{cfg.data.loader_opts.train.batch_size}")  # fmt: skip
     pl.seed_everything(cfg.seed)
 
     datamodule: pl.LightningDataModule = hydra.utils.instantiate(cfg.data, _recursive_=False)
@@ -58,7 +70,7 @@ def train(cfg: DictConfig) -> None:
         Log.info("Test mode forces full-precision.")
         cfg.pl_trainer = {**cfg.pl_trainer, "precision": 32}
     trainer = pl.Trainer(
-        accelerator="gpu",
+        accelerator=accelerator,
         logger=logger if logger is not None else False,
         callbacks=callbacks,
         **cfg.pl_trainer,

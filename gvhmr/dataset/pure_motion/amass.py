@@ -36,16 +36,16 @@ class AmassDataset(BaseDataset):
         if self.random1024:  # Debug, faster loading
             try:
                 Log.info(f"[{self.dataset_name}] Loading 1024 samples for debugging ...")
-                self.motion_files = torch.load(self.root / "smplxpose_v2_random1024.pth")
+                self.motion_files = torch.load(self.root / "smplxpose_v2_random1024.pth", weights_only=False)
             except:
                 Log.info(f"[{self.dataset_name}] Not found! Saving 1024 samples for debugging ...")
-                self.motion_files = torch.load(filename)
+                self.motion_files = torch.load(filename, weights_only=False)
                 keys = list(self.motion_files.keys())
                 keys = np.random.choice(keys, 1024, replace=False)
                 self.motion_files = {k: self.motion_files[k] for k in keys}
                 torch.save(self.motion_files, self.root / "smplxpose_v2_random1024.pth")
         else:
-            self.motion_files = torch.load(filename)
+            self.motion_files = torch.load(filename, weights_only=False)
         self.seqs = list(self.motion_files.keys())
         Log.info(f"[{self.dataset_name}] {len(self.seqs)} sequences. Elapsed: {Log.time() - tic:.2f}s")
 

@@ -102,14 +102,14 @@ class GvhmrPL(pl.LightningModule):
             save_video(video_output, output_dir / f"{batch_idx}.mp4", fps=30, quality=5)
 
         # noisy_j3d -> project to i_j2d -> compute a bbx -> normalized kp2d [-1, 1]
-        noisy_j3d = gt_j3d + get_wham_aug_kp3d(gt_j3d.shape[:2])
+        noisy_j3d = gt_j3d + get_wham_aug_kp3d(gt_j3d.shape[:2], device=gt_j3d.device)
         if True:
             noisy_j3d = randomly_modify_hands_legs(noisy_j3d)
         obs_i_j2d = perspective_projection(noisy_j3d, batch["K_fullimg"])  # (B, L, J, 2)
-        j2d_visible_mask = get_visible_mask(gt_j3d.shape[:2]).cuda()  # (B, L, J)
+        j2d_visible_mask = get_visible_mask(gt_j3d.shape[:2]).to(self.device)  # (B, L, J)
         j2d_visible_mask[noisy_j3d[..., 2] < 0.3] = False  # Set close-to-image-plane points as invisible
         if True:  # Set both legs as invisible for a period
-            legs_invisible_mask = get_invisible_legs_mask(gt_j3d.shape[:2]).cuda()  # (B, L, J)
+            legs_invisible_mask = get_invisible_legs_mask(gt_j3d.shape[:2]).to(self.device)  # (B, L, J)
             j2d_visible_mask[legs_invisible_mask] = False
         obs_kp2d = torch.cat([obs_i_j2d, j2d_visible_mask[:, :, :, None].float()], dim=-1)  # (B, L, J, 3)
         obs = normalize_kp2d(obs_kp2d, batch["bbx_xys"])  # (B, L, J, 3)
@@ -295,7 +295,7 @@ class GvhmrPL(pl.LightningModule):
         """Load pretrained checkpoint, and assign each weight to the corresponding part."""
         Log.info(f"[PL-Trainer] Loading ckpt: {ckpt_path}")
 
-        state_dict = torch.load(ckpt_path, "cpu")["state_dict"]
+        state_dict = torch.load(ckpt_path, "cpu", weights_only=False)["state_dict"]
         missing, unexpected = self.load_state_dict(state_dict, strict=False)
         real_missing = []
         for k in missing:
