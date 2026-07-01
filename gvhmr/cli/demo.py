@@ -111,6 +111,25 @@ def focal_mm_from_metadata(video_path) -> int | None:
     return None
 
 
+def ensure_assets(slam: str) -> None:
+    """Auto-fetch the checkpoints this run needs (so `gvhmr demo` just works); body models are gated."""
+    from gvhmr.utils import assets
+
+    need = ["gvhmr", "hmr2", "vitpose", "yolo"] + (["dpvo"] if slam == "dpvo" else [])
+    todo = {n: assets.ASSETS[n] for n in need if not assets.is_present(assets.ASSETS[n])}
+    if todo:
+        sz = sum(a.size for a in todo.values()) / 1e9
+        with status(f"Fetching {len(todo)} missing checkpoint(s) [{', '.join(todo)}] ({sz:.1f}GB)"):
+            assets.fetch(todo)
+        Log.info(f"[ok]Checkpoints ready[/] [muted]({assets.CHECKPOINT_ROOT})[/]")
+    if not (assets.BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists():
+        raise FileNotFoundError(
+            f"SMPL-X body model not found under {assets.BODY_MODEL_ROOT}. These are registration-gated: "
+            f"sign up at https://smpl-x.is.tue.mpg.de/ + https://smpl.is.tue.mpg.de/, then place them there "
+            f"(or set $GVHMR_BODY_MODELS). `gvhmr download` prints the exact layout."
+        )
+
+
 def build_demo_cfg(
     video: Path,
     *,
@@ -506,6 +525,8 @@ def run(
     device = get_device()
     Log.info(f"Device: [ok]{device_name(device)}[/] ({device})")
     paths = cfg.paths
+
+    ensure_assets(slam)  # auto-fetch missing checkpoints (gated body models raise a clear error)
 
     rule("Preprocess")
     run_preprocess(cfg, flip_test=flip_test, slam=slam)
