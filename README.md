@@ -114,9 +114,9 @@ To train the model, use the following command:
 
 ```shell
 uv sync --extra dev        # install test/lint/type tooling
-uv run pytest              # CPU/MPS characterization suite (no GPU/checkpoints needed)
-uv run ruff check gvhmr tools tests
-uv run pyright
+uv run pre-commit install  # once — auto-formats staged files on commit (or `make hooks`)
+make check                 # the required CI gates locally: ruff format --check + pytest (run before pushing)
+make fmt                   # format the whole tree;  make lint / typecheck / test  are the rest
 ```
 See [`AGENTS.md`](AGENTS.md) for architecture, conventions, the behaviour-preservation
 landmines, and the upstream-sync workflow.

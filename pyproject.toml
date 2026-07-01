@@ -74,6 +74,7 @@ dev = [
     "ruff>=0.6",
     "pyright>=1.1.380",
     "ipdb",
+    "pre-commit",  # git hooks (auto-runs `ruff format` — see .pre-commit-config.yaml); `make hooks`
 ]
 
 # Mesh rendering (overlay videos). pytorch3d has no general PyPI wheel for recent torch, so it

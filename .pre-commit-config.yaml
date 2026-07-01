@@ -1,0 +1,17 @@
+# Pre-commit hooks — keep commits in sync with the CI gates so `ruff format --check` never goes red.
+#
+# One-time setup:  uv run pre-commit install   (or `make hooks`)
+# Run manually:    uv run pre-commit run --all-files
+#
+# The `rev` pins ruff to the SAME version CI resolves — so local formatting == CI formatting (this is what
+# prevents the format-drift that turned CI red). Bump `rev` and the lock's ruff together.
+#
+# Only `ruff-format` is enforced (it's the REQUIRED CI gate). `ruff check` (lint) and pyright are *advisory*
+# in CI, so they're intentionally NOT blocking hooks here — run them with `make lint` / `make typecheck`.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.18
+    hooks:
+      - id: ruff-format
+        name: ruff format (the required CI gate)
+        files: ^(gvhmr|tools|tests)/

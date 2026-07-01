@@ -49,11 +49,15 @@ MPS; heavy/GPU-only pieces are optional extras.
 uv sync --extra dev          # base + test/lint/typecheck tooling (works on macOS)
 uv run gvhmr --help          # the CLI (Typer + Rich); `gvhmr info` for a diagnostic
 uv run gvhmr demo VIDEO -s   # run the demo (needs --extra preproc; render needs pytorch3d)
-uv run pytest                # run the test suite (CPU/MPS, no GPU/checkpoints/datasets)
-uv run ruff check gvhmr tools tests
-uv run ruff format gvhmr tools tests
-uv run pyright               # type-check (vendored trees excluded)
+make check                   # the REQUIRED CI gates locally (ruff format --check + pytest) — run before pushing
+make fmt                     # format the WHOLE tree; make lint / typecheck / test are the rest
+uv run pre-commit install    # (or `make hooks`) once — auto-runs `ruff format` on commit, pinned to CI's ruff
 ```
+
+**Formatting must match CI.** CI's one required style gate is `ruff format --check gvhmr tools tests` (the
+lint/pyright jobs are advisory). Format the **whole tree** (`make fmt`), not just the files you touched —
+formatting per-file is how the gate drifted red. The pre-commit hook (`.pre-commit-config.yaml`, pinned to
+the same ruff version) enforces this on commit; `make check` reproduces the full required gate locally.
 
 ## CLI & console output
 
