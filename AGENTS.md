@@ -189,6 +189,8 @@ they are device-agnostic (`pl_module.device`); metric math + the golden test res
 interpolated, because hydra's override grammar can't address the `3dpw` node (digit-leading key).
 3DPW/EMDB only (RICH has no ungated videos); needs the raw videos once (`--raw-dir`); multi-person
 identity is IoU-guarded against the canonical track (mismatch ⇒ canonical boxes kept + reported).
+`gvhmr sweep` (`gvhmr/cli/sweepcmd.py`) grids these combos through the real W&B sweep API
+(wandb.sweep/agent; trials log `<DS>/<metric>` + `…_vs_paper`; 'canonical' is the baseline value).
 
 ## Performance
 

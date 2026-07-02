@@ -213,6 +213,33 @@ def ensure_variant(
         report.log()
 
 
+def run_benchmarks(
+    names: list[str], ckpt: str, slug: str | None = None, set_overrides: list[str] | None = None
+) -> dict[str, dict[str, float]]:
+    """Run the Lightning test task(s) for the given datasets and return {dataset_id: {metric: value}}.
+
+    The shared engine under both ``gvhmr eval`` and ``gvhmr sweep``: one combined run for all three
+    canonical datasets, else one task per dataset sequentially in-process; a ``slug`` applies a
+    regenerated preprocessing variant via the root ``preproc_variant`` config key."""
+    import importlib
+
+    # The Typer command *function* `train` shadows the submodule on the package, so import explicitly.
+    train_cli = importlib.import_module("gvhmr.cli.train")
+
+    combined = set(names) == set(DATASETS) and slug is None
+    tasks = [COMBINED_TASK] if combined else [DATASETS[n][0] for n in names]
+    results: dict[str, dict[str, float]] = {}
+    for task in tasks:
+        overrides = [f"global/task={task}", "exp=gvhmr/mixed/mixed", f"ckpt_path={ckpt}"]
+        if slug is not None:
+            overrides.append(f"preproc_variant={slug}")  # the test dataset nodes interpolate this key
+        overrides += list(set_overrides or [])
+        Log.info(f"Running [gvhmr]gvhmr train {' '.join(overrides)}[/]")
+        train_cli.run(overrides)
+        results.update(train_cli.LAST_TEST_METRICS)
+    return results
+
+
 def run(
     datasets: str = "all",
     ckpt: str | None = None,
@@ -226,15 +253,11 @@ def run(
     regen: bool = False,
 ) -> None:
     """Run the benchmark eval end-to-end and print the consolidated table."""
-    import importlib
     import json
 
     import torch
 
     from gvhmr.utils import assets
-
-    # The Typer command *function* `train` shadows the submodule on the package, so import explicitly.
-    train_cli = importlib.import_module("gvhmr.cli.train")
 
     names = parse_datasets(datasets)
     variant_mode = any(v is not None for v in (detector, pose2d, backbone, variant))
@@ -268,20 +291,7 @@ def run(
         ensure_variant(names, slug, detector, pose2d, backbone, raw_dir, regen)
     ckpt = str(ckpt or assets.GVHMR_CKPT)
 
-    # One combined run when evaluating all three (the README's reproduce command); else one task per
-    # dataset, sequentially in-process.
-    combined = set(names) == set(DATASETS) and not variant_mode
-    tasks = [COMBINED_TASK] if combined else [DATASETS[n][0] for n in names]
-    results: dict[str, dict[str, float]] = {}
-    for task in tasks:
-        overrides = [f"global/task={task}", "exp=gvhmr/mixed/mixed", f"ckpt_path={ckpt}"]
-        if slug is not None:
-            overrides.append(f"preproc_variant={slug}")  # the test dataset nodes interpolate this key
-        overrides += list(set_overrides or [])
-        Log.info(f"Running [gvhmr]gvhmr train {' '.join(overrides)}[/]")
-        train_cli.run(overrides)
-        results.update(train_cli.LAST_TEST_METRICS)
-
+    results = run_benchmarks(names, ckpt, slug=slug, set_overrides=set_overrides)
     if not results:
         Log.warning("No metrics were produced — check the run output above.")
         raise SystemExit(1)

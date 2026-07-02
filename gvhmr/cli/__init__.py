@@ -13,6 +13,7 @@ import typer
 
 from gvhmr.cli.config import app as config_app
 from gvhmr.cli.envcmd import app as env_app
+from gvhmr.cli.sweepcmd import app as sweep_app
 
 app = typer.Typer(
     name="gvhmr",
@@ -30,6 +31,8 @@ app = typer.Typer(
 app.add_typer(config_app, name="config")
 # `gvhmr env …` — record & re-sync this box's Python environment (so users never run uv by hand).
 app.add_typer(env_app, name="env")
+# `gvhmr sweep …` — W&B sweeps comparing benchmark evals across preproc combinations (wandb loads lazily).
+app.add_typer(sweep_app, name="sweep")
 
 
 @app.callback()

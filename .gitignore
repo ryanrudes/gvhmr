@@ -10,6 +10,9 @@ outputs
 # (committed model-data assets live under gvhmr/**, which this root-anchored pattern doesn't touch)
 /*.pt
 
+# W&B run/sweep logs (gvhmr sweep agents run from the repo root; training logs live under outputs/)
+/wandb/
+
 # All file or folders start with tmp will be ignored
 tmp*  
 
