@@ -17,10 +17,13 @@ from gvhmr.configs import MainStore, builds
 
 
 class EmdbSmplFullSeqDataset(data.Dataset):
-    def __init__(self, split=1, flip_test=False):
+    def __init__(self, split=1, flip_test=False, preproc_variant: str | None = None):
         """
         split: 1 for EMDB-1, 2 for EMDB-2
         flip_test: if True, extra flip data will be returned
+        preproc_variant: read boxes/keypoints/features from a regenerated cache (swapped stages — see
+            gvhmr/utils/eval/preproc_variants.py) instead of the canonical ones baked into the labels.
+            Ground truth always stays canonical. Default None = the paper protocol, unchanged.
         """
         super().__init__()
         self.dataset_name = "EMDB"
@@ -34,6 +37,22 @@ class EmdbSmplFullSeqDataset(data.Dataset):
         # 'name', 'gender', 'smpl_params', 'mask', 'K_fullimg', 'T_w2c', 'bbx_xys', 'kp2d', 'features'
         self.labels = torch.load(self.emdb_dir / "emdb_vit_v4.pt", weights_only=False)
         self.cam_traj = torch.load(self.emdb_dir / "emdb_dpvo_traj.pt", weights_only=False)  # estimated with DPVO
+
+        # Preprocessing source: canonical (inside the labels), or a regenerated variant overlay.
+        self.preproc_variant = preproc_variant
+        self.preproc_overlay = None
+        self._flip_dir = self.emdb_dir / "imgfeats/emdb_flip"
+        if preproc_variant is not None:
+            variant_dir = self.emdb_dir / "preproc_variants" / preproc_variant
+            overlay_pt = variant_dir / "emdb_preproc.pt"
+            if not overlay_pt.exists():
+                raise FileNotFoundError(
+                    f"preproc variant '{preproc_variant}' not generated for EMDB ({overlay_pt} missing) — "
+                    f"run `gvhmr eval emdb --detector/--pose2d …` to build it."
+                )
+            self.preproc_overlay = torch.load(overlay_pt, weights_only=False)
+            self._flip_dir = variant_dir / "imgfeats/emdb_flip"
+            Log.info(f"[{self.dataset_name}] preproc variant: {preproc_variant}")
 
         # Setup dataset index
         self.idx2meta = []
@@ -83,10 +102,14 @@ class EmdbSmplFullSeqDataset(data.Dataset):
             R_w2c = data["T_w2c"][:, :3, :3]  # (L, 3, 3)
         data["cam_angvel"] = compute_cam_angvel(R_w2c)  # (L, 6)
 
-        # image bbx, features
-        bbx_xys = label["bbx_xys"]
-        f_imgseq = label["features"]
-        kp2d = label["kp2d"]
+        # image bbx, features (canonical from the labels, or the regenerated variant overlay)
+        if self.preproc_overlay is not None:
+            ov = self.preproc_overlay[vid]
+            bbx_xys, f_imgseq, kp2d = ov["bbx_xys"], ov["features"], ov["kp2d"]
+        else:
+            bbx_xys = label["bbx_xys"]
+            f_imgseq = label["features"]
+            kp2d = label["kp2d"]
         data.update({"bbx_xys": bbx_xys, "f_imgseq": f_imgseq, "kp2d": kp2d})
 
         # to render a video
@@ -110,8 +133,7 @@ class EmdbSmplFullSeqDataset(data.Dataset):
 
         # if enable flip_test
         if self.flip_test:
-            imgfeat_dir = self.emdb_dir / "imgfeats/emdb_flip"
-            f_img_dict = torch.load(imgfeat_dir / f"{vid}.pt", weights_only=False)
+            f_img_dict = torch.load(self._flip_dir / f"{vid}.pt", weights_only=False)
 
             flipped_bbx_xys = f_img_dict["bbx_xys"].float()  # (L, 3)
             flipped_features = f_img_dict["features"].float()  # (L, 1024)
@@ -142,24 +164,33 @@ class EmdbSmplFullSeqDataset(data.Dataset):
         return data
 
 
-# EMDB-1 and EMDB-2
+# EMDB-1 and EMDB-2. preproc_variant interpolates the root config key (see the 3DPW note) — one
+# `preproc_variant=<slug>` override applies the regenerated cache to every test dataset; null = canonical.
 MainStore.store(
     name="v1",
-    node=builds(EmdbSmplFullSeqDataset, populate_full_signature=True),
+    node=builds(EmdbSmplFullSeqDataset, preproc_variant="${preproc_variant}", populate_full_signature=True),
     group="test_datasets/emdb1",
 )
 MainStore.store(
     name="v1_fliptest",
-    node=builds(EmdbSmplFullSeqDataset, flip_test=True, populate_full_signature=True),
+    node=builds(
+        EmdbSmplFullSeqDataset, flip_test=True, preproc_variant="${preproc_variant}", populate_full_signature=True
+    ),
     group="test_datasets/emdb1",
 )
 MainStore.store(
     name="v1",
-    node=builds(EmdbSmplFullSeqDataset, split=2, populate_full_signature=True),
+    node=builds(EmdbSmplFullSeqDataset, split=2, preproc_variant="${preproc_variant}", populate_full_signature=True),
     group="test_datasets/emdb2",
 )
 MainStore.store(
     name="v1_fliptest",
-    node=builds(EmdbSmplFullSeqDataset, split=2, flip_test=True, populate_full_signature=True),
+    node=builds(
+        EmdbSmplFullSeqDataset,
+        split=2,
+        flip_test=True,
+        preproc_variant="${preproc_variant}",
+        populate_full_signature=True,
+    ),
     group="test_datasets/emdb2",
 )

@@ -26,6 +26,12 @@ DATASETS: dict[str, tuple[str, str, tuple[str, ...]]] = {
 }
 COMBINED_TASK = "gvhmr/test_3dpw_emdb_rich"  # all three in one run (the README's reproduce command)
 
+#: dataset key → the `test_datasets.<key>` config nodes a preproc variant must be applied to.
+VARIANT_GROUPS: dict[str, tuple[str, ...]] = {"3dpw": ("3dpw",), "emdb": ("emdb1", "emdb2")}
+#: dataset key → its pack dir under DATA_ROOT (where hmr4d_support lives).
+PACK_DIRS: dict[str, str] = {"3dpw": "3DPW", "emdb": "EMDB", "rich": "RICH"}
+RAW_DATASET_URLS = {"3dpw": "https://virtualhumans.mpi-inf.mpg.de/3DPW/", "emdb": "https://eth-ait.github.io/emdb/"}
+
 #: Body-model files each dataset's GT/prediction pipeline needs (all registration-gated).
 BODY_MODEL_FILES: dict[str, tuple[str, ...]] = {
     "3dpw": ("smplx/SMPLX_NEUTRAL.npz", "smpl/SMPL_MALE.pkl", "smpl/SMPL_FEMALE.pkl"),
@@ -116,11 +122,14 @@ def ensure_inputs(names: list[str]) -> None:
         raise SystemExit(1)
 
 
-def print_summary(metrics: dict[str, dict[str, float]]) -> None:
+def print_summary(metrics: dict[str, dict[str, float]], variant: str | None = None) -> None:
     """One consolidated table: your numbers next to the paper's, with the delta."""
     from rich.table import Table
 
-    table = Table(title="GVHMR benchmark  ·  flip-test + postproc (paper protocol)", expand=False)
+    title = "GVHMR benchmark  ·  flip-test + postproc (paper protocol)"
+    if variant is not None:
+        title = f"GVHMR benchmark  ·  preproc variant [gvhmr]{variant}[/]  ·  flip-test + postproc"
+    table = Table(title=title, expand=False)
     table.add_column("dataset")
     table.add_column("metric")
     table.add_column("this run", justify="right")
@@ -141,14 +150,80 @@ def print_summary(metrics: dict[str, dict[str, float]]) -> None:
             )
         table.add_section()
     console.print(table)
-    console.print(
-        "[dim]paper = arXiv 2409.06662 Tables 1–2 (same protocol). Small deviations (<~1mm) are expected "
-        "across GPUs/library versions; a large Δ means the pipeline changed.[/]"
-    )
+    if variant is None:
+        console.print(
+            "[dim]paper = arXiv 2409.06662 Tables 1–2 (same protocol). Small deviations (<~1mm) are expected "
+            "across GPUs/library versions; a large Δ means the pipeline changed.[/]"
+        )
+    else:
+        console.print(
+            "[dim]paper = arXiv 2409.06662 with the CANONICAL preprocessing — the Δ column shows what the "
+            "swapped stage(s) change relative to it. Run without stage flags for the canonical baseline.[/]"
+        )
+
+
+def ensure_variant(
+    names: list[str],
+    slug: str,
+    detector: str | None,
+    pose2d: str | None,
+    backbone: str | None,
+    raw_dir: Path | None,
+    regen: bool,
+) -> None:
+    """Generate (or reuse) the regenerated-preprocessing cache for each dataset."""
+    from gvhmr.utils import assets
+    from gvhmr.utils.eval import preproc_variants as pv
+    from gvhmr.utils.preproc.base import missing_requirements
+
+    # Fail fast on missing stage deps (e.g. ultralytics for a detector swap), with the exact fix.
+    selections = {"pose2d": pose2d or "vitpose", "backbone": backbone or "hmr2"}
+    if detector is not None:
+        selections["detector"] = detector
+    missing = missing_requirements(selections)
+    if missing:
+        fixes = "\n".join(f"  {fix}" for fix in dict.fromkeys(fix for _, _, fix in missing))
+        console.print(
+            "[err]Missing dependencies to regenerate preprocessing:[/]\n"
+            + "\n".join(f"  • {module} — needed by {why}" for why, module, _ in missing)
+            + f"\nInstall with:\n{fixes}"
+        )
+        raise SystemExit(1)
+
+    for n in names:
+        support = assets.DATA_ROOT / PACK_DIRS[n] / "hmr4d_support"
+        if not regen and pv.variant_complete(n, support, slug):
+            Log.info(f"[ok]{n}[/]: variant '{slug}' already generated [muted]({support}/preproc_variants/{slug})[/]")
+            continue
+        video_names = pv.dataset_video_names(n, support)
+        missing_videos = [v for v in video_names if not (support / f"videos/{v}.mp4").exists()]
+        if missing_videos and raw_dir is not None:
+            Log.info(f"[{n}] composing {len(missing_videos)} missing video(s) from the raw download…")
+            pv.build_videos_from_raw(n, Path(raw_dir), video_names, support / "videos")
+        elif missing_videos:
+            console.print(
+                f"[err]{n}: {len(missing_videos)} video(s) missing[/] under [muted]{support}/videos[/] — the "
+                f"packs ship no videos (not redistributable). Download the official dataset "
+                f"({RAW_DATASET_URLS[n]}) and pass [gvhmr]--raw-dir <download>[/] to compose them once."
+            )
+            raise SystemExit(1)
+        Log.info(f"[{n}] regenerating preprocessing as variant '{slug}' (resumable; ~minutes/sequence)…")
+        gen = pv.generate_3dpw_variant if n == "3dpw" else pv.generate_emdb_variant
+        report = gen(support, slug, detector, pose2d, backbone, overwrite=regen)
+        report.log()
 
 
 def run(
-    datasets: str = "all", ckpt: str | None = None, json_out: Path | None = None, set_overrides: list[str] | None = None
+    datasets: str = "all",
+    ckpt: str | None = None,
+    json_out: Path | None = None,
+    set_overrides: list[str] | None = None,
+    detector: str | None = None,
+    pose2d: str | None = None,
+    backbone: str | None = None,
+    variant: str | None = None,
+    raw_dir: Path | None = None,
+    regen: bool = False,
 ) -> None:
     """Run the benchmark eval end-to-end and print the consolidated table."""
     import importlib
@@ -162,21 +237,46 @@ def run(
     train_cli = importlib.import_module("gvhmr.cli.train")
 
     names = parse_datasets(datasets)
-    rule(f"[gvhmr]gvhmr eval[/] · {', '.join(names)}")
+    variant_mode = any(v is not None for v in (detector, pose2d, backbone, variant))
+    slug = None
+    if variant_mode:
+        from gvhmr.utils.eval.preproc_variants import variant_slug
+
+        slug = variant or variant_slug(detector, pose2d, backbone)
+        unsupported = [n for n in names if n not in VARIANT_GROUPS]
+        if unsupported:
+            console.print(
+                f"[err]Preproc variants aren't supported for: {', '.join(unsupported)}[/] — the RICH pack has "
+                f"no per-sequence videos and the raw dataset is registration-gated. "
+                f"Run e.g. [gvhmr]gvhmr eval 3dpw,emdb --detector …[/] instead."
+            )
+            raise SystemExit(1)
+        if backbone not in (None, "hmr2") and ckpt is None:
+            Log.warning(
+                "[warn]A swapped feature backbone with the RELEASED checkpoint produces meaningless numbers[/] "
+                "— the features are learned conditioning (docs/EXTENSIBILITY.md Tier B). Pass --ckpt with a "
+                "checkpoint retrained on those features."
+            )
+    rule(f"[gvhmr]gvhmr eval[/] · {', '.join(names)}" + (f" · preproc={slug}" if slug else ""))
     if not torch.cuda.is_available():
         Log.warning(
             "[warn]No CUDA GPU[/] — the eval runs but will be slow (the paper protocol runs the model "
             "with flip-test on every sequence)."
         )
     ensure_inputs(names)
+    if variant_mode:
+        ensure_variant(names, slug, detector, pose2d, backbone, raw_dir, regen)
     ckpt = str(ckpt or assets.GVHMR_CKPT)
 
     # One combined run when evaluating all three (the README's reproduce command); else one task per
     # dataset, sequentially in-process.
-    tasks = [COMBINED_TASK] if set(names) == set(DATASETS) else [DATASETS[n][0] for n in names]
+    combined = set(names) == set(DATASETS) and not variant_mode
+    tasks = [COMBINED_TASK] if combined else [DATASETS[n][0] for n in names]
     results: dict[str, dict[str, float]] = {}
     for task in tasks:
         overrides = [f"global/task={task}", "exp=gvhmr/mixed/mixed", f"ckpt_path={ckpt}"]
+        if slug is not None:
+            overrides.append(f"preproc_variant={slug}")  # the test dataset nodes interpolate this key
         overrides += list(set_overrides or [])
         Log.info(f"Running [gvhmr]gvhmr train {' '.join(overrides)}[/]")
         train_cli.run(overrides)
@@ -185,7 +285,7 @@ def run(
     if not results:
         Log.warning("No metrics were produced — check the run output above.")
         raise SystemExit(1)
-    print_summary(results)
+    print_summary(results, variant=slug)
 
     if json_out is not None:
         from datetime import datetime, timezone
@@ -195,6 +295,7 @@ def run(
             "ckpt": ckpt,
             "datasets": names,
             "protocol": "flip-test + postproc (paper protocol)",
+            "preproc_variant": slug,
             "metrics": results,
             "paper_reference": {ds: PAPER_REFERENCE.get(ds, {}) for ds in results},
         }

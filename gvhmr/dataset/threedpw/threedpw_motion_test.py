@@ -13,7 +13,10 @@ VID_HARD = []
 
 
 class ThreedpwSmplFullSeqDataset(data.Dataset):
-    def __init__(self, flip_test=False, skip_invalid=False):
+    def __init__(self, flip_test=False, skip_invalid=False, preproc_variant: str | None = None):
+        """``preproc_variant`` selects a regenerated preprocessing cache (boxes/keypoints/features from
+        swapped stages — see gvhmr/utils/eval/preproc_variants.py) instead of the canonical one shipped
+        in the pack. Ground truth is always canonical. Default None = the paper protocol, unchanged."""
         super().__init__()
         self.dataset_name = "3DPW"
         self.skip_invalid = skip_invalid
@@ -23,8 +26,23 @@ class ThreedpwSmplFullSeqDataset(data.Dataset):
         self.threedpw_dir = DATA_ROOT / "3DPW/hmr4d_support"  # honours $GVHMR_DATA_ROOT (default inputs/)
         # ['vname', 'K_fullimg', 'T_w2c', 'smpl_params', 'gender', 'mask_raw', 'mask_wham', 'img_wh']
         self.labels = torch.load(self.threedpw_dir / "test_3dpw_gt_labels.pt", weights_only=False)
-        self.vid2bbx = torch.load(self.threedpw_dir / "preproc_test_bbx.pt", weights_only=False)
-        self.vid2kp2d = torch.load(self.threedpw_dir / "preproc_test_kp2d_v0.pt", weights_only=False)
+
+        # Preprocessing source: the canonical pack files, or a regenerated variant cache.
+        self.preproc_variant = preproc_variant
+        if preproc_variant is None:
+            self._preproc_dir = self.threedpw_dir
+            kp2d_pt = self.threedpw_dir / "preproc_test_kp2d_v0.pt"
+        else:
+            self._preproc_dir = self.threedpw_dir / "preproc_variants" / preproc_variant
+            kp2d_pt = self._preproc_dir / "preproc_test_kp2d.pt"
+            if not kp2d_pt.exists():
+                raise FileNotFoundError(
+                    f"preproc variant '{preproc_variant}' not generated for 3DPW ({kp2d_pt} missing) — "
+                    f"run `gvhmr eval 3dpw --detector/--pose2d …` to build it."
+                )
+            Log.info(f"[{self.dataset_name}] preproc variant: {preproc_variant}")
+        self.vid2bbx = torch.load(self._preproc_dir / "preproc_test_bbx.pt", weights_only=False)
+        self.vid2kp2d = torch.load(kp2d_pt, weights_only=False)
 
         # Setup dataset index
         self.idx2meta = list(self.labels)
@@ -70,7 +88,7 @@ class ThreedpwSmplFullSeqDataset(data.Dataset):
         cam_angvel = compute_cam_angvel(data["T_w2c"][:, :3, :3])  # (L, 6)
         data.update({"bbx_xys": bbx_xys, "kp2d": kp2d, "cam_angvel": cam_angvel})
 
-        imgfeat_dir = self.threedpw_dir / "imgfeats/3dpw_test"
+        imgfeat_dir = self._preproc_dir / "imgfeats/3dpw_test"
         f_img_dict = torch.load(imgfeat_dir / f"{vid}.pt", weights_only=False)
         f_imgseq = f_img_dict["features"].float()
         data["f_imgseq"] = f_imgseq  # (F, 1024)
@@ -95,7 +113,7 @@ class ThreedpwSmplFullSeqDataset(data.Dataset):
         }
 
         if self.flip_test:
-            imgfeat_dir = self.threedpw_dir / "imgfeats/3dpw_test_flip"
+            imgfeat_dir = self._preproc_dir / "imgfeats/3dpw_test_flip"
             f_img_dict = torch.load(imgfeat_dir / f"{vid}.pt", weights_only=False)
             flipped_bbx_xys = f_img_dict["bbx_xys"].float()  # (L, 3)
             flipped_features = f_img_dict["features"].float()  # (L, 1024)
@@ -138,14 +156,20 @@ class ThreedpwSmplFullSeqDataset(data.Dataset):
         return data
 
 
-# 3DPW
+# 3DPW. preproc_variant interpolates the root config key (hydra's override grammar can't address the
+# `3dpw` node directly — identifiers can't start with a digit), so `preproc_variant=<slug>` selects a
+# regenerated preprocessing cache for every test dataset at once; null (the default) = canonical.
 MainStore.store(
     name="fliptest",
-    node=builds(ThreedpwSmplFullSeqDataset, flip_test=True),
+    node=builds(
+        ThreedpwSmplFullSeqDataset, flip_test=True, preproc_variant="${preproc_variant}", populate_full_signature=True
+    ),
     group="test_datasets/3dpw",
 )
 MainStore.store(
     name="v1",
-    node=builds(ThreedpwSmplFullSeqDataset, flip_test=False),
+    node=builds(
+        ThreedpwSmplFullSeqDataset, flip_test=False, preproc_variant="${preproc_variant}", populate_full_signature=True
+    ),
     group="test_datasets/3dpw",
 )

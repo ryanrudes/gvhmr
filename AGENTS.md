@@ -183,6 +183,13 @@ The callbacks stash `pl_module.metrics_summary` → `train.LAST_TEST_METRICS` fo
 they are device-agnostic (`pl_module.device`); metric math + the golden test resolve assets through
 `gvhmr.utils.assets` (never hard-code `inputs/checkpoints`). See `docs/EVAL.md`.
 
+**Preprocessing swaps on the benchmarks:** the packs' preproc is frozen, so `gvhmr eval --detector/
+--pose2d` regenerates it (`gvhmr/utils/eval/preproc_variants.py`) into `preproc_variants/<slug>/`
+(canonical files untouched) and the test loaders read it via the root `preproc_variant` config key —
+interpolated, because hydra's override grammar can't address the `3dpw` node (digit-leading key).
+3DPW/EMDB only (RICH has no ungated videos); needs the raw videos once (`--raw-dir`); multi-person
+identity is IoU-guarded against the canonical track (mismatch ⇒ canonical boxes kept + reported).
+
 ## Performance
 
 Profile/bench with `gvhmr bench`. Optimizations must keep

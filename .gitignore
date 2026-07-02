@@ -6,6 +6,10 @@ outputs
 # machine-local GVHMR config (written by `gvhmr config init` / scripts/install.sh)
 /gvhmr.toml
 
+# ultralytics auto-downloads detector weights into the CWD (= repo root) — never commit them
+# (committed model-data assets live under gvhmr/**, which this root-anchored pattern doesn't touch)
+/*.pt
+
 # All file or folders start with tmp will be ignored
 tmp*  
 

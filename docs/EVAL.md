@@ -25,6 +25,35 @@ This pipeline is verified end-to-end: on 2026-07-02 the released checkpoint repr
 camera-space numbers exactly (3DPW 36.2/55.6/67.2, EMDB-1 42.7/72.6/84.2, RICH within 0.3 mm) and the
 world metrics within ~1% (EMDB-2 W-MPJPE 272.8 vs 274.9) on an RTX 6000 Ada.
 
+### Measuring preprocessing swaps — `gvhmr eval --detector / --pose2d`
+
+The packs ship **frozen** preprocessing (YOLOv8x boxes, ViTPose keypoints, HMR2 features — computed
+once upstream), so by default a detector/2D-pose swap is *invisible* to the benchmark. To measure one,
+`gvhmr eval` can regenerate the preprocessing with your chosen stages into a **variant cache**
+(`<DS>/hmr4d_support/preproc_variants/<slug>/` — the canonical files are never touched):
+
+```bash
+gvhmr eval 3dpw --detector yolo26x --raw-dir ~/datasets/3DPW   # first run: composes videos + regenerates
+gvhmr eval 3dpw,emdb --detector yolo26x --pose2d rtmpose       # variants are cached + resumable
+```
+
+What to know before trusting a variant number:
+
+- **You need the raw videos once.** The packs ship an *empty* `videos/` dir (the footage isn't
+  redistributable). Download the official dataset ([3DPW](https://virtualhumans.mpi-inf.mpg.de/3DPW/) —
+  free; [EMDB](https://eth-ait.github.io/emdb/) — registration) and pass `--raw-dir`; the pack's
+  `videos/` is composed from it once (30 fps), then any number of variants can be generated. **RICH is
+  not supported** (no per-sequence videos anywhere ungated).
+- **Identity guard (3DPW is multi-person).** A fresh detector on a two-person video can lock onto the
+  *other* person — that would score a tracking-identity failure, not a detector comparison. Regenerated
+  tracks are median-IoU-checked against the canonical track; mismatches keep the canonical boxes for
+  that sequence and are reported, so a variant differs from canonical only by the stage under test.
+- **The paper column stays canonical.** The summary table's Δ then reads as "what this stage swap
+  changes relative to the published protocol". Run once *without* stage flags for your box's canonical
+  baseline if you want a same-hardware comparison.
+- **Backbone swaps need a retrain.** The features are learned conditioning — `--backbone` on the
+  released checkpoint produces meaningless numbers (the command warns); pass a retrained `--ckpt`.
+
 ## World-frame evaluation on real datasets (`tools/eval/eval_world.py`)
 
 The fork's headline addition — recovering a *metric* world trajectory for a moving/following camera

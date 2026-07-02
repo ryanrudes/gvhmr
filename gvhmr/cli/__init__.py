@@ -238,6 +238,37 @@ def eval_(
     json_out: Annotated[
         Path | None, typer.Option("--json", help="Also write the metrics (+ paper reference) to this JSON file.")
     ] = None,
+    detector: Annotated[
+        str | None,
+        typer.Option(
+            "--detector",
+            help="[bold]Preproc swap:[/] regenerate boxes with this detector (e.g. [gvhmr]yolo26x[/]) and "
+            "benchmark with them [dim](3dpw/emdb only; needs the raw videos once — see --raw-dir)[/].",
+        ),
+    ] = None,
+    pose2d: Annotated[
+        str | None,
+        typer.Option("--pose2d", help="[bold]Preproc swap:[/] regenerate 2D keypoints with this backend."),
+    ] = None,
+    backbone: Annotated[
+        str | None,
+        typer.Option(
+            "--backbone",
+            help="[bold]Preproc swap:[/] regenerate features [dim](needs a retrained --ckpt to be meaningful)[/].",
+        ),
+    ] = None,
+    variant: Annotated[
+        str | None, typer.Option("--variant", help="Custom name for the regenerated-preproc cache.")
+    ] = None,
+    raw_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--raw-dir",
+            help="Official raw-dataset download; composes the pack's missing videos/ once "
+            "[dim](3DPW imageFiles/ · EMDB P*/)[/].",
+        ),
+    ] = None,
+    regen: Annotated[bool, typer.Option("--regen", help="Regenerate the variant cache even if present.")] = False,
     set_: Annotated[
         list[str] | None,
         typer.Option("--set", help="Raw Hydra override(s), repeatable [dim](passed to the test task)[/]."),
@@ -246,7 +277,18 @@ def eval_(
     """Run the paper benchmarks (auto-fetches data; prints your numbers next to the paper's)."""
     from gvhmr.cli.evalcmd import run
 
-    run(datasets, ckpt=ckpt, json_out=json_out, set_overrides=set_)
+    run(
+        datasets,
+        ckpt=ckpt,
+        json_out=json_out,
+        set_overrides=set_,
+        detector=detector,
+        pose2d=pose2d,
+        backbone=backbone,
+        variant=variant,
+        raw_dir=raw_dir,
+        regen=regen,
+    )
 
 
 @app.command(name="extract-features")
