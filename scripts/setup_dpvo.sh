@@ -22,21 +22,29 @@ if [ -z "$NVCC" ]; then
 fi
 export CUDA_HOME="${CUDA_HOME:-$(dirname "$(dirname "$NVCC")")}"
 
-# 1) Map the local CUDA toolkit version to a torch backend extra. CUDA wheels are minor-version
-#    compatible, so cu128 also covers CUDA 13.x boxes (driver back-compat) — no cu130 extra needed.
+# 1) Pick the torch backend extra: the box's RECORDED choice ([env].torch in gvhmr.toml — what the
+#    installer/wizard/user selected) wins, so a rebuild compiles against the torch that's actually in
+#    use; a fresh box (no venv/record yet) falls back to mapping the local CUDA toolkit version.
+#    CUDA wheels are minor-version compatible, so cu128 also covers CUDA 13.x boxes — no cu130 needed.
+RECORDED="$(uv run --no-sync python -c 'from gvhmr.utils.localconfig import env_torch; print(env_torch() or "")' 2>/dev/null || true)"
 CUDA_VER="$("$NVCC" --version | grep -oE 'release [0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+' | head -1)"
-case "$CUDA_VER" in
-  12.0|12.1|12.2|12.3|12.4|12.5) EXTRA=cu124 ;;
-  12.6|12.7)                     EXTRA=cu126 ;;
-  12.8|12.9|13.*)                EXTRA=cu128 ;;
-  *)                             EXTRA=cu126 ;;  # safe, widely-compatible default
+case "$RECORDED" in
+  cu*) EXTRA="$RECORDED"
+       echo "[setup] CUDA_HOME=$CUDA_HOME  (recorded [env].torch → extra: $EXTRA; toolkit $CUDA_VER)" ;;
+  *)   case "$CUDA_VER" in
+         12.0|12.1|12.2|12.3|12.4|12.5) EXTRA=cu124 ;;
+         12.6|12.7)                     EXTRA=cu126 ;;
+         12.8|12.9|13.*)                EXTRA=cu128 ;;
+         *)                             EXTRA=cu126 ;;  # safe, widely-compatible default
+       esac
+       echo "[setup] CUDA_HOME=$CUDA_HOME  (toolkit $CUDA_VER → torch extra: $EXTRA)" ;;
 esac
-echo "[setup] CUDA_HOME=$CUDA_HOME  (toolkit $CUDA_VER → torch extra: $EXTRA)"
 
 # 2) Project + the matching CUDA torch + preprocessing models (the demo needs YOLO/ViTPose/HMR2) + DPVO's
 #    torch-ABI-free runtime deps (the `dpvo` extra: numba, pypose — locked, so numpy stays numba-compatible).
+#    --inexact: never remove anything already in the env (e.g. dev tooling) — this script only adds.
 echo "[setup] syncing project (torch $EXTRA + preproc + dpvo runtime deps)…"
-uv sync --extra "$EXTRA" --extra preproc --extra dpvo
+uv sync --inexact --extra "$EXTRA" --extra preproc --extra dpvo
 
 # 3) Build DPVO (Eigen-vendored fork) + its CUDA-compiled deps STRICTLY against the synced torch.
 #    --no-build-isolation: compile against the env's torch (not an isolated build env).
