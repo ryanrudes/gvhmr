@@ -12,6 +12,7 @@ from typing import Annotated
 import typer
 
 from gvhmr.cli.config import app as config_app
+from gvhmr.cli.envcmd import app as env_app
 
 app = typer.Typer(
     name="gvhmr",
@@ -25,8 +26,10 @@ app = typer.Typer(
     add_completion=True,
     context_settings={"help_option_names": ["-h", "--help"]},
 )
-# `gvhmr config …` — view/edit the local config file (asset paths + default model versions).
+# `gvhmr config …` — view/edit the local config file (asset paths + default model versions + env).
 app.add_typer(config_app, name="config")
+# `gvhmr env …` — record & re-sync this box's Python environment (so users never run uv by hand).
+app.add_typer(env_app, name="env")
 
 
 @app.callback()

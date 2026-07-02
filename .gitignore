@@ -3,6 +3,9 @@
 inputs
 outputs
 
+# machine-local GVHMR config (written by `gvhmr config init` / scripts/install.sh)
+/gvhmr.toml
+
 # All file or folders start with tmp will be ignored
 tmp*  
 

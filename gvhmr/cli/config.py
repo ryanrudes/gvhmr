@@ -1,12 +1,13 @@
-"""``gvhmr config`` — a friendly view + editor for the local config file (asset paths + model choices).
+"""``gvhmr config`` — a friendly view + editor for the local config file (paths, model choices, env).
 
-The config file (``~/.config/gvhmr/config.toml`` by default) is the one readable place for machine-local
-settings: where large assets live, and which model version each swappable stage uses. Precedence is always
+The config file (``<repo>/gvhmr.toml`` by default — machine-local, gitignored) is the one readable place
+for local settings: where large assets live, which model version each swappable stage uses, and the
+recorded Python-environment choices (``[env]``, replayed by ``gvhmr env sync``). Precedence is always
 **env var / CLI flag > config file > built-in default**, so it's a convenience, never a trap.
 
 - ``gvhmr config`` / ``gvhmr config show`` — table of every setting, its value, and where it came from.
 - ``gvhmr config init``                    — interactive wizard that writes the file (with option menus).
-- ``gvhmr config set <key> <value>``       — set one path or model choice non-interactively.
+- ``gvhmr config set <key> <value>``       — set one path / model choice / env field non-interactively.
 - ``gvhmr config path``                    — print the active (or default) config file path.
 """
 
@@ -17,12 +18,14 @@ import typer
 from gvhmr.utils.console import console, rule
 
 app = typer.Typer(
-    help="View & edit the local config file (asset paths + default model versions).", no_args_is_help=False
+    help="View & edit the local config file (asset paths + default model versions + env).", no_args_is_help=False
 )
 
 # The swappable stages the config file can pin a default for — the same Hydra groups the CLI flags select.
 MODEL_KEYS = ("detector", "pose2d", "backbone", "camera")
 DEMO_DEFAULTS = {"detector": "yolo", "pose2d": "vitpose", "backbone": "hmr2", "camera": "simplevo"}
+# [env] fields (see gvhmr/cli/envcmd.py — recorded by the installer/wizard, replayed by `gvhmr env sync`).
+ENV_KEYS = ("torch", "extras", "dpvo")
 STAGE_DESC = {
     "detector": "person detector/tracker (ultralytics YOLO)",
     "pose2d": "2D-pose estimator (must emit COCO-17)",
@@ -33,7 +36,7 @@ STAGE_DESC = {
 OPTION_DOCS = {
     "pose2d": {
         "vitpose": "ViTPose-Huge — released default (heatmap top-down)",
-        "rtmpose": "RTMPose-m — SimCC via rtmlib/ONNX; needs `uv sync --extra rtmpose`",
+        "rtmpose": "RTMPose-m — SimCC via rtmlib/ONNX; needs the rtmpose extra",
     },
     "backbone": {
         "hmr2": "HMR2.0a ViT, 1024-d — the released, trained conditioning",
@@ -45,6 +48,11 @@ OPTION_DOCS = {
         "dust3r": "DUSt3R + Depth-Anything — scene-aware metric camera (MPS/CPU/CUDA)",
         "vggt": "VGGT + Depth-Anything — scene-aware metric, single forward pass",
     },
+}
+ENV_DOCS = {
+    "torch": "torch — the torch backend for this box: none (PyPI wheel: macOS/MPS), cpu, or cu124/cu126/cu128",
+    "extras": "extras — comma-separated install extras `gvhmr env sync` applies (preproc = the demo's models)",
+    "dpvo": "dpvo — 'true' when DPVO (CUDA SLAM) is installed out-of-band by scripts/setup_dpvo.sh",
 }
 
 
@@ -112,13 +120,43 @@ def _current_models() -> dict[str, str]:
     return {k: (localconfig.model_default(k) or DEMO_DEFAULTS[k]) for k in MODEL_KEYS}
 
 
-def _write(paths: dict[str, str], models: dict[str, str], target) -> None:
+def _current_env() -> dict[str, str]:
+    from gvhmr.utils import localconfig
+
+    return {str(k): str(v) for k, v in localconfig.env_table().items()}
+
+
+def write_settings(
+    paths: dict[str, str] | None = None,
+    models: dict[str, str] | None = None,
+    env: dict[str, str] | None = None,
+    target=None,
+) -> None:
+    """Write the config file: the given sections, with any omitted one carried over from the current
+    state — so updating one thing never loses another. Warns when the target is outside the lookup."""
     from gvhmr.utils import assets, localconfig
+
+    paths = paths if paths is not None else _current_paths()
+    models = models if models is not None else _current_models()
+    env = env if env is not None else _current_env()
+    target = target if target is not None else localconfig.target_config_path()
 
     path_entries = [(k, paths[k], [f"{k} — {assets.ROOTS[k][3]}"]) for k in paths]
     model_entries = [(k, models[k], _model_block(k)) for k in MODEL_KEYS]
-    written = localconfig.write_config(target, [("paths", path_entries), ("models", model_entries)])
+    sections: list[localconfig.Section] = [("paths", path_entries), ("models", model_entries)]
+    if env:
+        sections.append(("env", [(k, env[k], [ENV_DOCS.get(k, k)]) for k in ENV_KEYS if k in env]))
+    written = localconfig.write_config(target, sections)
     console.print(f"[ok]✓ wrote[/] [muted]{written}[/]")
+    # Catch the silent-misconfig trap: a file outside the lookup chain would simply never be read.
+    active = localconfig.config_file()
+    if active is None or active.resolve() != written.resolve():
+        console.print(
+            f"[warn]note:[/] GVHMR won't read this location — the lookup is $GVHMR_CONFIG → ./gvhmr.toml → "
+            f"[muted]{localconfig.DEFAULT_CONFIG_PATH}[/] → [muted]{localconfig.LEGACY_CONFIG_PATH}[/] (legacy)"
+            + (f", and it currently finds [muted]{active}[/]" if active else "")
+            + f". To use this file: [gvhmr]export GVHMR_CONFIG={written}[/]"
+        )
 
 
 @app.command()
@@ -155,6 +193,13 @@ def show() -> None:
         models.add_row(key, using, _options_summary(key))
     console.print(models)
 
+    if localconfig.env_table():
+        console.print(
+            f"\nenv: torch=[gvhmr]{localconfig.env_torch() or 'none'}[/] "
+            f"extras=[gvhmr]{','.join(localconfig.env_extras()) or '(none)'}[/] "
+            f"dpvo=[gvhmr]{str(localconfig.env_dpvo()).lower()}[/] — re-apply anytime with [gvhmr]gvhmr env sync[/]"
+        )
+
 
 @app.command()
 def path() -> None:
@@ -166,47 +211,67 @@ def path() -> None:
 
 @app.command("set")
 def set_(
-    key: str = typer.Argument(..., help="A path key (checkpoints/data/body_models/scene) or model stage (detector/…)."),
-    value: str = typer.Argument(..., help="The path, or the model version to select."),
+    key: str = typer.Argument(
+        ...,
+        help="A path key (checkpoints/data/body_models/scene), model stage (detector/…), or env field (torch/extras/dpvo).",
+    ),
+    value: str = typer.Argument(..., help="The path, model version, or env value to set."),
 ) -> None:
-    """Set one path or model choice, non-interactively (writes the config file)."""
+    """Set one path, model choice, or env field, non-interactively (writes the config file)."""
+    from gvhmr.cli.envcmd import TORCH_CHOICES
     from gvhmr.utils import localconfig
 
     paths, models = _current_paths(), _current_models()
     if key in paths:
         paths[key] = value
+        write_settings(paths=paths, target=localconfig.target_config_path())
     elif key in models:
         opts = _group_options(key)
         if value not in opts:
             console.print(f"[err]'{value}' is not a valid {key}[/] — choose from: {', '.join(opts)}")
             raise typer.Exit(1)
         models[key] = value
+        write_settings(models=models, target=localconfig.target_config_path())
+    elif key in ENV_KEYS:
+        if key == "torch" and value not in TORCH_CHOICES:
+            console.print(f"[err]'{value}' is not a torch backend[/] — choose from: {', '.join(TORCH_CHOICES)}")
+            raise typer.Exit(1)
+        if key == "dpvo" and value not in ("true", "false"):
+            console.print("[err]dpvo must be 'true' or 'false'[/]")
+            raise typer.Exit(1)
+        env = _current_env()
+        env[key] = value
+        write_settings(env=env, target=localconfig.target_config_path())
     else:
-        console.print(f"[err]unknown key '{key}'[/] — paths: {', '.join(paths)} · models: {', '.join(models)}")
+        console.print(
+            f"[err]unknown key '{key}'[/] — paths: {', '.join(paths)} · models: {', '.join(models)} · "
+            f"env: {', '.join(ENV_KEYS)}"
+        )
         raise typer.Exit(1)
-    _write(paths, models, localconfig.target_config_path())
 
 
 @app.command()
 def init() -> None:
-    """Interactive wizard: choose asset locations + default model versions, then write the config file."""
+    """Interactive wizard: asset locations, default models, and the managed environment — then write."""
     from pathlib import Path
 
     from rich.panel import Panel
     from rich.prompt import Confirm, Prompt
 
+    from gvhmr.cli.envcmd import TORCH_CHOICES, detect_torch_extra
     from gvhmr.utils import localconfig
 
     console.print(
         Panel.fit(
-            "Configure [gvhmr]GVHMR[/] — where large assets live, and which model version each stage uses.\n"
+            "Configure [gvhmr]GVHMR[/] — where assets live, which models to use, and the Python environment.\n"
             "[dim]Everything lands in one readable file you can re-edit anytime.[/]",
             border_style="gvhmr",
         )
     )
 
-    # 1) Asset locations: one base folder → derive, with optional per-path override.
-    default_base = str(Path.home() / "gvhmr")
+    # 1) Asset locations: one base folder → derive, with optional per-path override. Default matches
+    # the scene-weights default (~/Datasets/GVHMR) and stays clear of a repo clone at ~/gvhmr.
+    default_base = str(Path.home() / "Datasets" / "GVHMR")
     base = Prompt.ask("Base folder for all GVHMR assets [dim](e.g. a high-storage volume)[/]", default=default_base)
     paths = {k: str(Path(base).expanduser() / k) for k in ("checkpoints", "data", "body_models", "scene")}
     if Confirm.ask("Customize individual asset paths?", default=False):
@@ -224,13 +289,31 @@ def init() -> None:
             else:
                 models[k] = Prompt.ask(f"  {k}", choices=_group_options(k), default=DEMO_DEFAULTS[k])
 
-    # 3) Where to write (honors $GVHMR_CONFIG / an existing file as the default).
+    # 3) The managed environment: record the torch build + extras so `gvhmr env sync` can always restore
+    # the env — no uv flags to remember, nothing silently pruned.
+    env = _current_env()
+    if Confirm.ask(
+        "Let gvhmr manage the Python environment? [dim](records the torch build + extras; "
+        "`gvhmr env sync` re-applies them)[/]",
+        default=True,
+    ):
+        detected = detect_torch_extra()
+        console.print(f"  detected torch backend for this box: [gvhmr]{detected or 'none (PyPI wheel — macOS/MPS)'}[/]")
+        env["torch"] = Prompt.ask("  torch backend", choices=list(TORCH_CHOICES), default=detected or "none")
+        env["extras"] = Prompt.ask("  extras [dim](comma-separated)[/]", default=env.get("extras") or "preproc")
+        env.setdefault("dpvo", "false")
+
+    # 4) Where to write (honors $GVHMR_CONFIG / an existing file; default is <repo>/gvhmr.toml).
     target = Path(Prompt.ask("Write config to", default=str(localconfig.target_config_path()))).expanduser()
-    _write(paths, models, target)
+    write_settings(paths=paths, models=models, env=env, target=target)
     show()
 
-    # 4) Offer to fetch now.
-    if Confirm.ask("\nFetch the model checkpoints now? [dim](gvhmr download)[/]", default=False):
+    # 5) Offer to apply everything now — environment first, then the checkpoints.
+    if env and Confirm.ask("\nSync the environment now? [dim](gvhmr env sync)[/]", default=False):
+        from gvhmr.cli.envcmd import sync as env_sync
+
+        env_sync(dry_run=False)
+    if Confirm.ask("Fetch the model checkpoints now? [dim](gvhmr download)[/]", default=False):
         from gvhmr.cli.download import run as download_run
 
         download_run("demo")

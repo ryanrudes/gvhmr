@@ -60,6 +60,49 @@ def test_no_config_no_env_uses_default(tmp_path):
     assert out == "default"
 
 
+def test_gvhmr_config_env_is_authoritative(tmp_path, monkeypatch):
+    # When $GVHMR_CONFIG is set it is the ONLY candidate: a missing file means "no config", with no
+    # silent fallback to a repo-local / legacy file (this is also what keeps the test suite hermetic).
+    repo_file = tmp_path / "gvhmr.toml"
+    repo_file.write_text("[paths]\ndata = '/from/repo/file'\n")
+    monkeypatch.setattr(localconfig, "DEFAULT_CONFIG_PATH", repo_file)
+    monkeypatch.setenv("GVHMR_CONFIG", str(tmp_path / "missing.toml"))
+    assert localconfig.config_file() is None
+
+
+def test_lookup_falls_back_to_repo_then_legacy(tmp_path, monkeypatch):
+    # Without $GVHMR_CONFIG: ./gvhmr.toml → <repo>/gvhmr.toml → legacy XDG path.
+    monkeypatch.delenv("GVHMR_CONFIG", raising=False)
+    (tmp_path / "elsewhere").mkdir()
+    monkeypatch.chdir(tmp_path / "elsewhere")  # so no ./gvhmr.toml candidate exists
+    repo_file = tmp_path / "repo" / "gvhmr.toml"
+    legacy_file = tmp_path / "xdg" / "config.toml"
+    monkeypatch.setattr(localconfig, "DEFAULT_CONFIG_PATH", repo_file)
+    monkeypatch.setattr(localconfig, "LEGACY_CONFIG_PATH", legacy_file)
+    assert localconfig.config_file() is None  # nothing exists yet
+    assert localconfig.target_config_path() == repo_file  # writes default into the repo
+    legacy_file.parent.mkdir(parents=True)
+    legacy_file.write_text("[paths]\n")
+    assert localconfig.config_file() == legacy_file  # legacy still honored…
+    repo_file.parent.mkdir(parents=True)
+    repo_file.write_text("[paths]\n")
+    assert localconfig.config_file() == repo_file  # …but the repo-local file wins
+
+
+def test_env_table_accessors(tmp_path, monkeypatch):
+    cfg = tmp_path / "gvhmr.toml"
+    cfg.write_text("[env]\ntorch = 'cu126'\nextras = 'preproc, dev'\ndpvo = 'true'\n")
+    monkeypatch.setenv("GVHMR_CONFIG", str(cfg))
+    assert localconfig.env_torch() == "cu126"
+    assert localconfig.env_extras() == ["preproc", "dev"]
+    assert localconfig.env_dpvo() is True
+    # 'none' means the default PyPI wheel — reported as no torch extra
+    cfg.write_text("[env]\ntorch = 'none'\n")
+    assert localconfig.env_torch() is None
+    assert localconfig.env_extras() == []
+    assert localconfig.env_dpvo() is False
+
+
 def test_write_config_round_trips(tmp_path):
     # sections: [(section, [(key, value, comment_lines)])] — comments render ABOVE each key.
     target = localconfig.write_config(

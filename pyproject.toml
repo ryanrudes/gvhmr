@@ -10,6 +10,7 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.11"
 authors = [{ name = "Zehong Shen" }]
+maintainers = [{ name = "Ryan Rudes" }]
 keywords = ["human-motion-recovery", "smpl", "pose-estimation", "pytorch", "siggraph"]
 classifiers = [
     "Programming Language :: Python :: 3.11",
@@ -87,6 +88,13 @@ render = ["pytorch3d"]
 # logs under <output_dir>/wandb/); otherwise run `wandb login` once to stream online.
 train = ["wandb>=0.17", "tensorboard"]
 
+# DPVO's torch-ABI-FREE runtime deps. The compiled pieces (dpvo itself + torch-scatter) are CUDA-only
+# and built out-of-band by scripts/setup_dpvo.sh — but these are ordinary wheels, and locking them lets
+# uv own their constraints (notably numba's numpy cap) so a later sync can't break a DPVO install by
+# floating numpy past what numba supports. `gvhmr env sync` adds this extra automatically when the
+# recorded env has dpvo=true.
+dpvo = ["numba", "pypose"]
+
 # --- PyTorch CUDA backend (Linux): pick the one matching your GPU ---------------------------------
 # uv can't auto-detect the GPU for `uv sync` (`--torch-backend=auto` is uv-pip-only) and a lockfile
 # can't gate wheels on CUDA version (no marker exists), so the CUDA build is an explicit, mutually-
@@ -109,14 +117,15 @@ cu128 = ["torch>=2.4,<2.8", "torchvision>=0.19,<0.23"]
 
 # NOTE: DPVO (CUDA-only SLAM) is installed by `scripts/setup_dpvo.sh`, not a uv extra — it compiles CUDA
 # extensions from a thin Eigen-vendored fork against the selected torch. The script picks the CUDA extra
-# for you. On Mac/MPS (no DPVO) use `gvhmr demo --slam dust3r`.
+# for you. On Mac/MPS (no DPVO) use `gvhmr demo --camera dust3r` (or `--camera vggt`).
 
 [project.scripts]
 gvhmr = "gvhmr.cli:app"
 
 [project.urls]
 Homepage = "https://zju3dv.github.io/gvhmr"
-Repository = "https://github.com/zju3dv/GVHMR"
+Repository = "https://github.com/ryanrudes/gvhmr"
+Upstream = "https://github.com/zju3dv/GVHMR"
 Paper = "https://arxiv.org/abs/2409.06662"
 
 # ---------------------------------------------------------------------------

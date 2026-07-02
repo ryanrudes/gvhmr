@@ -20,6 +20,17 @@ def _deterministic() -> None:
     np.random.seed(0)
 
 
+@pytest.fixture(autouse=True)
+def _hermetic_localconfig(monkeypatch, tmp_path) -> None:
+    """Isolate every test from any real machine config file (e.g. a repo-local ``gvhmr.toml``).
+
+    ``$GVHMR_CONFIG`` is authoritative when set — pointing it at a non-file means "no config" — and
+    subprocess-based tests inherit it via ``os.environ``. Tests that exercise the config file itself
+    override the variable explicitly.
+    """
+    monkeypatch.setenv("GVHMR_CONFIG", str(tmp_path / "hermetic-no-config.toml"))
+
+
 @pytest.fixture
 def mps_device() -> torch.device:
     """An Apple-Silicon MPS device, or skip the test if unavailable."""

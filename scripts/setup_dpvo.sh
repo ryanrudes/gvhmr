@@ -10,14 +10,14 @@
 #      modern-PyTorch build patches (.scalar_type() dispatch, loop_closure packaging, torch.amp).
 #
 # Prereqs: a CUDA toolkit (nvcc) + uv. Run from the repo root. On Mac/MPS (no CUDA) DPVO can't build —
-# use the device-agnostic `gvhmr demo --slam dust3r` instead (scripts/setup_scene_aware.sh).
+# use the device-agnostic `gvhmr demo --camera dust3r|vggt` instead (scripts/setup_scene_aware.sh).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 command -v uv >/dev/null || { echo "[setup] uv not found — see https://docs.astral.sh/uv/"; exit 1; }
 NVCC="$(command -v nvcc || true)"
 if [ -z "$NVCC" ]; then
-  echo "[setup] No 'nvcc' on PATH — DPVO needs a CUDA toolkit. On Mac/MPS use: gvhmr demo --slam dust3r"
+  echo "[setup] No 'nvcc' on PATH — DPVO needs a CUDA toolkit. On Mac/MPS use: gvhmr demo --camera dust3r"
   exit 1
 fi
 export CUDA_HOME="${CUDA_HOME:-$(dirname "$(dirname "$NVCC")")}"
@@ -33,9 +33,10 @@ case "$CUDA_VER" in
 esac
 echo "[setup] CUDA_HOME=$CUDA_HOME  (toolkit $CUDA_VER → torch extra: $EXTRA)"
 
-# 2) Project + the matching CUDA torch + preprocessing models (the demo needs YOLO/ViTPose/HMR2).
-echo "[setup] syncing project (torch $EXTRA + preproc)…"
-uv sync --extra "$EXTRA" --extra preproc
+# 2) Project + the matching CUDA torch + preprocessing models (the demo needs YOLO/ViTPose/HMR2) + DPVO's
+#    torch-ABI-free runtime deps (the `dpvo` extra: numba, pypose — locked, so numpy stays numba-compatible).
+echo "[setup] syncing project (torch $EXTRA + preproc + dpvo runtime deps)…"
+uv sync --extra "$EXTRA" --extra preproc --extra dpvo
 
 # 3) Build DPVO (Eigen-vendored fork) + its CUDA-compiled deps STRICTLY against the synced torch.
 #    --no-build-isolation: compile against the env's torch (not an isolated build env).
@@ -47,9 +48,8 @@ uv sync --extra "$EXTRA" --extra preproc
 echo "[setup] building DPVO + CUDA slam deps (compile — a few minutes)…"
 uv pip install --no-build-isolation --no-cache --no-deps \
   --reinstall-package dpvo --reinstall-package torch-scatter \
-  "dpvo @ git+https://github.com/ryanrudes/DPVO.git" torch-scatter pypose
-# DPVO's remaining runtime deps don't touch the torch ABI — install normally (numba pulls llvmlite).
-uv pip install numba yacs
+  "dpvo @ git+https://github.com/ryanrudes/DPVO.git" torch-scatter
+# (numba/pypose/yacs — the torch-ABI-free runtime deps — came from the `dpvo`/`preproc` extras above.)
 
 # 4) Weight (not redistributable here) — same location the SLAM model expects.
 mkdir -p inputs/checkpoints/dpvo
@@ -65,16 +65,19 @@ from gvhmr.utils.preproc.slam import SLAMModel
 print(f'[setup] OK — torch {torch.__version__}, DPVO CUDA extensions import, SLAMModel ready.')
 "
 
+# 6) Record the setup so `gvhmr env sync` knows this box's torch build and that DPVO belongs here
+#    (sync uses --inexact, so it won't prune DPVO — and it warns to re-run this script if DPVO vanishes).
+uv run --no-sync gvhmr env record --torch "$EXTRA" --dpvo || true
+
 cat <<NOTE
 
   ┌───────────────────────────────────────────────────────────────────────────────────────┐
   │  DPVO is installed out-of-band (it can't live in the lock — CUDA-only), so a bare        │
-  │  \`uv sync\` / plain \`uv run\` would prune it and revert torch to the PyPI default. On a    │
-  │  GPU box, pin uv to your env so it never reverts:                                         │
-  │      echo 'export UV_NO_SYNC=1' >> ~/.bashrc && export UV_NO_SYNC=1                       │
-  │  Then run normally:   uv run gvhmr demo VIDEO --use-dpvo                                  │
-  │  Or just use the venv: source .venv/bin/activate && gvhmr demo VIDEO --use-dpvo          │
-  │  (When you *do* want to re-sync, keep your backend: \`uv sync --extra $EXTRA\`.)            │
-  │  If DPVO ever gets pruned, just re-run this script — it's idempotent and recovers.        │
+  │  \`uv sync\` / plain \`uv run\` would prune it and revert torch to the PyPI default.         │
+  │  You don't need uv day-to-day — use the wrapper (or the venv):                            │
+  │      bin/gvhmr demo VIDEO --camera dpvo                                                   │
+  │      source .venv/bin/activate && gvhmr demo VIDEO --camera dpvo                          │
+  │  Need to re-sync (new deps / extras)?  \`bin/gvhmr env sync\` replays this box's recorded   │
+  │  setup without pruning anything. If DPVO ever vanishes, re-run this script (idempotent).  │
   └───────────────────────────────────────────────────────────────────────────────────────┘
 NOTE

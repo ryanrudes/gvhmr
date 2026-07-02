@@ -1,0 +1,11 @@
+#!/bin/sh
+# Run the project's `gvhmr` CLI directly from the repo — without going through `uv run`, which re-syncs
+# the environment to the lock's defaults first (reverting a CUDA torch and pruning DPVO/preproc).
+# Set the environment up once with scripts/install.sh; repair it anytime with `bin/gvhmr env sync`.
+ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+GVHMR="$ROOT/.venv/bin/gvhmr"
+if [ ! -x "$GVHMR" ]; then
+  echo "[gvhmr] no environment yet — run scripts/install.sh first" >&2
+  exit 1
+fi
+exec "$GVHMR" "$@"
