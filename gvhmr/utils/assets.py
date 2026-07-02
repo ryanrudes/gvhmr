@@ -11,20 +11,41 @@ SMPL/SMPL-X **body models are registration-gated** and can't be auto-fetched; se
 
 from __future__ import annotations
 
-import os
 import tarfile
 from dataclasses import dataclass
 from pathlib import Path
 
 from gvhmr import PROJ_ROOT
+from gvhmr.utils.localconfig import resolve
 
-# --- Roots (env-overridable, absolute → cwd-independent) ------------------------------------------
-#: Root of all model checkpoints. Layout under it mirrors the HF repo (gvhmr/ hmr2/ vitpose/ yolo/ dpvo/).
-CHECKPOINT_ROOT = Path(os.environ.get("GVHMR_CHECKPOINTS", str(PROJ_ROOT / "inputs/checkpoints")))
-#: Root of the SMPL/SMPL-X body models (a `smplx/` and `smpl/` subfolder). Defaults under CHECKPOINT_ROOT.
-BODY_MODEL_ROOT = Path(os.environ.get("GVHMR_BODY_MODELS", str(CHECKPOINT_ROOT / "body_models")))
-#: Root for downloaded training/eval data packs (the `inputs/<DS>/hmr4d_support/` bundles).
-DATA_ROOT = Path(os.environ.get("GVHMR_DATA_ROOT", str(PROJ_ROOT / "inputs")))
+# --- Asset roots — a readable config file OR env vars point these at a high-storage volume ---------
+# Every root resolves as: env var > config file ([paths] in ~/.config/gvhmr/config.toml) > default
+# (see gvhmr/utils/localconfig.py). Manage with `gvhmr config`; import these instead of hard-coding paths.
+CHECKPOINT_ROOT, _src_ckpt = resolve("checkpoints", "GVHMR_CHECKPOINTS", PROJ_ROOT / "inputs/checkpoints")
+#: SMPL/SMPL-X body models (a `smplx/` and `smpl/` subfolder); defaults under CHECKPOINT_ROOT.
+BODY_MODEL_ROOT, _src_body = resolve("body_models", "GVHMR_BODY_MODELS", CHECKPOINT_ROOT / "body_models")
+#: Training/eval data packs (the `<DS>/hmr4d_support/` bundles).
+DATA_ROOT, _src_data = resolve("data", "GVHMR_DATA_ROOT", PROJ_ROOT / "inputs")
+#: DUSt3R / Depth-Anything scene-camera weights (used by `--camera dust3r|vggt`).
+SCENE_ROOT, _src_scene = resolve("scene", "GVHMR_DATA", Path("~/Datasets/GVHMR").expanduser())
+
+#: The configurable roots, for `gvhmr config` / `gvhmr info`: key → (env var, resolved path, source, description).
+ROOTS: dict[str, tuple[str, Path, str, str]] = {
+    "checkpoints": (
+        "GVHMR_CHECKPOINTS",
+        CHECKPOINT_ROOT,
+        _src_ckpt,
+        "model checkpoints (gvhmr, hmr2, vitpose, yolo, dpvo)",
+    ),
+    "data": ("GVHMR_DATA_ROOT", DATA_ROOT, _src_data, "training/eval data packs (<DS>/hmr4d_support)"),
+    "body_models": ("GVHMR_BODY_MODELS", BODY_MODEL_ROOT, _src_body, "SMPL / SMPL-X body models (registration-gated)"),
+    "scene": (
+        "GVHMR_DATA",
+        SCENE_ROOT,
+        _src_scene,
+        "DUSt3R / Depth-Anything scene-camera weights (--camera dust3r|vggt)",
+    ),
+}
 
 # Named checkpoint paths — import these instead of hard-coding "inputs/checkpoints/...".
 GVHMR_CKPT = CHECKPOINT_ROOT / "gvhmr/gvhmr_siga24_release.ckpt"

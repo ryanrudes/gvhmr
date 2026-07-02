@@ -188,3 +188,5 @@ third-party/
 .claude/
 .DS_Store
 *.bak
+# Local machine config (asset paths + model defaults; machine-specific)
+gvhmr.toml

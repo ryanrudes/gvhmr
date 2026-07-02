@@ -12,7 +12,43 @@ video ─► detector ─► pose2d ─► backbone ─► camera ─► motion 
           └──────────┴──────────┴───────────┴─  each a config group under gvhmr/configs/
 ```
 
-## Three ways to configure
+## Your config file — one readable place (`gvhmr config`)
+
+Machine-local settings — **where large assets live** and **which model version each stage uses by default** —
+go in one readable TOML file (`~/.config/gvhmr/config.toml`) instead of scattered env vars. Set it up
+interactively, or edit it by hand:
+
+```bash
+gvhmr config init                       # wizard: pick asset folders + default models → writes the file
+gvhmr config show                       # table of every setting, its value, and where it came from
+gvhmr config set camera vggt            # change one thing non-interactively (validated against the options)
+gvhmr config set checkpoints /vol/gvhmr/ckpts
+```
+
+The file is **self-documenting** — every model line lists all its options:
+
+```toml
+[paths]
+checkpoints = '/vol/gvhmr/checkpoints'   # model checkpoints (gvhmr, hmr2, vitpose, yolo, dpvo)
+data        = '/vol/gvhmr/data'          # training/eval data packs (<DS>/hmr4d_support)
+body_models = '/vol/gvhmr/body_models'   # SMPL / SMPL-X body models (registration-gated)
+scene       = '/vol/gvhmr/scene'         # DUSt3R / Depth-Anything scene-camera weights
+
+[models]
+detector = 'yolo'      # options: yolo, yolo11
+pose2d   = 'vitpose'   # options: rtmpose, vitpose — rtmpose needs `uv sync --extra rtmpose`
+backbone = 'hmr2'      # options: dinov2, hmr2 — non-hmr2 requires a retrain (Tier B)
+camera   = 'simplevo'  # options: dpvo, dust3r, simplevo, vggt — dpvo=CUDA-only; dust3r/vggt=scene-aware metric
+```
+
+`gvhmr download` fetches into `[paths]`; `gvhmr demo` reads `[models]` as its defaults. **Precedence for
+everything is: env var / CLI flag > this file > built-in default** — the file is your baseline, and a one-off
+flag or `$GVHMR_*` env var still wins (`gvhmr config show` reveals the source of each value, so a stray env
+var is never a mystery). A project-local `./gvhmr.toml` is also honored if you prefer per-checkout config.
+
+## Overriding per run (CLI)
+
+These override the config file for a single invocation.
 
 **1. Name flags — pick an implementation (the 90% case):**
 ```bash
@@ -52,7 +88,7 @@ pose choice, and a `--set` overrides everything.
 | **2D pose** | `--pose2d` | `vitpose`, `rtmpose` | nothing — **must emit COCO-17** |
 | **Camera** | `--camera` | `simplevo`, `dpvo` (CUDA), `dust3r` / `vggt` (scene-aware, metric) | nothing |
 | **Feature backbone** | `--backbone` | `hmr2` (released), `dinov2` | **a retrain** (see below) |
-| **Body model** | `$GVHMR_BODY_MODELS` | SMPL / SMPL-X file | file-swap within topology only |
+| **Body model** | config `[paths].body_models` | SMPL / SMPL-X file | file-swap within topology only |
 
 - **Detector:** `--detector yolo11` pulls `yolo11x.pt` automatically (ultralytics). Point at any weight with
   `--detector-ckpt path/to.pt`.

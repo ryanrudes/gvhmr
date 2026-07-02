@@ -82,3 +82,11 @@ def run() -> None:
         present = (assets.DATA_ROOT / ds_dir / "hmr4d_support").exists()
         data.add_row(name, roles.get(name, ""), _yn(present))
     console.print(data)
+
+    from gvhmr.utils import localconfig
+
+    cfg = localconfig.config_file()
+    where = f"[ok]{cfg}[/]" if cfg else "[muted]none[/] (using defaults / env vars)"
+    console.print(
+        f"\nconfig file: {where} — manage asset locations + default model versions with [gvhmr]gvhmr config[/]"
+    )

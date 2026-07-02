@@ -51,8 +51,11 @@ uv run gvhmr info       # check device, installed features, and checkpoint statu
 ```
 
 `gvhmr demo` also auto-fetches any missing checkpoints on first run. SMPL/SMPL-X **body models are
-registration-gated** — `gvhmr download` prints the sign-up + target path. One env var relocates each asset
-class: `$GVHMR_CHECKPOINTS`, `$GVHMR_BODY_MODELS`, `$GVHMR_DATA_ROOT` (no symlinks).
+registration-gated** — `gvhmr download` prints the sign-up + target path. To keep large assets on a
+**high-storage volume** and pick your default model versions, run **`gvhmr config init`** — a Rich wizard
+that writes one readable `~/.config/gvhmr/config.toml` (asset locations + `[models]` defaults, with the
+options listed inline). `$GVHMR_*` env vars still override it for CI / one-offs. See
+[docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
 On **Linux/CUDA**, add the extra matching your GPU (uv can't auto-detect it for `uv sync`) — check
 `nvidia-smi` and pick the nearest ≤ your CUDA: `uv sync --extra cu128` (covers 12.8–13.x), `cu126`,

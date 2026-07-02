@@ -62,8 +62,8 @@ the same ruff version) enforces this on commit; `make check` reproduces the full
 ## CLI & console output
 
 The CLI is a **Typer** app in `gvhmr/cli/`
-(`gvhmr demo`/`demo-folder`/`train`/`bench`/`info`/`download`/`extract-features`); the `tools/` scripts are
-thin backward-compat shims. **All console output goes through the
+(`gvhmr demo`/`demo-folder`/`train`/`bench`/`info`/`download`/`extract-features`/`config`); the `tools/`
+scripts are thin backward-compat shims. **All console output goes through the
 one shared Rich console in `gvhmr/utils/console.py`** — use `Log` (Rich-backed logging),
 `track(...)` for progress bars (drop-in for tqdm), `status(...)` for spinners, `rule(...)`
 for section dividers, and `console.print(...)`. Don't use bare `print()` or `tqdm` in
@@ -105,12 +105,16 @@ dispatch, `loop_closure` packaging, `torch.amp`). The vendored `gvhmr/utils/prep
 lets the pip-installed `dpvo` find its config. DPVO lives outside the lock, so use `UV_NO_SYNC=1` (or
 pass `--extra cuXXX` consistently) to keep a bare `uv sync` from pruning it. See `docs/INSTALL.md`.
 
-**Asset roots & fetching.** All weights + data resolve through `gvhmr/utils/assets.py`, each relocatable
-with one env var: `$GVHMR_CHECKPOINTS` (checkpoints), `$GVHMR_BODY_MODELS` (SMPL/SMPL-X, registration-gated),
-`$GVHMR_DATA_ROOT` (training/eval packs — every dataset loader routes through it). `gvhmr download [demo|slam|
-all]` fetches checkpoints and `gvhmr download --data <DS,…>` the data packs (from the HF mirror
-`camenduru/GVHMR`) into those roots; `gvhmr demo` auto-fetches missing checkpoints; `gvhmr info` shows what's
-present. Body models are gated (can't auto-download — the tooling prints the sign-up + target path).
+**Asset roots, config file & fetching.** Machine-local settings — where large assets live (`checkpoints` /
+`data` / `body_models` / `scene`) and the default model version per stage — live in one readable TOML file
+(`~/.config/gvhmr/config.toml`), managed with **`gvhmr config`** (`init` wizard / `show` / `set`). Everything
+resolves through `gvhmr/utils/localconfig.py` (`resolve()`) + `gvhmr/utils/assets.py` (`ROOTS`), with
+precedence **env var / CLI flag > config file > default** — so the file is the friendly baseline and the
+`$GVHMR_*` env vars (`GVHMR_CHECKPOINTS` / `GVHMR_BODY_MODELS` / `GVHMR_DATA_ROOT` / `GVHMR_DATA`) still win
+for CI / one-offs. `gvhmr download [demo|slam|all]` fetches checkpoints and `gvhmr download --data <DS,…>`
+the packs (HF mirror `camenduru/GVHMR`) into those roots; `gvhmr demo` auto-fetches missing checkpoints and
+reads the config `[models]` defaults; `gvhmr info` / `gvhmr config show` show what's present + where. Body
+models are registration-gated (can't auto-download — the tooling prints the sign-up + target path).
 
 ## Device / MPS
 

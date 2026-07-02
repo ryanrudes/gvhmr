@@ -27,12 +27,13 @@ from pathlib import Path
 
 import numpy as np
 
+from gvhmr.utils.assets import SCENE_ROOT
+
 _THIRD_PARTY = Path(__file__).resolve().parents[3] / "third-party"
-# Scene-model weights live under $GVHMR_DATA (default ~/Datasets/GVHMR) — the SAME root scripts/
-# setup_scene_aware.sh downloads them to, so relocation is one env var (set it before both).
-_SCENE_DATA = Path(os.environ.get("GVHMR_DATA", "~/Datasets/GVHMR")).expanduser()
-_DUST3R_CKPT = _SCENE_DATA / "dust3r/DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth"
-_DA_CKPT = _SCENE_DATA / "depth_anything/depth_anything_v2_metric_vkitti_vitb.pth"
+# Scene-model weights live under the `scene` root — config file `[paths].scene` / $GVHMR_DATA (default
+# ~/Datasets/GVHMR), the SAME root scripts/setup_scene_aware.sh downloads them to. Manage via `gvhmr config`.
+_DUST3R_CKPT = SCENE_ROOT / "dust3r/DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth"
+_DA_CKPT = SCENE_ROOT / "depth_anything/depth_anything_v2_metric_vkitti_vitb.pth"
 _DA_CFG = {"encoder": "vitb", "features": 128, "out_channels": [96, 192, 384, 768]}
 
 

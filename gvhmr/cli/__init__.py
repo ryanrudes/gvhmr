@@ -11,6 +11,8 @@ from typing import Annotated
 
 import typer
 
+from gvhmr.cli.config import app as config_app
+
 app = typer.Typer(
     name="gvhmr",
     help=(
@@ -23,6 +25,8 @@ app = typer.Typer(
     add_completion=True,
     context_settings={"help_option_names": ["-h", "--help"]},
 )
+# `gvhmr config …` — view/edit the local config file (asset paths + default model versions).
+app.add_typer(config_app, name="config")
 
 
 @app.callback()

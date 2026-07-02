@@ -533,12 +533,19 @@ def run(
     """Run the full single-video demo with a Rich, staged display."""
     torch.set_num_threads(os.cpu_count() or 1)  # pytorch3d CPU rasterizer scales with torch threads
     joint_indices = resolve_joint_subset(skeleton_joints)  # validates the spec up front
+    # Fall back to the config file's [models] defaults for any stage not chosen on the CLI (precedence:
+    # CLI flag > config file > the released demo default). Manage the file with `gvhmr config`.
+    from gvhmr.utils import localconfig
+
+    detector = detector or localconfig.model_default("detector")
+    pose2d = pose2d or localconfig.model_default("pose2d")
+    backbone = backbone or localconfig.model_default("backbone")
     # Resolve the camera backend: --camera is the selector; --slam / --use-dpvo are deprecated aliases.
-    cam = camera or slam or ("dpvo" if use_dpvo else None)
+    cam = camera or slam or ("dpvo" if use_dpvo else None) or localconfig.model_default("camera")
 
     # Assemble the pluggable-stage config overrides (Tier A). Order matters for precedence: a --recipe
-    # first (a committable bundle of choices), then explicit name selectors and weight tweaks, then the
-    # raw --set passthrough last — so --set wins over everything and --detector wins over a --recipe.
+    # first (a committable bundle of choices), then the stage selectors (CLI flag or config-file default),
+    # then the raw --set passthrough last — so --set wins over everything.
     config_overrides: list[str] = []
     if recipe is not None:
         config_overrides.append(f"+recipe={recipe}")
