@@ -91,11 +91,12 @@ def test_lookup_falls_back_to_repo_then_legacy(tmp_path, monkeypatch):
 
 def test_env_table_accessors(tmp_path, monkeypatch):
     cfg = tmp_path / "gvhmr.toml"
-    cfg.write_text("[env]\ntorch = 'cu126'\nextras = 'preproc, dev'\ndpvo = 'true'\n")
+    cfg.write_text("[env]\ntorch = 'cu126'\nextras = 'preproc, dev'\ndpvo = 'true'\nscene = 'true'\n")
     monkeypatch.setenv("GVHMR_CONFIG", str(cfg))
     assert localconfig.env_torch() == "cu126"
     assert localconfig.env_extras() == ["preproc", "dev"]
     assert localconfig.env_dpvo() is True
+    assert localconfig.env_scene() is True
     # 'none' means the default PyPI wheel — reported as no torch extra
     cfg.write_text("[env]\ntorch = 'none'\n")
     assert localconfig.env_torch() is None

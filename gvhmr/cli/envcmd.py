@@ -24,6 +24,42 @@ app = typer.Typer(help="Record & re-sync this box's Python environment (so you n
 #: The torch-backend choices (the cuXXX/cpu extras in pyproject.toml); "none" = the default PyPI wheel.
 TORCH_CHOICES = ("none", "cpu", "cu124", "cu126", "cu128")
 
+#: The optional components the wizard/installer walk through. Two kinds:
+#: extras — locked wheels, applied by `gvhmr env sync`:  extra name → (description, probe module).
+EXTRA_COMPONENTS: dict[str, tuple[str, str]] = {
+    "preproc": ("the demo's detector / 2D-pose / SimpleVO — required for `gvhmr demo`", "ultralytics"),
+    "rtmpose": ("RTMPose 2D-pose backend, `--pose2d rtmpose` (rtmlib + ONNXRuntime)", "rtmlib"),
+    "vis": ("interactive 3D visualization (wis3d, viser)", "wis3d"),
+    "notebook": ("Jupyter / IPython / ipdb", "jupyter"),
+    "train": ("training loggers for `gvhmr train` (wandb default, tensorboard alt)", "wandb"),
+    "dev": ("tests + ruff + pyright — for contributors", "ruff"),
+    "render": ("pytorch3d render FALLBACK — rarely needed, the moderngl renderer ships in base", "pytorch3d"),
+}
+#: scripts — compiled/cloned backends, installed by an idempotent setup script and tracked in [env]:
+#: env key → (description, script path, probe: "module:<name>" or "dir:<repo-relative>").
+SCRIPT_COMPONENTS: dict[str, tuple[str, str, str]] = {
+    "dpvo": (
+        "DPVO camera — full 6-DoF visual odometry (CUDA-only; compiles CUDA extensions)",
+        "scripts/setup_dpvo.sh",
+        "module:dpvo",
+    ),
+    "scene": (
+        "scene-aware metric cameras DUSt3R + VGGT (any device; clones + ~3 GB weights)",
+        "scripts/setup_scene_aware.sh",
+        "dir:third-party/dust3r",
+    ),
+}
+
+
+def component_installed(probe: str) -> bool:
+    """Whether a component is present: ``module:<name>`` probes an import, ``dir:<path>`` a repo dir."""
+    import importlib.util
+
+    kind, _, target = probe.partition(":")
+    if kind == "module":
+        return importlib.util.find_spec(target) is not None
+    return (PROJ_ROOT / target).is_dir()
+
 
 def _nvidia_cuda_version() -> str | None:
     """The driver's max supported CUDA version from ``nvidia-smi`` (e.g. ``"12.8"``), or None."""
@@ -99,7 +135,12 @@ def sync_args(torch_extra: str | None, extras: list[str], dpvo: bool = False) ->
     return args
 
 
-def record_env(torch: str | None = None, extras: str | None = None, dpvo: bool | None = None) -> dict:
+def record_env(
+    torch: str | None = None,
+    extras: str | None = None,
+    dpvo: bool | None = None,
+    scene: bool | None = None,
+) -> dict:
     """Merge the given fields into the config file's ``[env]`` table (None = leave unchanged).
     Returns the resulting table. Used by the CLI command, the wizard, and the setup scripts."""
     from gvhmr.cli.config import write_settings
@@ -112,6 +153,8 @@ def record_env(torch: str | None = None, extras: str | None = None, dpvo: bool |
         env["extras"] = ",".join(e.strip() for e in extras.split(",") if e.strip())
     if dpvo is not None:
         env["dpvo"] = "true" if dpvo else "false"
+    if scene is not None:
+        env["scene"] = "true" if scene else "false"
     write_settings(env=env)
     return env
 
@@ -121,6 +164,9 @@ def record(
     torch: str | None = typer.Option(None, "--torch", help=f"Torch backend extra ({'/'.join(TORCH_CHOICES)})."),
     extras: str | None = typer.Option(None, "--extras", help="Comma-separated extras (e.g. preproc,dev)."),
     dpvo: bool | None = typer.Option(None, "--dpvo/--no-dpvo", help="DPVO (out-of-band CUDA SLAM) installed."),
+    scene: bool | None = typer.Option(
+        None, "--scene/--no-scene", help="Scene-aware cameras (DUSt3R/VGGT clones + weights) installed."
+    ),
 ) -> None:
     """Record this box's environment choices in the config file [dim](the installer/wizard do this)[/]."""
     from gvhmr.utils import localconfig
@@ -128,7 +174,7 @@ def record(
     if torch is not None and torch not in TORCH_CHOICES:
         console.print(f"[err]'{torch}' is not a torch backend[/] — choose from: {', '.join(TORCH_CHOICES)}")
         raise typer.Exit(1)
-    env = record_env(torch=torch, extras=extras, dpvo=dpvo)
+    env = record_env(torch=torch, extras=extras, dpvo=dpvo, scene=scene)
     console.print(f"recorded env: [gvhmr]{env}[/] → [muted]{localconfig.target_config_path()}[/]")
 
 
@@ -165,6 +211,11 @@ def sync(
             "[warn]DPVO is recorded for this box but missing[/] — re-run [gvhmr]scripts/setup_dpvo.sh[/] "
             "(it compiles against the synced torch; idempotent)."
         )
+    if localconfig.env_scene() and not component_installed(SCRIPT_COMPONENTS["scene"][2]):
+        console.print(
+            "[warn]The scene-aware cameras are recorded for this box but missing[/] — re-run "
+            "[gvhmr]scripts/setup_scene_aware.sh[/] (clones + weights; idempotent)."
+        )
     console.print("[ok]environment synced[/] — [dim]`gvhmr info` shows the result[/]")
 
 
@@ -187,6 +238,9 @@ def show() -> None:
     dpvo = localconfig.env_dpvo()
     dpvo_now = importlib.util.find_spec("dpvo") is not None
     console.print(f"  dpvo   = [gvhmr]{str(dpvo).lower()}[/]" + ("" if dpvo_now == dpvo else "  [warn](drifted)[/]"))
+    scene = localconfig.env_scene()
+    scene_now = component_installed(SCRIPT_COMPONENTS["scene"][2])
+    console.print(f"  scene  = [gvhmr]{str(scene).lower()}[/]" + ("" if scene_now == scene else "  [warn](drifted)[/]"))
     console.print(
         f"sync runs: [gvhmr]uv {' '.join(sync_args(localconfig.env_torch(), localconfig.env_extras(), dpvo=dpvo))}[/]"
     )

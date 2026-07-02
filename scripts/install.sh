@@ -80,21 +80,31 @@ run "${SYNC[@]}"
 EXTRAS="preproc"; [ "$DEV" = 1 ] && EXTRAS="preproc,dev"
 run uv run --no-sync gvhmr env record --torch "${TORCH_EXTRA:-none}" --extras "$EXTRAS"
 
-# 3) Demo checkpoints (~5.5 GB from the HuggingFace mirror; `gvhmr demo` also auto-fetches on first run).
+# 3) The configuration wizard: asset locations + optional components (RTMPose, DPVO, DUSt3R/VGGT scene
+#    cameras, visualization, …) + checkpoint fetch, all interactive. Skipped when non-interactive.
 #    --no-sync everywhere below: a plain `uv run` re-syncs to the lock's defaults, which would undo the
-#    cuXXX torch we just installed (that's also why day-to-day CUDA usage wants UV_NO_SYNC=1).
-if [ "$DOWNLOAD" = ask ] && [ -t 0 ]; then
+#    cuXXX torch we just installed (that's also why day-to-day usage goes through bin/gvhmr).
+WIZARD_RAN=0
+if [ -t 0 ] && [ "$DOWNLOAD" = ask ]; then
+  printf '\033[1;36m[install]\033[0m run the configuration wizard now? (asset locations + optional components: RTMPose, DPVO, scene cameras, …) [Y/n] '
+  read -r reply || reply=""
+  case "$reply" in [nN]*) ;; *) run uv run --no-sync gvhmr config init && WIZARD_RAN=1 ;; esac
+fi
+
+# 4) Demo checkpoints (~5.5 GB from the HuggingFace mirror; `gvhmr demo` also auto-fetches on first run).
+#    The wizard offers this itself, so only ask here when it didn't run.
+if [ "$DOWNLOAD" = ask ] && [ "$WIZARD_RAN" = 0 ] && [ -t 0 ]; then
   printf '\033[1;36m[install]\033[0m fetch the demo checkpoints now (~5.5 GB)? [Y/n] '
   read -r reply || reply=""
   case "$reply" in [nN]*) DOWNLOAD=no ;; *) DOWNLOAD=yes ;; esac
 fi
 if [ "$DOWNLOAD" = yes ]; then
   run uv run --no-sync gvhmr download demo
-else
-  say "skipping checkpoint fetch — \`uv run gvhmr download\` later, or let the demo auto-fetch"
+elif [ "$WIZARD_RAN" = 0 ]; then
+  say "skipping checkpoint fetch — \`bin/gvhmr download\` later, or let the demo auto-fetch"
 fi
 
-# 4) Optional: DPVO (CUDA-only SLAM). Its script re-syncs with the same CUDA extra and compiles the kernels.
+# 5) Optional: DPVO via the --dpvo flag (the wizard also offers it). CUDA-only; compiles the kernels.
 if [ "$DPVO" = 1 ]; then
   case "$TORCH_EXTRA" in
     cu*) run scripts/setup_dpvo.sh ;;
@@ -102,11 +112,11 @@ if [ "$DPVO" = 1 ]; then
   esac
 fi
 
-# 5) Show what we ended up with + the next steps.
+# 6) Show what we ended up with + the next steps.
 run uv run --no-sync gvhmr info || true
 say "done. From here on you never need uv directly — use the wrapper (or activate the venv):"
 say "    bin/gvhmr demo docs/example_video/tennis.mp4 -s     # try it on the bundled example"
-say "    bin/gvhmr config init                               # wizard: asset locations + models + env"
+say "    bin/gvhmr config init                               # wizard: asset locations + components + env"
 say "    bin/gvhmr env sync                                  # repair the env if it ever drifts"
 say "body models (registration-gated, can't be auto-fetched): sign up at https://smpl.is.tue.mpg.de/"
 say "and https://smpl-x.is.tue.mpg.de/ — \`bin/gvhmr download\` prints exactly where to put them."

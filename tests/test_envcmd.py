@@ -7,7 +7,18 @@ its bounds), and that ``record_env`` merges into the config file without losing 
 
 from __future__ import annotations
 
-from gvhmr.cli.envcmd import TORCH_CHOICES, _extra_for_cuda, record_env, sync_args
+import tomllib
+
+from gvhmr import PROJ_ROOT
+from gvhmr.cli.envcmd import (
+    EXTRA_COMPONENTS,
+    SCRIPT_COMPONENTS,
+    TORCH_CHOICES,
+    _extra_for_cuda,
+    component_installed,
+    record_env,
+    sync_args,
+)
 from gvhmr.utils import localconfig
 
 
@@ -51,3 +62,29 @@ def test_record_env_merges_without_losing_fields(tmp_path, monkeypatch):
     assert localconfig.env_dpvo() is True
     assert localconfig.env_torch() == "cu126"
     assert localconfig.env_extras() == ["preproc"]
+    record_env(scene=True)  # the scene-camera setup script records this
+    assert localconfig.env_scene() is True
+    assert localconfig.env_dpvo() is True
+
+
+def test_component_registry_matches_pyproject_and_disk():
+    # The wizard's menu must stay truthful: every extra it offers exists in pyproject, the torch
+    # backends are NOT offered as components (they're the separate torch prompt), and every setup
+    # script it can run exists and is executable-ish (a file).
+    with open(PROJ_ROOT / "pyproject.toml", "rb") as f:
+        declared = set(tomllib.load(f)["project"]["optional-dependencies"])
+    offered = set(EXTRA_COMPONENTS)
+    assert offered <= declared, f"components not in pyproject: {offered - declared}"
+    assert not offered & {"cpu", "cu124", "cu126", "cu128"}
+    assert "preproc" in offered  # the demo's requirement leads the menu
+    for key, (_desc, script, probe) in SCRIPT_COMPONENTS.items():
+        assert (PROJ_ROOT / script).is_file(), f"{key}: missing {script}"
+        kind = probe.split(":", 1)[0]
+        assert kind in ("module", "dir"), f"{key}: bad probe {probe!r}"
+
+
+def test_component_installed_probes():
+    assert component_installed("module:pytest") is True  # the suite itself proves it's importable
+    assert component_installed("module:not-a-real-module") is False
+    assert component_installed("dir:gvhmr") is True  # repo-relative dir
+    assert component_installed("dir:not/a/real/dir") is False

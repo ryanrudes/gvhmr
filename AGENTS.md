@@ -56,12 +56,14 @@ make fmt                     # format the WHOLE tree; make lint / typecheck / te
 uv run pre-commit install    # (or `make hooks`) once — auto-runs `ruff format` on commit, pinned to CI's ruff
 ```
 
-**Users should never need raw uv.** `scripts/install.sh` / the `gvhmr config init` wizard record the
-box's torch build + extras in the config file's `[env]` table (`gvhmr/cli/envcmd.py`); `gvhmr env sync`
-replays them with `--inexact` so a sync never prunes the out-of-band DPVO or a CUDA torch. `bin/gvhmr`
-is the no-re-sync wrapper (plain `uv run` re-syncs to the lock's defaults first — the classic trap;
-the Makefile uses `uv run --no-sync` for the same reason). `gvhmr info` detects env drift and points
-at `gvhmr env sync`.
+**Users should never need raw uv.** `scripts/install.sh` bootstraps then hands off to the
+`gvhmr config init` wizard, which walks every optional component (the registries
+`EXTRA_COMPONENTS`/`SCRIPT_COMPONENTS` in `gvhmr/cli/envcmd.py` — keep them in sync with pyproject
+extras and setup scripts; a test enforces it) and records the box's torch build + extras + dpvo/scene
+in the config file's `[env]` table. `gvhmr env sync` replays them with `--inexact` so a sync never
+prunes the out-of-band DPVO or a CUDA torch. `bin/gvhmr` is the no-re-sync wrapper (plain `uv run`
+re-syncs to the lock's defaults first — the classic trap; the Makefile uses `uv run --no-sync` for the
+same reason). `gvhmr info` detects env drift and points at `gvhmr env sync`.
 
 **Formatting must match CI.** CI's one required style gate is `ruff format --check gvhmr tools tests` (the
 lint/pyright jobs are advisory). Format the **whole tree** (`make fmt`), not just the files you touched —

@@ -63,6 +63,8 @@ torch = 'cu128'
 extras = 'preproc'
 # dpvo — 'true' when DPVO (CUDA SLAM) is installed out-of-band by scripts/setup_dpvo.sh
 dpvo = 'false'
+# scene — 'true' when the DUSt3R/VGGT scene cameras are set up by scripts/setup_scene_aware.sh
+scene = 'false'
 ```
 
 (`gvhmr config init` generates the full file — every stage's options listed above its value.)

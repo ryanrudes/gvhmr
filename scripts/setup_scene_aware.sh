@@ -60,4 +60,8 @@ if [ ! -f "$DA_CKPT" ]; then
     "https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-VKITTI-Base/resolve/main/depth_anything_v2_metric_vkitti_vitb.pth?download=true"
 fi
 
+# Record it in [env] so `gvhmr env sync` / `gvhmr env show` know this box has the scene cameras
+# (best-effort: the clones+weights above don't need the venv, so it may not exist yet).
+uv run --no-sync gvhmr env record --scene 2>/dev/null || true
+
 echo "[setup] done. Try:  gvhmr demo VIDEO --camera dust3r   (or --camera vggt)"

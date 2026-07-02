@@ -38,11 +38,13 @@ scripts/install.sh                                   # detects your platform/GPU
 bin/gvhmr demo docs/example_video/tennis.mp4 -s      # recover motion from the bundled example video
 ```
 
-The installer detects macOS vs Linux+NVIDIA vs CPU, picks the matching torch build, and **records the
-choices** — from then on you interact only with the `gvhmr` CLI (via `bin/gvhmr`, or `gvhmr` after
-`source .venv/bin/activate`), never with uv: `bin/gvhmr config init` is the wizard for asset locations,
-model choices, and the environment; `bin/gvhmr env sync` re-applies the recorded environment if it ever
-drifts. Two notes, and everything else just works:
+The installer detects macOS vs Linux+NVIDIA vs CPU, picks the matching torch build, records the
+choices, and hands off to the **wizard**, which walks you through every optional component (RTMPose,
+DPVO, the DUSt3R/VGGT scene cameras, 3D visualization, …), asset locations, and the checkpoint fetch.
+From then on you interact only with the `gvhmr` CLI (via `bin/gvhmr`, or `gvhmr` after
+`source .venv/bin/activate`), never with uv: `bin/gvhmr config init` re-runs the wizard;
+`bin/gvhmr env sync` re-applies the recorded environment if it ever drifts. Two notes, and everything
+else just works:
 
 - **Body models are registration-gated** (their license forbids redistribution): sign up at
   [SMPL](https://smpl.is.tue.mpg.de/) and [SMPL-X](https://smpl-x.is.tue.mpg.de/), then

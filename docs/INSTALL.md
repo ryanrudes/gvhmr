@@ -10,9 +10,11 @@ scripts/install.sh          # detects your platform/GPU, picks the right torch b
 
 The script detects macOS (Apple-Silicon MPS) vs Linux+NVIDIA (matching CUDA wheel, with a V100/P100
 architecture guard) vs CPU-only, runs the right `uv sync`, **records the choices in the config file**,
-offers to fetch the model checkpoints (~5.5 GB), and finishes with `gvhmr info` so you can see the
-result. `scripts/install.sh --help` lists the flags (`--dev`, `--cpu`, `--cuda cu126`, `--dpvo`, `-y`,
-`--no-download`).
+then hands off to the **configuration wizard** — which walks you through every optional component
+(RTMPose, the DPVO and DUSt3R/VGGT scene cameras, 3D visualization, notebooks, training loggers, the
+pytorch3d fallback), asset locations, and the checkpoint fetch (~5.5 GB) — and finishes with
+`gvhmr info` so you can see the result. `scripts/install.sh --help` lists the flags (`--dev`, `--cpu`,
+`--cuda cu126`, `--dpvo`, `-y`, `--no-download`); re-run the wizard anytime with `bin/gvhmr config init`.
 
 **After that, you never need to touch uv.** Run everything through the wrapper (or the activated venv):
 
@@ -135,7 +137,8 @@ automatically.
 ## Optional camera backends (moving cameras)
 
 The default camera is **SimpleVO** (in `preproc`; rotation only). For world **translation** on a
-moving camera, two optional setups:
+moving camera, two optional setups — the wizard (`gvhmr config init`) offers both and can run the
+scripts for you:
 
 - **Scene-aware metric cameras — any device (recommended on Mac).** `--camera dust3r` reconstructs the
   scene with DUSt3R + a global aligner; `--camera vggt` uses VGGT in one feed-forward pass (often

@@ -125,6 +125,12 @@ def env_dpvo() -> bool:
     return str(env_table().get("dpvo", "")).lower() == "true"
 
 
+def env_scene() -> bool:
+    """Whether the scene-aware cameras (DUSt3R/VGGT clones + weights, scripts/setup_scene_aware.sh)
+    are part of the recorded env."""
+    return str(env_table().get("scene", "")).lower() == "true"
+
+
 #: A section is (name, entries); each entry is (key, value, comment_lines) — comments render ABOVE the key.
 Section = tuple[str, list[tuple[str, str, list[str]]]]
 

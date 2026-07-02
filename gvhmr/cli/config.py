@@ -25,7 +25,7 @@ app = typer.Typer(
 MODEL_KEYS = ("detector", "pose2d", "backbone", "camera")
 DEMO_DEFAULTS = {"detector": "yolo", "pose2d": "vitpose", "backbone": "hmr2", "camera": "simplevo"}
 # [env] fields (see gvhmr/cli/envcmd.py — recorded by the installer/wizard, replayed by `gvhmr env sync`).
-ENV_KEYS = ("torch", "extras", "dpvo")
+ENV_KEYS = ("torch", "extras", "dpvo", "scene")
 STAGE_DESC = {
     "detector": "person detector/tracker (ultralytics YOLO)",
     "pose2d": "2D-pose estimator (must emit COCO-17)",
@@ -53,6 +53,7 @@ ENV_DOCS = {
     "torch": "torch — the torch backend for this box: none (PyPI wheel: macOS/MPS), cpu, or cu124/cu126/cu128",
     "extras": "extras — comma-separated install extras `gvhmr env sync` applies (preproc = the demo's models)",
     "dpvo": "dpvo — 'true' when DPVO (CUDA SLAM) is installed out-of-band by scripts/setup_dpvo.sh",
+    "scene": "scene — 'true' when the DUSt3R/VGGT scene cameras are set up by scripts/setup_scene_aware.sh",
 }
 
 
@@ -197,7 +198,8 @@ def show() -> None:
         console.print(
             f"\nenv: torch=[gvhmr]{localconfig.env_torch() or 'none'}[/] "
             f"extras=[gvhmr]{','.join(localconfig.env_extras()) or '(none)'}[/] "
-            f"dpvo=[gvhmr]{str(localconfig.env_dpvo()).lower()}[/] — re-apply anytime with [gvhmr]gvhmr env sync[/]"
+            f"dpvo=[gvhmr]{str(localconfig.env_dpvo()).lower()}[/] "
+            f"scene=[gvhmr]{str(localconfig.env_scene()).lower()}[/] — re-apply anytime with [gvhmr]gvhmr env sync[/]"
         )
 
 
@@ -236,8 +238,8 @@ def set_(
         if key == "torch" and value not in TORCH_CHOICES:
             console.print(f"[err]'{value}' is not a torch backend[/] — choose from: {', '.join(TORCH_CHOICES)}")
             raise typer.Exit(1)
-        if key == "dpvo" and value not in ("true", "false"):
-            console.print("[err]dpvo must be 'true' or 'false'[/]")
+        if key in ("dpvo", "scene") and value not in ("true", "false"):
+            console.print(f"[err]{key} must be 'true' or 'false'[/]")
             raise typer.Exit(1)
         env = _current_env()
         env[key] = value
@@ -289,30 +291,62 @@ def init() -> None:
             else:
                 models[k] = Prompt.ask(f"  {k}", choices=_group_options(k), default=DEMO_DEFAULTS[k])
 
-    # 3) The managed environment: record the torch build + extras so `gvhmr env sync` can always restore
-    # the env — no uv flags to remember, nothing silently pruned.
+    # 3) The managed environment: torch build + a walk through every optional component, so nothing is
+    # discovered later via an error message. Recorded in [env]; `gvhmr env sync` re-applies it anytime.
     env = _current_env()
     if Confirm.ask(
-        "Let gvhmr manage the Python environment? [dim](records the torch build + extras; "
+        "Let gvhmr manage the Python environment? [dim](records the torch build + components; "
         "`gvhmr env sync` re-applies them)[/]",
         default=True,
     ):
+        from gvhmr.cli.envcmd import EXTRA_COMPONENTS, SCRIPT_COMPONENTS, component_installed
+
         detected = detect_torch_extra()
         console.print(f"  detected torch backend for this box: [gvhmr]{detected or 'none (PyPI wheel — macOS/MPS)'}[/]")
-        env["torch"] = Prompt.ask("  torch backend", choices=list(TORCH_CHOICES), default=detected or "none")
-        env["extras"] = Prompt.ask("  extras [dim](comma-separated)[/]", default=env.get("extras") or "preproc")
-        env.setdefault("dpvo", "false")
+        env["torch"] = Prompt.ask(
+            "  torch backend", choices=list(TORCH_CHOICES), default=env.get("torch") or detected or "none"
+        )
+        # Optional components — extras (locked wheels; defaults reflect what's recorded or installed):
+        console.print("  [dim]optional components — pick what this box should have:[/]")
+        recorded_extras = {e.strip() for e in (env.get("extras") or "").split(",") if e.strip()}
+        chosen = []
+        for name, (desc, probe) in EXTRA_COMPONENTS.items():
+            default = name == "preproc" or name in recorded_extras or component_installed(f"module:{probe}")
+            if Confirm.ask(f"    {name} — {desc}?", default=default):
+                chosen.append(name)
+        env["extras"] = ",".join(chosen)
+        # …and the script-installed camera backends (compiled/cloned; offered to run at the end):
+        cuda_box = env["torch"].startswith("cu")
+        for key, (desc, script, probe) in SCRIPT_COMPONENTS.items():
+            if key == "dpvo" and not cuda_box:
+                console.print("    [dim]dpvo — skipped: CUDA-only (the scene cameras cover translation).[/]")
+                env.setdefault("dpvo", "false")
+                continue
+            default = env.get(key) == "true" or component_installed(probe)
+            env[key] = "true" if Confirm.ask(f"    {key} — {desc}?", default=default) else "false"
 
     # 4) Where to write (honors $GVHMR_CONFIG / an existing file; default is <repo>/gvhmr.toml).
     target = Path(Prompt.ask("Write config to", default=str(localconfig.target_config_path()))).expanduser()
     write_settings(paths=paths, models=models, env=env, target=target)
     show()
 
-    # 5) Offer to apply everything now — environment first, then the checkpoints.
-    if env and Confirm.ask("\nSync the environment now? [dim](gvhmr env sync)[/]", default=False):
+    # 5) Offer to apply everything now — the extras, then the script-installed backends, then checkpoints.
+    if env and Confirm.ask("\nSync the environment now? [dim](gvhmr env sync)[/]", default=True):
         from gvhmr.cli.envcmd import sync as env_sync
 
         env_sync(dry_run=False)
+    from gvhmr.cli.envcmd import SCRIPT_COMPONENTS, component_installed
+
+    for key, (desc, script, probe) in SCRIPT_COMPONENTS.items():
+        if env.get(key) == "true" and not component_installed(probe):
+            if Confirm.ask(f"Run [gvhmr]{script}[/] now? [dim]({desc})[/]", default=False):
+                import subprocess
+
+                from gvhmr import PROJ_ROOT
+
+                subprocess.run(["bash", script], cwd=PROJ_ROOT, check=False)
+            else:
+                console.print(f"  [dim]later: bash {script}  (idempotent)[/]")
     if Confirm.ask("Fetch the model checkpoints now? [dim](gvhmr download)[/]", default=False):
         from gvhmr.cli.download import run as download_run
 
