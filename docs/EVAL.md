@@ -1,4 +1,31 @@
-# World-frame evaluation on real datasets
+# Evaluation
+
+## The paper benchmarks — `gvhmr eval`
+
+The canonical numbers (3DPW / EMDB-1 / EMDB-2 / RICH, flip-test + test-time postprocessing — exactly
+the paper's protocol) are one command:
+
+```bash
+gvhmr eval                       # all three datasets; auto-fetches the data packs + checkpoint
+gvhmr eval 3dpw                  # one dataset (~1 min on a modern GPU)
+gvhmr eval emdb,rich --json out/metrics.json
+gvhmr eval all --ckpt outputs/my_run/checkpoints/last.ckpt   # evaluate your own training run
+```
+
+It fetches whatever is missing (preprocessed eval packs → `$GVHMR_DATA_ROOT`, the released checkpoint),
+checks the registration-gated body models up front (each dataset needs specific gendered files — the
+error lists exactly which and where), runs the same Lightning test tasks as the raw
+`gvhmr train global/task=gvhmr/test_* …` invocation, and ends with one table of your numbers next to
+the **paper's published numbers** (arXiv 2409.06662) with the delta highlighted — so a regression is
+visible at a glance. Metrics: PA-MPJPE / MPJPE / PVE (mm), Accel (m/s²) in camera space;
+W-MPJPE₁₀₀ / WA-MPJPE₁₀₀ (mm, per 100-frame chunk), RTE (% of path), Jitter, foot sliding (mm) in
+world space.
+
+This pipeline is verified end-to-end: on 2026-07-02 the released checkpoint reproduced the paper's
+camera-space numbers exactly (3DPW 36.2/55.6/67.2, EMDB-1 42.7/72.6/84.2, RICH within 0.3 mm) and the
+world metrics within ~1% (EMDB-2 W-MPJPE 272.8 vs 274.9) on an RTX 6000 Ada.
+
+## World-frame evaluation on real datasets (`tools/eval/eval_world.py`)
 
 The fork's headline addition — recovering a *metric* world trajectory for a moving/following camera
 (`--camera dust3r|vggt`, and the static-camera in-cam carry) — needs **ground-truth world motion** to measure,

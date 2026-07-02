@@ -73,8 +73,8 @@ the same ruff version) enforces this on commit; `make check` reproduces the full
 ## CLI & console output
 
 The CLI is a **Typer** app in `gvhmr/cli/`
-(`gvhmr demo`/`demo-folder`/`train`/`bench`/`info`/`download`/`extract-features`/`config`/`env`); the
-`tools/` scripts are thin backward-compat shims. **All console output goes through the
+(`gvhmr demo`/`demo-folder`/`train`/`eval`/`bench`/`info`/`download`/`extract-features`/`config`/`env`);
+the `tools/` scripts are thin backward-compat shims. **All console output goes through the
 one shared Rich console in `gvhmr/utils/console.py`** — use `Log` (Rich-backed logging),
 `track(...)` for progress bars (drop-in for tqdm), `status(...)` for spinners, `rule(...)`
 for section dividers, and `console.print(...)`. Don't use bare `print()` or `tqdm` in
@@ -165,7 +165,7 @@ traversal a following camera induces, which the velocity prior misses. Set both 
 latent by name), `nan_hooks(model)` (locate non-finite outputs), `count_parameters`.
 3D viz via `gvhmr/utils/wis3d_utils.py` (`vis` extra). See `docs/DEBUGGING.md`.
 
-## Accuracy
+## Accuracy & evaluation
 
 Test-time accuracy levers (no retraining) live behind opt-in flags so the default
 `predict` path stays **byte-identical** (golden-guarded): `--flip-test` (mirror-averaging
@@ -173,6 +173,15 @@ TTA, ported from the eval into `DemoPL.predict`), `--f_mm` / metadata focal, and
 automatic SimpleVO carry-forward. Iterate with the 2D-reprojection + jitter proxies (no GT
 needed) — but reprojection is in-cam/depth-ambiguous and **gameable** (drop-imgseq, SMPLify
 refinement), so always pair it with jitter. Full evidence + rejected ideas in `docs/ACCURACY.md`.
+
+**The paper benchmarks are `gvhmr eval`** (`gvhmr/cli/evalcmd.py` → the Lightning test tasks
+`configs/global/task/gvhmr/test_*` → `callbacks/metric_{3dpw,emdb,rich}.py` →
+`utils/eval/eval_utils.py`). Auto-fetches packs/ckpt, preflights the gated body models, and prints
+results next to `PAPER_REFERENCE` (arXiv 2409.06662 — keep in sync if metrics change). Verified
+2026-07-02: the released ckpt reproduces the paper (3DPW/EMDB-1 exact; world metrics within ~1%).
+The callbacks stash `pl_module.metrics_summary` → `train.LAST_TEST_METRICS` for the summary table;
+they are device-agnostic (`pl_module.device`); metric math + the golden test resolve assets through
+`gvhmr.utils.assets` (never hard-code `inputs/checkpoints`). See `docs/EVAL.md`.
 
 ## Performance
 

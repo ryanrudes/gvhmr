@@ -119,22 +119,20 @@ readable config file managed by **`gvhmr config init`**. Full guide:
 
 ## Reproduce the paper
 
-Eval/train sets are preprocessed packs fetched with `gvhmr download --data 3dpw,emdb,rich`
-(add `amass,h36m,bedlam` for training); they land under `inputs/` unless relocated. See
-[docs/TRAINING.md](docs/TRAINING.md) and [docs/EVAL.md](docs/EVAL.md).
-
 ```bash
-# Test: 3DPW, RICH, and EMDB in a single run
-gvhmr train global/task=gvhmr/test_3dpw_emdb_rich exp=gvhmr/mixed/mixed \
-    ckpt_path=inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
+gvhmr eval                    # 3DPW + EMDB + RICH: auto-fetches the eval packs, runs the paper
+                              # protocol, prints your numbers next to the paper's (verified to match)
+gvhmr eval 3dpw --json m.json # one dataset; optionally dump metrics for tracking
+gvhmr eval all --ckpt outputs/my_run/checkpoints/last.ckpt   # evaluate your own training run
 
 # Train (the released ckpt used 2×4090 for 420 epochs)
 gvhmr train exp=gvhmr/mixed/mixed
 ```
 
-To test one dataset, set `global/task` to `gvhmr/test_3dpw`, `gvhmr/test_rich`, or `gvhmr/test_emdb`.
-Training doesn't apply the test-time postprocessing, so global metrics differ from the test script
-(but remain comparable across baselines).
+`gvhmr eval` wraps the canonical Lightning test tasks (`gvhmr train global/task=gvhmr/test_* …` still
+works) — the only manual step is the registration-gated body models, and the command tells you exactly
+which files it needs. Details: [docs/EVAL.md](docs/EVAL.md); training: [docs/TRAINING.md](docs/TRAINING.md)
+(training doesn't apply the test-time postprocessing, so its global metrics differ from the benchmark).
 
 ## Development
 

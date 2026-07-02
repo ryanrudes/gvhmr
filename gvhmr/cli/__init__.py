@@ -224,6 +224,31 @@ def train(
     run(overrides or [])
 
 
+@app.command(name="eval")
+def eval_(
+    datasets: Annotated[
+        str,
+        typer.Argument(
+            help="Benchmarks to run: [gvhmr]3dpw[/], [gvhmr]emdb[/], [gvhmr]rich[/] (comma/space list) or [gvhmr]all[/]."
+        ),
+    ] = "all",
+    ckpt: Annotated[
+        str | None, typer.Option("--ckpt", help="Checkpoint to evaluate [dim](default: the released ckpt)[/].")
+    ] = None,
+    json_out: Annotated[
+        Path | None, typer.Option("--json", help="Also write the metrics (+ paper reference) to this JSON file.")
+    ] = None,
+    set_: Annotated[
+        list[str] | None,
+        typer.Option("--set", help="Raw Hydra override(s), repeatable [dim](passed to the test task)[/]."),
+    ] = None,
+) -> None:
+    """Run the paper benchmarks (auto-fetches data; prints your numbers next to the paper's)."""
+    from gvhmr.cli.evalcmd import run
+
+    run(datasets, ckpt=ckpt, json_out=json_out, set_overrides=set_)
+
+
 @app.command(name="extract-features")
 def extract_features(
     videos: Annotated[Path, typer.Argument(help="A video file or a folder of them.", exists=True)],

@@ -6,8 +6,9 @@ seeded synthetic inputs, then asserts the output is byte-stable. This is what ma
 the aggressive reorg and the performance work safe: any change that alters the model's
 output trips this test.
 
-Requires the released checkpoint + SMPL-X body models under ``inputs/checkpoints/``
-(see docs/INSTALL.md). Skipped automatically when they're absent (e.g. in CI).
+Requires the released checkpoint + SMPL-X body models under the configured asset roots
+(see docs/INSTALL.md; paths resolve through ``gvhmr.utils.assets``, so relocated assets —
+env var or config file — are found). Skipped automatically when they're absent (e.g. in CI).
 """
 
 from __future__ import annotations
@@ -17,10 +18,10 @@ from pathlib import Path
 import pytest
 import torch
 
-from gvhmr import PROJ_ROOT
+from gvhmr.utils.assets import BODY_MODEL_ROOT, GVHMR_CKPT
 
-CKPT = PROJ_ROOT / "inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt"
-SMPLX = PROJ_ROOT / "inputs/checkpoints/body_models/smplx/SMPLX_NEUTRAL.npz"
+CKPT = GVHMR_CKPT
+SMPLX = BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz"
 
 pytestmark = pytest.mark.checkpoint
 

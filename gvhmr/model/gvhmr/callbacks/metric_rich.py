@@ -9,6 +9,7 @@ from einops import einsum
 from smplx.joint_names import JOINT_NAMES
 from gvhmr.utils.console import track
 
+from gvhmr import PROJ_ROOT
 from gvhmr.configs import MainStore, builds
 from gvhmr.utils.comm.gather import all_gather
 from gvhmr.utils.eval.eval_utils import (
@@ -58,8 +59,10 @@ class MetricMocap(pl.Callback):
             "female": make_smplx("rich-smplx", gender="female"),
             "neutral": make_smplx("rich-smplx", gender="neutral"),
         }
-        self.J_regressor = torch.load("gvhmr/utils/body_model/smpl_neutral_J_regressor.pt", weights_only=False)
-        self.smplx2smpl = torch.load("gvhmr/utils/body_model/smplx2smpl_sparse.pt", weights_only=False)
+        # Committed assets resolve from the repo root (not the CWD).
+        _bm = PROJ_ROOT / "gvhmr/utils/body_model"
+        self.J_regressor = torch.load(_bm / "smpl_neutral_J_regressor.pt", weights_only=False)
+        self.smplx2smpl = torch.load(_bm / "smplx2smpl_sparse.pt", weights_only=False)
         self.faces_smpl = make_smplx("smpl").faces
         self.faces_smplx = self.smplx_model["neutral"].faces
 
@@ -77,11 +80,12 @@ class MetricMocap(pl.Callback):
         if dataset_id != "RICH":
             return
 
-        # Move to cuda if not
+        # Move to the evaluation device if not there yet (cuda on GPU boxes; works on cpu/mps too)
+        device = pl_module.device
         for g in ["male", "female", "neutral"]:
-            self.smplx_model[g] = self.smplx_model[g].cuda()
-        self.J_regressor = self.J_regressor.cuda()
-        self.smplx2smpl = self.smplx2smpl.cuda()
+            self.smplx_model[g] = self.smplx_model[g].to(device)
+        self.J_regressor = self.J_regressor.to(device)
+        self.smplx2smpl = self.smplx2smpl.to(device)
 
         vid = batch["meta"][0]["vid"]
         seq_length = batch["length"][0].item()
@@ -371,6 +375,11 @@ class MetricMocap(pl.Callback):
             cur_epoch = pl_module.current_epoch
             for k, v in metrics_avg.items():
                 pl_module.logger.log_metrics({f"val_metric_RICH/{k}": v}, step=cur_epoch)
+
+        # stash the epoch averages where callers (e.g. `gvhmr eval`'s summary table) can read them
+        if not hasattr(pl_module, "metrics_summary"):
+            pl_module.metrics_summary = {}
+        pl_module.metrics_summary["RICH"] = {k: float(v) for k, v in metrics_avg.items()}
 
         # reset
         for k in self.metric_aggregator:

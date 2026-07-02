@@ -12,7 +12,19 @@ MainStore = ConfigStore.instance()
 
 
 def register_store_gvhmr():
-    """Register group options to MainStore"""
+    """Register group options to MainStore (+ the asset-root resolver used by the yaml configs)."""
+    from omegaconf import OmegaConf
+
+    # ${gvhmr_checkpoints:} → the fully-resolved checkpoint root (env var > config file > default).
+    # A plain ${oc.env:GVHMR_CHECKPOINTS,...} only honored the env var, so relocating checkpoints via
+    # the config file broke every yaml-declared checkpoint path (e.g. the demo's ckpt_path).
+    def _checkpoint_root() -> str:
+        from gvhmr.utils.assets import CHECKPOINT_ROOT
+
+        return str(CHECKPOINT_ROOT)
+
+    OmegaConf.register_new_resolver("gvhmr_checkpoints", _checkpoint_root, replace=True)
+
     from . import store_gvhmr
 
 

@@ -25,6 +25,9 @@ from gvhmr.utils.vis.rich_logger import print_cfg
 # torch device type → PyTorch-Lightning accelerator string.
 _PL_ACCELERATOR = {"cuda": "gpu", "mps": "mps", "cpu": "cpu"}
 
+#: After a `task=test` run: {dataset_id: {metric: value}} from the metric callbacks (see `gvhmr eval`).
+LAST_TEST_METRICS: dict[str, dict[str, float]] = {}
+
 
 def get_callbacks(cfg: DictConfig) -> list | None:
     """Parse and instantiate all the callbacks in the config."""
@@ -113,6 +116,9 @@ def train(cfg: DictConfig) -> None:
     elif cfg.task == "test":
         Log.info("Start testing...")
         trainer.test(model, datamodule.test_dataloader())
+        # Expose the metric callbacks' epoch averages to in-process callers (`gvhmr eval`'s table).
+        global LAST_TEST_METRICS
+        LAST_TEST_METRICS = dict(getattr(model, "metrics_summary", {}))
     else:
         raise ValueError(f"Unknown task: {cfg.task}")
     Log.info("[ok]End of script.[/]")

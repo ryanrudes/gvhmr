@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 import torch
 from einops import einsum
 
+from gvhmr import PROJ_ROOT
 from gvhmr.configs import MainStore, builds
 from gvhmr.utils.comm.gather import all_gather
 from gvhmr.utils.eval.eval_utils import as_np_array, compute_camcoord_metrics
@@ -28,14 +29,13 @@ class MetricMocap(pl.Callback):
             "accel": {},
         }
 
-        # SMPLX and SMPL
+        # SMPLX and SMPL. Committed assets resolve from the repo root (not the CWD).
+        _bm = PROJ_ROOT / "gvhmr/utils/body_model"
         self.smplx = make_smplx("supermotion_EVAL3DPW")
         self.smpl = {"male": make_smplx("smpl", gender="male"), "female": make_smplx("smpl", gender="female")}
-        self.J_regressor = torch.load(
-            "gvhmr/utils/body_model/smpl_3dpw14_J_regressor_sparse.pt", weights_only=False
-        ).to_dense()
-        self.J_regressor24 = torch.load("gvhmr/utils/body_model/smpl_neutral_J_regressor.pt", weights_only=False)
-        self.smplx2smpl = torch.load("gvhmr/utils/body_model/smplx2smpl_sparse.pt", weights_only=False)
+        self.J_regressor = torch.load(_bm / "smpl_3dpw14_J_regressor_sparse.pt", weights_only=False).to_dense()
+        self.J_regressor24 = torch.load(_bm / "smpl_neutral_J_regressor.pt", weights_only=False)
+        self.smplx2smpl = torch.load(_bm / "smplx2smpl_sparse.pt", weights_only=False)
         self.faces_smplx = self.smplx.faces
         self.faces_smpl = self.smpl["male"].faces
 
@@ -53,13 +53,14 @@ class MetricMocap(pl.Callback):
         if dataset_id != "3DPW":
             return
 
-        # Move to cuda if not
-        self.smplx = self.smplx.cuda()
+        # Move to the evaluation device if not there yet (cuda on GPU boxes; works on cpu/mps too)
+        device = pl_module.device
+        self.smplx = self.smplx.to(device)
         for g in ["male", "female"]:
-            self.smpl[g] = self.smpl[g].cuda()
-        self.J_regressor = self.J_regressor.cuda()
-        self.J_regressor24 = self.J_regressor24.cuda()
-        self.smplx2smpl = self.smplx2smpl.cuda()
+            self.smpl[g] = self.smpl[g].to(device)
+        self.J_regressor = self.J_regressor.to(device)
+        self.J_regressor24 = self.J_regressor24.to(device)
+        self.smplx2smpl = self.smplx2smpl.to(device)
 
         vid = batch["meta"][0]["vid"]
         seq_length = batch["length"][0].item()
@@ -179,6 +180,11 @@ class MetricMocap(pl.Callback):
             cur_epoch = pl_module.current_epoch
             for k, v in metrics_avg.items():
                 pl_module.logger.log_metrics({f"val_metric_3DPW/{k}": v}, step=cur_epoch)
+
+        # stash the epoch averages where callers (e.g. `gvhmr eval`'s summary table) can read them
+        if not hasattr(pl_module, "metrics_summary"):
+            pl_module.metrics_summary = {}
+        pl_module.metrics_summary["3DPW"] = {k: float(v) for k, v in metrics_avg.items()}
 
         # reset
         for k in self.metric_aggregator:

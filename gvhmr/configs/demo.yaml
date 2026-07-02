@@ -20,7 +20,8 @@ pipeline:
     weights: null
     static_conf: null
 
-ckpt_path: ${oc.env:GVHMR_CHECKPOINTS,inputs/checkpoints}/gvhmr/gvhmr_siga24_release.ckpt
+# Resolves through gvhmr.utils.assets (env var > config file > default) — see register_store_gvhmr.
+ckpt_path: ${gvhmr_checkpoints:}/gvhmr/gvhmr_siga24_release.ckpt
 
 # ================================ #
 #          global setting          #

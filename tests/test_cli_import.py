@@ -27,3 +27,7 @@ def test_cli_demo_imports_without_extras():
 def test_cli_info_and_download_import_without_extras():
     assert callable(importlib.import_module("gvhmr.cli.info").run)
     assert callable(importlib.import_module("gvhmr.cli.download").run)
+
+
+def test_cli_eval_imports_without_extras():
+    assert callable(importlib.import_module("gvhmr.cli.evalcmd").run)
