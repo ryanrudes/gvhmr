@@ -75,6 +75,61 @@ _RAW_LAYOUTS = {
     "emdb": "{p}/{seq}/images",  # official EMDB: P3/28_outdoor_walk_lunges/images/*.jpg
 }
 
+#: Raw datasets served directly by their official hosts (no credentials) → auto-fetchable, like every
+#: other asset: dataset → (url, exact size, license url). EMDB is NOT here — its download is
+#: credential-gated (institutional email), so it stays a manual --raw-dir step.
+RAW_AUTOFETCH: dict[str, tuple[str, int, str]] = {
+    "3dpw": (
+        "https://virtualhumans.mpi-inf.mpg.de/3DPW/imageFiles.zip",
+        4_610_672_154,
+        "https://virtualhumans.mpi-inf.mpg.de/3DPW/license.html",
+    ),
+}
+
+
+def fetch_raw_dataset(dataset: str, dest_root: Path) -> Path:
+    """Download + extract an auto-fetchable raw dataset (resumable; exact-size verified). Returns the
+    directory usable as ``raw_dir`` (e.g. ``<dest_root>`` containing ``imageFiles/``). Idempotent —
+    an already-extracted copy is reused; a partial ``.zip.part`` resumes via HTTP Range."""
+    import urllib.request
+    import zipfile
+
+    from gvhmr.utils.console import track
+    from gvhmr.utils.net import ensure_ca_bundle
+
+    url, size, license_url = RAW_AUTOFETCH[dataset]
+    dest_root = Path(dest_root)
+    marker = dest_root / _RAW_LAYOUTS[dataset].split("/")[0]  # e.g. imageFiles/
+    if marker.is_dir() and any(marker.iterdir()):
+        return dest_root
+
+    ensure_ca_bundle()
+    dest_root.mkdir(parents=True, exist_ok=True)
+    part = dest_root / (Path(url).name + ".part")
+    Log.info(
+        f"[{dataset}] downloading the official raw dataset ({size / 1e9:.1f}GB) from {url} — "
+        f"by continuing you accept its research license: {license_url}"
+    )
+    start = part.stat().st_size if part.exists() else 0
+    if start < size:
+        req = urllib.request.Request(url, headers={"Range": f"bytes={start}-"} if start else {})
+        with urllib.request.urlopen(req) as resp, open(part, "ab") as out:
+            total_mb = (size - start) / 1e6
+            for _ in track(range(int(total_mb) + 1), desc=f"{dataset} raw ({size / 1e9:.1f}GB)"):
+                chunk = resp.read(1_000_000)
+                if not chunk:
+                    break
+                out.write(chunk)
+    got = part.stat().st_size
+    if got != size:
+        raise OSError(f"{part} is {got} bytes, expected {size} — re-run to resume the download.")
+    with zipfile.ZipFile(part) as z:
+        for name in track(z.namelist(), desc=f"extracting {Path(url).name}"):
+            z.extract(name, dest_root)
+    part.unlink()  # 4.6GB of dead weight once extracted
+    Log.info(f"[ok]{dataset} raw dataset ready[/] → [muted]{dest_root}[/]")
+    return dest_root
+
 
 def _raw_image_dir(dataset: str, raw_dir: Path, name: str) -> Path:
     if dataset == "3dpw":

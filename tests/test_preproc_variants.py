@@ -48,6 +48,16 @@ def test_identity_guard_separates_people():
     assert 0.0 < IDENTITY_IOU_THR < 1.0
 
 
+def test_raw_autofetch_registry():
+    # 3DPW's official host serves the files directly → auto-fetchable; EMDB is credential-gated → NOT.
+    from gvhmr.utils.eval.preproc_variants import RAW_AUTOFETCH
+
+    assert "3dpw" in RAW_AUTOFETCH and "emdb" not in RAW_AUTOFETCH
+    url, size, license_url = RAW_AUTOFETCH["3dpw"]
+    assert url.startswith("https://") and license_url.startswith("https://")
+    assert size > 1e9  # exact-size verification guards truncated downloads
+
+
 def test_raw_image_dir_layouts(tmp_path):
     assert _raw_image_dir("3dpw", tmp_path, "downtown_bar_00") == tmp_path / "imageFiles/downtown_bar_00"
     assert (

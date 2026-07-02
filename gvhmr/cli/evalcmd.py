@@ -183,8 +183,9 @@ def ensure_stage_deps(detectors: list[str], pose2ds: list[str], backbones: list[
 
 def ensure_variant_inputs(names: list[str], raw_dir: Path | None) -> None:
     """Ensure each dataset's pack has its per-sequence videos — the pixels every preprocessing
-    regeneration needs. Composes them from ``--raw-dir`` once; fails ONCE with the download pointer
-    when absent (callers preflight this so a sweep doesn't crash trial after trial)."""
+    regeneration needs. The raw dataset auto-downloads when its official host serves it directly
+    (3DPW); ``--raw-dir`` points at an existing copy instead. Credential-gated raws (EMDB) fail ONCE
+    with the download pointer (callers preflight this so a sweep doesn't crash trial after trial)."""
     from gvhmr.utils import assets
     from gvhmr.utils.eval import preproc_variants as pv
 
@@ -192,14 +193,20 @@ def ensure_variant_inputs(names: list[str], raw_dir: Path | None) -> None:
         support = assets.DATA_ROOT / PACK_DIRS[n] / "hmr4d_support"
         video_names = pv.dataset_video_names(n, support)
         missing_videos = [v for v in video_names if not (support / f"videos/{v}.mp4").exists()]
-        if missing_videos and raw_dir is not None:
-            Log.info(f"[{n}] composing {len(missing_videos)} missing video(s) from the raw download…")
-            pv.build_videos_from_raw(n, Path(raw_dir), video_names, support / "videos")
-        elif missing_videos:
+        if not missing_videos:
+            continue
+        n_raw_dir = raw_dir
+        if n_raw_dir is None and n in pv.RAW_AUTOFETCH:
+            n_raw_dir = pv.fetch_raw_dataset(n, assets.DATA_ROOT / "raw" / PACK_DIRS[n])
+        if n_raw_dir is not None:
+            Log.info(f"[{n}] composing {len(missing_videos)} missing video(s) from the raw dataset…")
+            pv.build_videos_from_raw(n, Path(n_raw_dir), video_names, support / "videos")
+        else:
             console.print(
                 f"[err]{n}: {len(missing_videos)} video(s) missing[/] under [muted]{support}/videos[/] — the "
-                f"packs ship no videos (not redistributable). Download the official dataset "
-                f"({RAW_DATASET_URLS[n]}) and pass [gvhmr]--raw-dir <download>[/] to compose them once."
+                f"packs ship no videos (not redistributable) and this dataset's raw download is "
+                f"credential-gated. Download it ({RAW_DATASET_URLS[n]}) and pass "
+                f"[gvhmr]--raw-dir <download>[/] to compose them once."
             )
             raise SystemExit(1)
 

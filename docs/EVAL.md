@@ -33,17 +33,20 @@ once upstream), so by default a detector/2D-pose swap is *invisible* to the benc
 (`<DS>/hmr4d_support/preproc_variants/<slug>/` — the canonical files are never touched):
 
 ```bash
-gvhmr eval 3dpw --detector yolo26x --raw-dir ~/datasets/3DPW   # first run: composes videos + regenerates
-gvhmr eval 3dpw,emdb --detector yolo26x --pose2d rtmpose       # variants are cached + resumable
+gvhmr eval 3dpw --detector yolo26x                        # first run: fetches raw 3DPW + regenerates
+gvhmr eval 3dpw,emdb --detector yolo26x --pose2d rtmpose  # variants are cached + resumable
 ```
 
 What to know before trusting a variant number:
 
-- **You need the raw videos once.** The packs ship an *empty* `videos/` dir (the footage isn't
-  redistributable). Download the official dataset ([3DPW](https://virtualhumans.mpi-inf.mpg.de/3DPW/) —
-  free; [EMDB](https://eth-ait.github.io/emdb/) — registration) and pass `--raw-dir`; the pack's
-  `videos/` is composed from it once (30 fps), then any number of variants can be generated. **RICH is
-  not supported** (no per-sequence videos anywhere ungated).
+- **The raw videos are fetched once.** The packs ship an *empty* `videos/` dir (the footage isn't
+  redistributable through the mirror). **3DPW auto-downloads** from its official host
+  (`imageFiles.zip`, 4.6 GB, resumable — fetching implies accepting its
+  [research license](https://virtualhumans.mpi-inf.mpg.de/3DPW/license.html)) into
+  `$GVHMR_DATA_ROOT/raw/3DPW`, and the pack's `videos/` is composed from it (30 fps) — after that, any
+  number of variants can be generated. [EMDB](https://eth-ait.github.io/emdb/)'s download is
+  credential-gated (registration), so it needs a manual download + `--raw-dir` (which also lets you
+  point 3DPW at an existing copy). **RICH is not supported** (no per-sequence videos anywhere ungated).
 - **Identity guard (3DPW is multi-person).** A fresh detector on a two-person video can lock onto the
   *other* person — that would score a tracking-identity failure, not a detector comparison. Regenerated
   tracks are median-IoU-checked against the canonical track; mismatches keep the canonical boxes for
@@ -70,9 +73,9 @@ dimension table up front. The other stages are deliberately fixed, and the tool 
   A/B camera backends with the world-eval harness below instead.
 
 ```bash
-gvhmr sweep run 3dpw --detectors canonical,yolov8x,yolo26x --raw-dir ~/ds/3DPW   # create + run locally
-gvhmr sweep create 3dpw,emdb --detectors all --pose2ds all                       # grid over everything → id
-gvhmr sweep agent <sweep_id> --raw-dir ~/ds/3DPW      # run trials; launch on several GPU boxes to parallelize
+gvhmr sweep run 3dpw --detectors canonical,yolov8x,yolo26x   # create + run locally (raw 3DPW auto-fetches)
+gvhmr sweep create 3dpw,emdb --detectors all --pose2ds all   # grid over everything → sweep id
+gvhmr sweep agent <sweep_id> --raw-dir ~/ds/EMDB      # run trials; launch on several GPU boxes to parallelize
 gvhmr sweep report <sweep_id>                         # (re)build the comparison report
 ```
 

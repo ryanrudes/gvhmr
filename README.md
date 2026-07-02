@@ -124,8 +124,8 @@ gvhmr eval                    # 3DPW + EMDB + RICH: auto-fetches the eval packs,
                               # protocol, prints your numbers next to the paper's (verified to match)
 gvhmr eval 3dpw --json m.json # one dataset; optionally dump metrics for tracking
 gvhmr eval all --ckpt outputs/my_run/checkpoints/last.ckpt    # evaluate your own training run
-gvhmr eval 3dpw,emdb --detector yolo26x --raw-dir ~/ds/3DPW   # benchmark a PREPROCESSING swap
-                              # (regenerates boxes/keypoints/features; see docs/EVAL.md)
+gvhmr eval 3dpw --detector yolo26x        # benchmark a PREPROCESSING swap (auto-fetches raw 3DPW,
+                              # regenerates boxes/keypoints/features; see docs/EVAL.md)
 gvhmr sweep run 3dpw --detectors all      # W&B sweep comparing every detector preset on the benchmark
 
 # Train (the released ckpt used 2×4090 for 420 epochs)
