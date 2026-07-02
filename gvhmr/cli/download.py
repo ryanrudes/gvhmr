@@ -20,17 +20,16 @@ def _fmt(n: int) -> str:
     return f"{n:.1f}GB"
 
 
-def _body_models_present() -> bool:
-    return (assets.BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
-
-
 def _report_gated() -> None:
-    if _body_models_present():
+    smplx_ok = (assets.BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
+    smpl_ok = (assets.BODY_MODEL_ROOT / "smpl/SMPL_NEUTRAL.pkl").exists()
+    if smplx_ok and smpl_ok:
         console.print("body models        [ok]✓[/] present")
         return
     desc, target, urls = assets.GATED["body_models"]
+    need = [n for n, ok in [("smplx — motion recovery", smplx_ok), ("smpl — overlay rendering", smpl_ok)] if not ok]
     console.print(
-        f"[warn]body models[/]        registration-gated — can't auto-download.\n"
+        f"[warn]body models[/]        registration-gated — can't auto-download. Missing: {'; '.join(need)}.\n"
         f"  Sign up at {' , '.join(urls)}\n"
         f"  then place: [muted]{desc}[/]\n"
         f"  under:      [muted]{target}[/]  (override with $GVHMR_BODY_MODELS)"

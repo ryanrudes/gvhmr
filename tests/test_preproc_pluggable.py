@@ -20,6 +20,7 @@ from gvhmr.utils.preproc.base import (
     make_backbone,
     make_detector,
     make_pose2d,
+    missing_requirements,
 )
 
 
@@ -75,3 +76,23 @@ def test_default_factory_names_match_lazy_impls_without_importing_them():
         # by asserting it's NOT in the KeyError branch.
         assert name == "yolo"  # only one registered today; update when more land
     assert set(POSE2D) == {"vitpose", "rtmpose"}
+
+
+def test_missing_requirements_names_the_extra_per_backend():
+    # The demo's fail-fast check: with nothing installed, each requiring backend reports its module
+    # and the exact install command. `have` is injected so the test is independent of this env.
+    selections = {"detector": "yolo26x", "pose2d": "rtmpose", "backbone": "hmr2", "camera": "simplevo"}
+    rows = missing_requirements(selections, have=lambda module: False)
+    by_module = {module: (why, fix) for why, module, fix in rows}
+    assert set(by_module) == {"ultralytics", "rtmlib", "pycolmap"}  # hmr2 needs nothing beyond base
+    assert by_module["ultralytics"][0] == "detector 'yolo26x'"  # every YOLO preset maps to ultralytics
+    assert "--extra preproc" in by_module["ultralytics"][1]
+    assert "--extra rtmpose" in by_module["rtmlib"][1]
+    assert "--extra preproc" in by_module["pycolmap"][1]
+
+
+def test_missing_requirements_empty_when_everything_installed():
+    selections = {"detector": "yolo", "pose2d": "vitpose", "backbone": "hmr2", "camera": "dpvo"}
+    assert missing_requirements(selections, have=lambda module: True) == []
+    # vitpose/hmr2 are vendored (base install) — they must not demand anything even with nothing installed
+    assert missing_requirements({"pose2d": "vitpose", "backbone": "hmr2"}, have=lambda module: False) == []

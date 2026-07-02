@@ -38,21 +38,55 @@ def run() -> None:
     env.add_row("project root", str(PROJ_ROOT))
     console.print(env)
 
-    # --- Optional features (extras) ---
+    # The classic Linux trap: bare `uv sync` installs the default PyPI torch wheel, which won't see the
+    # GPU on most drivers. Detect it (driver present, torch blind) and print the exact fix — the recorded
+    # env's one-command re-sync when available, else the raw uv command.
+    from gvhmr.cli.envcmd import detect_torch_extra
+    from gvhmr.utils import localconfig
+
+    recorded_torch = localconfig.env_torch()
+    if (
+        not torch.cuda.is_available()
+        and recorded_torch != "cpu"  # an explicitly-recorded CPU build is a choice, not drift
+        and (extra := detect_torch_extra()) not in (None, "cpu")
+    ):
+        fix = (
+            "[gvhmr]gvhmr env sync[/]"
+            if recorded_torch == extra
+            else f"[gvhmr]gvhmr config set torch {extra}[/] then [gvhmr]gvhmr env sync[/]  "
+            f"[dim](or: uv sync --extra {extra} — see docs/INSTALL.md)[/]"
+        )
+        console.print(f"[warn]NVIDIA GPU found but this torch build can't use it[/] — run {fix}")
+
+    # --- Optional features (extras / setup scripts) ---
+    third_party = PROJ_ROOT / "third-party"
     feats = Table(title="optional features", expand=False)
     feats.add_column("feature")
     feats.add_column("provided by", style="muted")
     feats.add_column("status", justify="center")
-    for name, module in [
-        ("preprocessing (YOLO)", "ultralytics"),
-        ("camera / SimpleVO", "pycolmap"),
-        ("camera / DPVO (CUDA SLAM)", "dpvo"),  # scripts/setup_dpvo.sh
-        ("body models", "smplx"),
-        ("mesh rendering", "pytorch3d"),
-        ("3D visualization", "wis3d"),
-        ("SMPL .pkl loader", "chumpy"),
+    feats.add_column("get it with", style="muted")
+    for name, provider, ok, how in [
+        ("preprocessing (YOLO detector)", "ultralytics", _has("ultralytics"), "uv sync --extra preproc"),
+        ("camera / SimpleVO", "pycolmap", _has("pycolmap"), "uv sync --extra preproc"),
+        ("camera / DPVO (CUDA SLAM)", "dpvo", _has("dpvo"), "scripts/setup_dpvo.sh"),
+        (
+            "camera / DUSt3R (scene-aware)",
+            "third-party/dust3r",
+            (third_party / "dust3r").is_dir(),
+            "scripts/setup_scene_aware.sh",
+        ),
+        (
+            "camera / VGGT (scene-aware)",
+            "third-party/vggt",
+            (third_party / "vggt").is_dir(),
+            "scripts/setup_scene_aware.sh",
+        ),
+        ("2D-pose / RTMPose (alt backend)", "rtmlib", _has("rtmlib"), "uv sync --extra rtmpose"),
+        ("mesh renderer (GPU, moderngl)", "moderngl", _has("moderngl"), "base install"),
+        ("render fallback (pytorch3d)", "pytorch3d", _has("pytorch3d"), "uv sync --extra render (optional)"),
+        ("3D visualization", "wis3d", _has("wis3d"), "uv sync --extra vis"),
     ]:
-        feats.add_row(name, module, _yn(_has(module)))
+        feats.add_row(name, provider, _yn(ok), "" if ok else how)
     console.print(feats)
 
     # --- Checkpoints / assets (from the manifest; fetch with `gvhmr download`) ---
@@ -64,11 +98,14 @@ def run() -> None:
     ckpt.add_column("status", justify="center")
     for name, a in assets.ASSETS.items():
         ckpt.add_row(name, a.group, _yn(assets.is_present(a)))
-    body_ok = (assets.BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
-    ckpt.add_row("body_models", "demo (gated)", _yn(body_ok))
+    smplx_ok = (assets.BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
+    smpl_ok = (assets.BODY_MODEL_ROOT / "smpl/SMPL_NEUTRAL.pkl").exists()
+    ckpt.add_row("body_models/smplx", "demo (gated)", _yn(smplx_ok))
+    ckpt.add_row("body_models/smpl", "render (gated)", _yn(smpl_ok))
     console.print(ckpt)
 
-    gap = assets.missing() + ([] if body_ok else ["body_models"])
+    gated_gap = [n for n, ok in [("body_models/smplx", smplx_ok), ("body_models/smpl", smpl_ok)] if not ok]
+    gap = assets.missing() + gated_gap
     if gap:
         console.print(f"[warn]missing[/]: {', '.join(gap)} — run [gvhmr]gvhmr download[/] (body models are gated)")
 
@@ -90,3 +127,5 @@ def run() -> None:
     console.print(
         f"\nconfig file: {where} — manage asset locations + default model versions with [gvhmr]gvhmr config[/]"
     )
+    if not assets.missing("demo") and smplx_ok and _has("ultralytics") and _has("pycolmap"):
+        console.print("[dim]Ready — try: [gvhmr]uv run gvhmr demo docs/example_video/tennis.mp4 -s[/][/]")

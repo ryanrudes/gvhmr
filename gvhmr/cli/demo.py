@@ -28,8 +28,7 @@ from gvhmr.utils.geo.rotations import quaternion_to_matrix
 from gvhmr.utils.geo_transform import apply_T_on_points, compute_cam_angvel, compute_T_ayfz2ay
 from gvhmr.utils.net_utils import detach_to_cpu
 from gvhmr.utils.postproc_world import compose_world_from_dust3r
-from gvhmr.utils.preproc import SimpleVO
-from gvhmr.utils.preproc.base import make_backbone, make_detector, make_pose2d
+from gvhmr.utils.preproc.base import make_backbone, make_detector, make_pose2d, missing_requirements
 from gvhmr.utils.pylogger import Log
 from gvhmr.utils.smplx_utils import make_smplx
 from gvhmr.utils.video_io_utils import (
@@ -112,7 +111,48 @@ def focal_mm_from_metadata(video_path) -> int | None:
     return None
 
 
-def ensure_assets(camera: str) -> None:
+def ensure_deps(cfg) -> None:
+    """Fail fast — before any download or compute — when a chosen backend's dependency is missing,
+    with the exact install command (instead of a mid-run ImportError traceback)."""
+    selections = {
+        "detector": cfg.detector.name,
+        "pose2d": cfg.pose2d.name,
+        "backbone": cfg.backbone.name,
+    }
+    if not cfg.static_cam:
+        selections["camera"] = cfg.camera.name
+        # The scene-aware cameras import from clones under third-party/ (see scripts/setup_scene_aware.sh).
+        if cfg.camera.name in ("dust3r", "vggt") and not (PROJ_ROOT / "third-party" / cfg.camera.name).is_dir():
+            console.print(
+                f"[err]camera '{cfg.camera.name}' is not set up[/] — it runs from a clone under "
+                f"[muted]{PROJ_ROOT / 'third-party'}[/].\nRun [gvhmr]scripts/setup_scene_aware.sh[/] once "
+                f"(clones DUSt3R/VGGT/Depth-Anything + fetches weights), then re-run."
+            )
+            raise SystemExit(1)
+    missing = missing_requirements(selections)
+    if missing:
+        from gvhmr.utils import localconfig
+
+        lines = "\n".join(f"  • [gvhmr]{module}[/] — needed by {why}" for why, module, _ in missing)
+        wanted = sorted({fix.split("--extra ")[-1].split()[0] for _, _, fix in missing if "--extra" in fix})
+        scripts = [fix for _, _, fix in dict.fromkeys(missing) if "--extra" not in fix]  # e.g. setup_dpvo.sh
+        if localconfig.env_table():  # a recorded env → the no-uv fix: extend the recorded extras, then sync
+            needed = list(dict.fromkeys(localconfig.env_extras() + wanted))
+            steps = [f"gvhmr config set extras {','.join(needed)}"] if needed != localconfig.env_extras() else []
+            steps += ["gvhmr env sync"] if wanted else []
+            fixes = "\n".join(f"  {s}" for s in steps + scripts)
+            tail = ""
+        else:
+            fixes = "\n".join(f"  {fix}" for fix in dict.fromkeys(fix for _, _, fix in missing))
+            tail = (
+                "\n[dim](On Linux+CUDA also keep your torch extra, e.g. `uv sync --extra preproc --extra cu128` "
+                "— see docs/INSTALL.md. Tip: `gvhmr config init` records the env so this becomes `gvhmr env sync`.)[/]"
+            )
+        console.print(f"[err]Missing optional dependencies for this run:[/]\n{lines}\nInstall with:\n{fixes}{tail}")
+        raise SystemExit(1)
+
+
+def ensure_assets(camera: str, want_render: bool = True) -> None:
     """Auto-fetch the checkpoints this run needs (so `gvhmr demo` just works); body models are gated."""
     from gvhmr.utils import assets
 
@@ -128,6 +168,14 @@ def ensure_assets(camera: str) -> None:
             f"SMPL-X body model not found under {assets.BODY_MODEL_ROOT}. These are registration-gated: "
             f"sign up at https://smpl-x.is.tue.mpg.de/ + https://smpl.is.tue.mpg.de/, then place them there "
             f"(or set $GVHMR_BODY_MODELS). `gvhmr download` prints the exact layout."
+        )
+    # The overlay renderer additionally needs the SMPL model (mesh faces + the SMPL-X → SMPL vertex map).
+    # Warn now rather than after minutes of preprocessing; motion recovery itself only needs SMPL-X.
+    if want_render and not (assets.BODY_MODEL_ROOT / "smpl/SMPL_NEUTRAL.pkl").exists():
+        Log.warning(
+            f"[warn]smpl/SMPL_NEUTRAL.pkl not found[/] under [muted]{assets.BODY_MODEL_ROOT}[/] — motion "
+            f"will be recovered, but the overlay videos will be skipped. Sign up at https://smpl.is.tue.mpg.de/ "
+            f"and place it there to render."
         )
 
 
@@ -321,6 +369,8 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
                         pass
                 torch.save(model.process(), paths.slam)  # (L, 7) numpy
             else:  # simplevo
+                from gvhmr.utils.preproc import SimpleVO
+
                 simple_vo = SimpleVO(cfg.video_path, scale=cam.scale, step=cam.step, method=cam.method, f_mm=cfg.f_mm)
                 torch.save(simple_vo.compute(), paths.slam)  # (L, 4, 4) numpy
         else:
@@ -498,9 +548,14 @@ def _render(cfg, device, skeleton: bool = False, skeleton_overlay: bool = False,
             merge_videos_horizontal([paths.incam_video, paths.global_video], paths.incam_global_horiz_video)
         return True
     except (ImportError, AssertionError, FileNotFoundError) as e:
+        from gvhmr.utils.assets import BODY_MODEL_ROOT
+
         Log.warning(
-            f"[warn]Rendering skipped[/] — needs pytorch3d (the render extra) + the SMPL body model. "
-            f"Predictions are saved. ([muted]{type(e).__name__}: {e}[/])"
+            f"[warn]Rendering skipped[/] ([muted]{type(e).__name__}: {e}[/])\n"
+            f"  The overlay renderer needs the SMPL body model ([muted]smpl/SMPL_NEUTRAL.pkl[/] under "
+            f"[muted]{BODY_MODEL_ROOT}[/], registration-gated — `gvhmr download` prints the layout) and a "
+            f"working GL context (headless boxes fall back to EGL, then pytorch3d). Motion predictions are "
+            f"saved either way; `gvhmr info` shows what's missing."
         )
         return False
 
@@ -582,7 +637,8 @@ def run(
     cam_name = cfg.camera.name  # resolved camera backend (simplevo / dpvo / dust3r)
     flip_test = cfg.flip_test  # resolved from the CLI flag / a --recipe / --set
 
-    ensure_assets(cam_name)  # auto-fetch missing checkpoints (gated body models raise a clear error)
+    ensure_deps(cfg)  # fail fast (with the install command) before any download or compute
+    ensure_assets(cam_name, want_render=not no_render)  # auto-fetch checkpoints; gated body models → clear error
 
     rule("Preprocess")
     run_preprocess(cfg, flip_test=flip_test)

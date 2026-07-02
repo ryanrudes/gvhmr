@@ -56,6 +56,39 @@ DETECTORS = ("yolo",)
 POSE2D = ("vitpose", "rtmpose")
 BACKBONES = ("hmr2", "dinov2")
 
+#: What each selectable backend needs beyond the base install: ``stage:backend`` → (probe module, how to
+#: install it). Lets the demo fail fast with the exact command instead of a mid-run ImportError traceback.
+#: Every YOLO detector preset (yolov8x, yolo26n, …) shares the ultralytics implementation.
+REQUIREMENTS: dict[str, tuple[str, str]] = {
+    "detector:yolo": ("ultralytics", "uv sync --extra preproc"),
+    "pose2d:rtmpose": ("rtmlib", "uv sync --extra rtmpose"),
+    "camera:simplevo": ("pycolmap", "uv sync --extra preproc"),
+    "camera:dpvo": ("dpvo", "scripts/setup_dpvo.sh  (CUDA box only)"),
+}
+
+
+def missing_requirements(selections: dict[str, str], have=None) -> list[tuple[str, str, str]]:
+    """Unmet runtime requirements for the chosen backends: ``(stage 'name', module, install hint)`` rows.
+
+    ``selections`` maps stage → selected backend name (e.g. ``{"detector": "yolo26x", "camera": "simplevo"}``);
+    stages resolved to a backend with no extra requirement contribute nothing. ``have`` is an injectable
+    module-presence predicate (for tests); the default probes ``importlib.util.find_spec``.
+    """
+    import importlib.util
+
+    if have is None:
+
+        def have(module: str) -> bool:
+            return importlib.util.find_spec(module) is not None
+
+    out = []
+    for stage, name in selections.items():
+        backend = "yolo" if stage == "detector" and name.startswith("yolo") else name
+        req = REQUIREMENTS.get(f"{stage}:{backend}")
+        if req is not None and not have(req[0]):
+            out.append((f"{stage} '{name}'", req[0], req[1]))
+    return out
+
 
 def make_detector(name: str = "yolo", **kwargs) -> Detector:
     """Construct a registered detector. ``kwargs`` (e.g. ``ckpt``, ``conf``) pass to its ctor."""
