@@ -162,39 +162,34 @@ def print_summary(metrics: dict[str, dict[str, float]], variant: str | None = No
         )
 
 
-def ensure_variant(
-    names: list[str],
-    slug: str,
-    detector: str | None,
-    pose2d: str | None,
-    backbone: str | None,
-    raw_dir: Path | None,
-    regen: bool,
-) -> None:
-    """Generate (or reuse) the regenerated-preprocessing cache for each dataset."""
-    from gvhmr.utils import assets
-    from gvhmr.utils.eval import preproc_variants as pv
+def ensure_stage_deps(detectors: list[str], pose2ds: list[str], backbones: list[str]) -> None:
+    """Fail fast (with the exact fix) when any chosen stage's dependency is missing."""
     from gvhmr.utils.preproc.base import missing_requirements
 
-    # Fail fast on missing stage deps (e.g. ultralytics for a detector swap), with the exact fix.
-    selections = {"pose2d": pose2d or "vitpose", "backbone": backbone or "hmr2"}
-    if detector is not None:
-        selections["detector"] = detector
-    missing = missing_requirements(selections)
-    if missing:
-        fixes = "\n".join(f"  {fix}" for fix in dict.fromkeys(fix for _, _, fix in missing))
+    rows: list[tuple[str, str, str]] = []
+    for stage, values in (("detector", detectors), ("pose2d", pose2ds), ("backbone", backbones)):
+        for v in values:
+            rows += missing_requirements({stage: v})
+    rows = list(dict.fromkeys(rows))
+    if rows:
+        fixes = "\n".join(f"  {fix}" for fix in dict.fromkeys(fix for _, _, fix in rows))
         console.print(
             "[err]Missing dependencies to regenerate preprocessing:[/]\n"
-            + "\n".join(f"  • {module} — needed by {why}" for why, module, _ in missing)
+            + "\n".join(f"  • {module} — needed by {why}" for why, module, _ in rows)
             + f"\nInstall with:\n{fixes}"
         )
         raise SystemExit(1)
 
+
+def ensure_variant_inputs(names: list[str], raw_dir: Path | None) -> None:
+    """Ensure each dataset's pack has its per-sequence videos — the pixels every preprocessing
+    regeneration needs. Composes them from ``--raw-dir`` once; fails ONCE with the download pointer
+    when absent (callers preflight this so a sweep doesn't crash trial after trial)."""
+    from gvhmr.utils import assets
+    from gvhmr.utils.eval import preproc_variants as pv
+
     for n in names:
         support = assets.DATA_ROOT / PACK_DIRS[n] / "hmr4d_support"
-        if not regen and pv.variant_complete(n, support, slug):
-            Log.info(f"[ok]{n}[/]: variant '{slug}' already generated [muted]({support}/preproc_variants/{slug})[/]")
-            continue
         video_names = pv.dataset_video_names(n, support)
         missing_videos = [v for v in video_names if not (support / f"videos/{v}.mp4").exists()]
         if missing_videos and raw_dir is not None:
@@ -207,6 +202,28 @@ def ensure_variant(
                 f"({RAW_DATASET_URLS[n]}) and pass [gvhmr]--raw-dir <download>[/] to compose them once."
             )
             raise SystemExit(1)
+
+
+def ensure_variant(
+    names: list[str],
+    slug: str,
+    detector: str | None,
+    pose2d: str | None,
+    backbone: str | None,
+    raw_dir: Path | None,
+    regen: bool,
+) -> None:
+    """Generate (or reuse) the regenerated-preprocessing cache for each dataset."""
+    from gvhmr.utils import assets
+    from gvhmr.utils.eval import preproc_variants as pv
+
+    ensure_stage_deps([detector] if detector else [], [pose2d or "vitpose"], [backbone or "hmr2"])
+    for n in names:
+        support = assets.DATA_ROOT / PACK_DIRS[n] / "hmr4d_support"
+        if not regen and pv.variant_complete(n, support, slug):
+            Log.info(f"[ok]{n}[/]: variant '{slug}' already generated [muted]({support}/preproc_variants/{slug})[/]")
+            continue
+        ensure_variant_inputs([n], raw_dir)
         Log.info(f"[{n}] regenerating preprocessing as variant '{slug}' (resumable; ~minutes/sequence)…")
         gen = pv.generate_3dpw_variant if n == "3dpw" else pv.generate_emdb_variant
         report = gen(support, slug, detector, pose2d, backbone, overwrite=regen)

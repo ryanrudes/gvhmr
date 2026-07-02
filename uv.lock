@@ -1455,6 +1455,7 @@ rtmpose = [
 train = [
     { name = "tensorboard" },
     { name = "wandb" },
+    { name = "wandb-workspaces" },
 ]
 vis = [
     { name = "viser" },
@@ -1518,6 +1519,7 @@ requires-dist = [
     { name = "ultralytics", marker = "extra == 'preproc'", specifier = ">=8.2" },
     { name = "viser", marker = "extra == 'vis'" },
     { name = "wandb", marker = "extra == 'train'", specifier = ">=0.17" },
+    { name = "wandb-workspaces", marker = "extra == 'train'" },
     { name = "wis3d", marker = "extra == 'vis'" },
     { name = "yacs", marker = "extra == 'preproc'" },
 ]
@@ -2355,6 +2357,7 @@ wheels = [
 name = "llvmlite"
 version = "0.48.0"
 source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/a0/acc8ffcd5bdc63df0097e22c719bfcd61b604358343089313a8aebbb24ab/llvmlite-0.48.0.tar.gz", hash = "sha256:543b19f9ef8f3c7c60d1468191e4ee1b1537bf9f8a3d56f64c0ddd98de92edd2", size = 184016, upload-time = "2026-07-02T20:20:05.308Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9a/55/595981f14fbae9ba966feb12af552b1fe69889e44e64ac883a731ed335e0/llvmlite-0.48.0-cp311-cp311-macosx_12_0_arm64.whl", hash = "sha256:56a7e24607d3f02d7b1bae8d29c7e1e423d53143d68b072999777f19678fe77b", size = 40480651, upload-time = "2026-07-01T18:41:18.438Z" },
     { url = "https://files.pythonhosted.org/packages/26/08/0109d1b9cb3f4603f3890e30bc66c65332b79185f12a045343b2ae431f67/llvmlite-0.48.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:6fa532d6bb3fd3f0803567c736401c54aecfe1a396d3ad25d2440d220e09f0e7", size = 59890118, upload-time = "2026-07-01T18:41:28.184Z" },
@@ -6464,6 +6467,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/59/b1/f7a96c09cab0c5131b1e6466659b093b401e1653cbe6bb77b462fc1c361d/wandb-0.28.0-py3-none-win32.whl", hash = "sha256:8834ef3a7c8c43b701654162783caa7ad37af48a0ff06fc35d0d65a411f76ccd", size = 24525206, upload-time = "2026-06-23T00:38:42.041Z" },
     { url = "https://files.pythonhosted.org/packages/c6/c4/c7bed5e981679c74e9fbb22c03ff31c42e95f266199d03d8d325f4d0e6df/wandb-0.28.0-py3-none-win_amd64.whl", hash = "sha256:ac1f82292e2da4f98297b78c3a46726b3a6c5734ecb75fc39b8db2c8a4989159", size = 24525214, upload-time = "2026-06-23T00:38:44.549Z" },
     { url = "https://files.pythonhosted.org/packages/f0/77/b5ce9696c8cb955521a7941fbc443e78b2f504894c6ae1a2d0b1de6e12ae/wandb-0.28.0-py3-none-win_arm64.whl", hash = "sha256:c5b0faf1b84cf79ebabed77538c1940a4c6053e815f767a4004e877a1354bed1", size = 22378208, upload-time = "2026-06-23T00:38:47.148Z" },
+]
+
+[[package]]
+name = "wandb-workspaces"
+version = "0.4.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "wandb" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/93/eb/b2669ea4e5883b55c44555607eaa552a839b101aa14a6d01818c0ed55c82/wandb_workspaces-0.4.4.tar.gz", hash = "sha256:084a006ca2735cb77634fd5b7d4e1c1d57c642d8601739797258349710db9edc", size = 238003, upload-time = "2026-06-25T20:17:47.845Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/36/531a070834fd33c729d5b6b56f5a6ce74c5aa0f07831420343349eae1475/wandb_workspaces-0.4.4-py3-none-any.whl", hash = "sha256:60ab10d4f648cf7c142fd8cbf105840685bb5013c39c921471c6c061a57ce4b0", size = 111957, upload-time = "2026-06-25T20:17:46.574Z" },
 ]
 
 [[package]]

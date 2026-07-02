@@ -50,3 +50,18 @@ def test_resolve_combo_matches_eval_semantics():
     det, pose, slug = resolve_combo({"detector": "canonical", "pose2d": "rtmpose"})
     assert (det, pose, slug) == (None, "rtmpose", "yolo-rtmpose")
     assert resolve_combo({})[2] is None  # absent keys → canonical
+
+
+def test_sweep_metric_names_cover_every_reference_metric():
+    from gvhmr.cli.sweepcmd import sweep_metric_names
+
+    assert sweep_metric_names(["3dpw"]) == ["3DPW/pa_mpjpe", "3DPW/mpjpe", "3DPW/pve", "3DPW/accel"]
+    assert sweep_metric_names(["3dpw"], vs_paper=True)[0] == "3DPW/pa_mpjpe_vs_paper"
+    emdb = sweep_metric_names(["emdb"])  # both splits, world metrics included
+    assert "EMDB_1/pa_mpjpe" in emdb and "EMDB_2/wa2_mpjpe" in emdb and "EMDB_2/fs" in emdb
+
+
+def test_print_dimensions_smokes():
+    from gvhmr.cli.sweepcmd import print_dimensions
+
+    print_dimensions(build_sweep_config("3dpw", detectors="canonical,yolo26x"))  # must not raise

@@ -86,7 +86,8 @@ render = ["pytorch3d"]
 # Experiment logging for `gvhmr train`: Weights & Biases (the default logger, `logger=wandb`) plus
 # TensorBoard (the alt, `logger=tensorboard`). W&B is offline-capable (`export WANDB_MODE=offline`,
 # logs under <output_dir>/wandb/); otherwise run `wandb login` once to stream online.
-train = ["wandb>=0.17", "tensorboard"]
+# wandb-workspaces powers `gvhmr sweep`'s auto-generated comparison report (parallel coords + charts).
+train = ["wandb>=0.17", "tensorboard", "wandb-workspaces"]
 
 # DPVO's torch-ABI-FREE runtime deps. The compiled pieces (dpvo itself + torch-scatter) are CUDA-only
 # and built out-of-band by scripts/setup_dpvo.sh — but these are ordinary wheels, and locking them lets

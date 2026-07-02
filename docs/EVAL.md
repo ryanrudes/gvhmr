@@ -57,21 +57,36 @@ What to know before trusting a variant number:
 ### Comparing many combinations — `gvhmr sweep` (W&B)
 
 To compare evals across *many* stage combinations, run a real [W&B sweep](https://docs.wandb.ai/guides/sweeps)
-— each trial is one (detector, pose2d) combo, regenerated/cached as above, benchmarked, and logged as
-`<DATASET>/<metric>` (plus `…_vs_paper` deltas), so the sweep table and parallel-coordinates views
-compare combinations directly. `canonical` is a first-class value (the unmodified pack preprocessing),
-giving every sweep its baseline point:
+— each trial is one combo, regenerated/cached as above, benchmarked, and logged as `<DATASET>/<metric>`
+(plus `…_vs_paper` deltas). **What's swept is exactly `detector × pose2d`** — the command prints this
+dimension table up front. The other stages are deliberately fixed, and the tool says so:
+
+- `canonical` is a first-class value for both swept stages (the pack's frozen paper preprocessing), so
+  every sweep contains its baseline point;
+- **backbone** is fixed at hmr2 — features are learned conditioning, so a swap is only meaningful with
+  a retrained checkpoint (run a separate sweep passing `--ckpt`);
+- **camera** is not a benchmark dimension *by construction*: the protocol feeds the model ground-truth
+  camera rotation (no visual odometry runs), so simplevo/dpvo/dust3r/vggt can't change these numbers.
+  A/B camera backends with the world-eval harness below instead.
 
 ```bash
 gvhmr sweep run 3dpw --detectors canonical,yolov8x,yolo26x --raw-dir ~/ds/3DPW   # create + run locally
 gvhmr sweep create 3dpw,emdb --detectors all --pose2ds all                       # grid over everything → id
 gvhmr sweep agent <sweep_id> --raw-dir ~/ds/3DPW      # run trials; launch on several GPU boxes to parallelize
+gvhmr sweep report <sweep_id>                         # (re)build the comparison report
 ```
+
+Every sweep gets an auto-generated **W&B report** (its URL is printed; panels fill in live): parallel
+coordinates across *every* metric (absolute + Δ-vs-paper), a bar chart per metric, and PA-MPJPE vs MPJPE
+scatter plots — plus the sweep page's own table/parallel-coordinates. Missing prerequisites (videos,
+stage deps) are checked **once up front** — an agent refuses to start rather than crashing every
+non-canonical trial; fully-cached grids re-sweep on any box without videos.
 
 `gvhmr sweep create --config my_sweep.yaml` accepts a hand-written W&B sweep spec (e.g. `method: bayes`);
 `--dry-run` prints the generated config. Needs `wandb login` once (the W&B service schedules trials —
-offline mode can't run sweeps) and the `train` extra. Budget honestly: a full `--detectors all` grid is
-30+ variant generations at ~minutes/sequence each (cached forever after; re-sweeping is ~1 min/trial).
+offline mode can't run sweeps) and the `train` extra (wandb + wandb-workspaces). Budget honestly: a full
+`--detectors all` grid is 30+ variant generations at ~minutes/sequence each (cached forever after;
+re-sweeping is ~1 min/trial).
 
 ## World-frame evaluation on real datasets (`tools/eval/eval_world.py`)
 
