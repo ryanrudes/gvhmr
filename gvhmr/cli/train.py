@@ -41,6 +41,24 @@ def get_callbacks(cfg: DictConfig) -> list | None:
     return callbacks
 
 
+def _ckpt_dir_for_resume(cfg: DictConfig) -> str | None:
+    """Directory the checkpoint callback writes to, for ``resume_mode=last``.
+
+    The released ``mixed`` config checkpoints via ``simple_ckpt_saver`` (dir
+    ``${output_dir}/checkpoints/``), not a ``model_checkpoint`` callback — so accept either and
+    fall back to that default. Uses ``.get`` so a missing key doesn't crash OmegaConf's struct mode
+    (the old code hard-referenced ``callbacks.model_checkpoint.dirpath`` and broke resume for ``mixed``).
+    """
+    cbs = cfg.get("callbacks") or {}
+    for key in ("model_checkpoint", "simple_ckpt_saver"):
+        cb = cbs.get(key) if hasattr(cbs, "get") else None
+        if cb is not None:
+            d = cb.get("dirpath") or cb.get("output_dir")
+            if d is not None:
+                return d
+    return f"{cfg.output_dir}/checkpoints"
+
+
 def train(cfg: DictConfig) -> None:
     """Train/Test."""
     Log.info(f"Experiment: [gvhmr]{cfg.exp_name}[/]")
@@ -88,7 +106,7 @@ def train(cfg: DictConfig) -> None:
     if cfg.task == "fit":
         resume_path = None
         if cfg.resume_mode is not None:
-            resume_path = get_resume_ckpt_path(cfg.resume_mode, ckpt_dir=cfg.callbacks.model_checkpoint.dirpath)
+            resume_path = get_resume_ckpt_path(cfg.resume_mode, ckpt_dir=_ckpt_dir_for_resume(cfg))
             Log.info(f"Resume training from {resume_path}")
         Log.info("Start fitting...")
         trainer.fit(model, datamodule.train_dataloader(), datamodule.val_dataloader(), ckpt_path=resume_path)
