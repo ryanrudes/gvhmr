@@ -125,6 +125,9 @@ def fetch(assets: dict[str, Asset], force: bool = False) -> list[Path]:
     """Download the given assets from HF into CHECKPOINT_ROOT (skips present ones unless ``force``)."""
     from huggingface_hub import hf_hub_download
 
+    from gvhmr.utils.net import ensure_ca_bundle
+
+    ensure_ca_bundle()  # repair misconfigured TLS cert env (common on HPC) before any HTTPS
     out = []
     for a in assets.values():
         if is_present(a) and not force:
@@ -138,6 +141,9 @@ def fetch_data_pack(name: str, force: bool = False) -> Path:
     """Download + extract a preprocessed data pack under DATA_ROOT (e.g. inputs/3DPW/hmr4d_support/)."""
     from huggingface_hub import hf_hub_download
 
+    from gvhmr.utils.net import ensure_ca_bundle
+
+    ensure_ca_bundle()  # repair misconfigured TLS cert env (common on HPC) before any HTTPS
     hf_path, ds_dir, _ = DATA_PACKS[name]
     target = DATA_ROOT / ds_dir / "hmr4d_support"
     if target.exists() and not force:

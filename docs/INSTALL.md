@@ -153,3 +153,18 @@ uv run gvhmr download --data 3dpw,amass,h36m    # downloads + extracts under inp
 
 Available: `3dpw amass h36m emdb rich bedlam` (BEDLAM is ~21 GB). See [`docs/TRAINING.md`](TRAINING.md)
 for the full matrix + which raw datasets are registration-gated.
+
+## Troubleshooting
+
+**`CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate` on download (HPC/clusters).**
+Some login shells export a **misconfigured** `SSL_CERT_DIR` (or `SSL_CERT_FILE`) — e.g. `SSL_CERT_DIR`
+pointing at a bundle *file* instead of a hash *directory*. OpenSSL's issuer lookup then fails and
+`huggingface_hub` / `ultralytics` downloads die, even though the network is fine (`git` and `urllib` may
+still work, which makes it baffling). `gvhmr` **auto-repairs this** before every command
+(`gvhmr/utils/net.py::ensure_ca_bundle` falls back to [`certifi`](https://pypi.org/project/certifi/)'s
+bundle, respecting a *valid* `SSL_CERT_FILE` so corporate roots keep working). If you still hit it in a
+non-CLI context, set it yourself:
+
+```bash
+export SSL_CERT_FILE=$(uv run python -m certifi)
+```

@@ -31,7 +31,7 @@ app.add_typer(config_app, name="config")
 
 @app.callback()
 def _setup() -> None:
-    """Runs before every command — quiet a couple of benign third-party warnings."""
+    """Runs before every command — quiet benign warnings, repair broken TLS cert config."""
     import warnings
 
     # torch emits this whenever it loads our committed sparse-tensor assets (regressors,
@@ -39,6 +39,13 @@ def _setup() -> None:
     warnings.filterwarnings("ignore", message=".*Sparse invariant checks are implicitly disabled.*")
     # flip-test's rotation averaging uses SVD, which MPS runs on CPU — correct, just a perf note.
     warnings.filterwarnings("ignore", message=".*aten::linalg_svd' is not currently supported on the MPS.*")
+
+    # Some clusters (notably HPC login shells) export a misconfigured SSL_CERT_DIR/FILE that
+    # breaks OpenSSL issuer lookup → downloads fail with CERTIFICATE_VERIFY_FAILED. Repair it
+    # process-wide (no-op on sane environments) so download/demo just work. See gvhmr.utils.net.
+    from gvhmr.utils.net import ensure_ca_bundle
+
+    ensure_ca_bundle()
 
 
 @app.command()
