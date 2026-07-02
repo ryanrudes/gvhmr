@@ -152,19 +152,26 @@ def copy_file(video_path, out_video_path, overwrite=True):
     shutil.copy(video_path, out_video_path)
 
 
-def merge_videos_horizontal(in_video_paths: list, out_video_path: str):
+def _merge_videos(in_video_paths: list, out_video_path: str, axis: int):
+    """Frame-stack videos through the PyAV backend the rest of this module already uses.
+
+    The old implementation shelled out to a *system* ``ffmpeg`` binary via ffmpeg-python's
+    ``hstack``/``vstack`` filters — but reading/writing here all go through PyAV's bundled
+    ffmpeg (no system binary), so on headless/minimal nodes (HPC compute nodes, containers)
+    that lack a system ffmpeg the merge was the one step that crashed. Read each clip, stack
+    on ``axis`` (2 = side-by-side over W, 1 = stacked over H in an (N, H, W, 3) array), align
+    to the shortest length (as ffmpeg's hstack/vstack do), and write it back with PyAV.
+    """
     if len(in_video_paths) < 2:
         raise ValueError("At least two video paths are required for merging.")
-    inputs = [ffmpeg.input(path) for path in in_video_paths]
-    merged_video = ffmpeg.filter(inputs, "hstack", inputs=len(inputs))
-    output = ffmpeg.output(merged_video, out_video_path)
-    ffmpeg.run(output, overwrite_output=True, quiet=True)
+    clips = [np.stack(list(get_video_reader(path))) for path in in_video_paths]
+    n = min(len(c) for c in clips)
+    save_video(np.concatenate([c[:n] for c in clips], axis=axis), out_video_path)
+
+
+def merge_videos_horizontal(in_video_paths: list, out_video_path: str):
+    _merge_videos(in_video_paths, out_video_path, axis=2)  # concat along width
 
 
 def merge_videos_vertical(in_video_paths: list, out_video_path: str):
-    if len(in_video_paths) < 2:
-        raise ValueError("At least two video paths are required for merging.")
-    inputs = [ffmpeg.input(path) for path in in_video_paths]
-    merged_video = ffmpeg.filter(inputs, "vstack", inputs=len(inputs))
-    output = ffmpeg.output(merged_video, out_video_path)
-    ffmpeg.run(output, overwrite_output=True, quiet=True)
+    _merge_videos(in_video_paths, out_video_path, axis=1)  # concat along height
