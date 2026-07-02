@@ -26,9 +26,10 @@ This is the standard W&B sweep workflow (https://docs.wandb.ai/guides/sweeps), n
 
 Requirements: ``wandb login`` once (sweeps are scheduled by the W&B service — offline mode can't run
 them), the ``train`` extra (wandb + wandb-workspaces), and — for any non-canonical combo — the raw
-videos (``--raw-dir``, see docs/EVAL.md; checked ONCE up front, not per trial). Costs are dominated by
-first-time variant generation (~minutes/sequence, cached forever after); a full ``--detectors all``
-grid is a *large* budget — trim the list unless you mean it.
+videos (3DPW auto-downloads; EMDB needs ``--raw-dir``; checked ONCE up front, not per trial).
+Generation caches per STAGE, not per combo (boxes and the heavy feature pass are per-detector; only
+keypoints are per-combo — see docs/EVAL.md "Grid economics"), so a full ``--detectors all`` grid is
+O(detectors) heavy passes, one-time; every later sweep is ~1 min/trial.
 """
 
 from __future__ import annotations

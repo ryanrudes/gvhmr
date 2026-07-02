@@ -87,9 +87,14 @@ non-canonical trial; fully-cached grids re-sweep on any box without videos.
 
 `gvhmr sweep create --config my_sweep.yaml` accepts a hand-written W&B sweep spec (e.g. `method: bayes`);
 `--dry-run` prints the generated config. Needs `wandb login` once (the W&B service schedules trials —
-offline mode can't run sweeps) and the `train` extra (wandb + wandb-workspaces). Budget honestly: a full
-`--detectors all` grid is 30+ variant generations at ~minutes/sequence each (cached forever after;
-re-sweeping is ~1 min/trial).
+offline mode can't run sweeps) and the `train` extra (wandb + wandb-workspaces).
+
+**Grid economics.** Generation is cached per *stage*, not per combo
+(`preproc_variants/_stages/{boxes,feats,kp2d}/…`, flock-guarded so parallel agents never duplicate a
+model pass): boxes are per-detector, the heavy HMR2+flip feature pass is per-detector too, and only the
+keypoint pass is per-(detector×pose2d) — so a full `--detectors all --pose2ds all` grid on 3DPW costs
+O(detectors) heavy passes + O(combos) cheap ones (~15 h on two GPUs, one-time) rather than everything ×
+everything. Every stage is cached forever; re-sweeping a generated grid is ~1 min/trial.
 
 ## World-frame evaluation on real datasets (`tools/eval/eval_world.py`)
 

@@ -191,54 +191,196 @@ class VariantReport:
             )
 
 
-def _extract_stages(video_path: Path, canonical_xys: torch.Tensor, stages: dict, vid: str, report: VariantReport):
-    """Run detector (identity-guarded) → pose2d → backbone (+ flipped-video backbone) on one video."""
-    from gvhmr.utils.geo.flip_utils import flip_bbx_xys
-    from gvhmr.utils.geo.hmr_cam import get_bbx_xys_from_xyxy
-    from gvhmr.utils.video_io_utils import get_video_lwh, get_video_reader, get_writer
+# --- shared stage caches ----------------------------------------------------------------------------
+# The grid's economics: a combo (detector, pose2d) does NOT need three fresh model passes. Boxes depend
+# only on the detector; features depend only on the boxes (the backbone is fixed per sweep); only the
+# keypoints are truly per-combo. So each stage caches independently under
+# ``preproc_variants/_stages/{boxes,feats,kp2d}/<key>/<vid>.pt`` and combo dirs are assembled from
+# them — a full detector×pose2d grid costs O(detectors) heavy passes + O(combos) keypoint passes, not
+# O(combos) of everything. The mirrored video (flip-test) is likewise composed ONCE per video, shared
+# by every stage (``videos_flip/``). Stage files are written atomically under an flock, so several
+# sweep agents on one box can generate concurrently without duplicating or corrupting work.
 
-    length, width, _ = get_video_lwh(video_path)
+
+class _LazyStages:
+    """Construct stage implementations on first use — full cache hits load no models at all."""
+
+    def __init__(self, detector: str | None, pose2d: str | None, backbone: str | None):
+        self._names = {"detector": detector, "pose2d": pose2d or "vitpose", "backbone": backbone or "hmr2"}
+        self._built: dict = {}
+
+    def get(self, stage: str):
+        if stage not in self._built:
+            from gvhmr.utils.preproc.base import make_backbone, make_detector, make_pose2d
+
+            impl, kwargs = _resolve_stage(stage, self._names[stage])
+            maker = {"detector": make_detector, "pose2d": make_pose2d, "backbone": make_backbone}[stage]
+            self._built[stage] = maker(impl, **kwargs)
+        return self._built[stage]
+
+
+def _locked(path: Path):
+    """An exclusive advisory lock scoped to ``path`` (context manager) — agents on one box serialize
+    per stage-file instead of duplicating a model pass."""
+    import fcntl
+    from contextlib import contextmanager
+
+    @contextmanager
+    def cm():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path.with_suffix(path.suffix + ".lock"), "w") as fh:
+            fcntl.flock(fh, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(fh, fcntl.LOCK_UN)
+
+    return cm()
+
+
+def _atomic_save(obj, path: Path) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    torch.save(obj, tmp)
+    tmp.replace(path)
+
+
+def _ensure_flip_video(support_dir: Path, video_path: Path) -> Path:
+    """The mirrored copy of a pack video (flip-test features run on it) — composed once, shared by
+    every detector/combo, kept under ``videos_flip/`` next to the pack's ``videos/``."""
+    from gvhmr.utils.video_io_utils import get_video_reader, get_writer
+
+    flip_path = support_dir / "videos_flip" / video_path.name
+    if flip_path.exists():
+        return flip_path
+    with _locked(flip_path):
+        if flip_path.exists():
+            return flip_path
+        tmp = flip_path.with_suffix(".tmp.mp4")
+        reader = get_video_reader(video_path)
+        writer = get_writer(tmp, fps=30, crf=17)
+        for img in reader:
+            writer.write_frame(np.ascontiguousarray(img[:, ::-1]))
+        writer.close()
+        reader.close()
+        tmp.replace(flip_path)
+    return flip_path
+
+
+def _stage_boxes(
+    support_dir: Path,
+    video_path: Path,
+    vid: str,
+    detector: str | None,
+    canonical_xys: torch.Tensor,
+    stages: _LazyStages,
+    overwrite: bool,
+) -> dict:
+    """Per-DETECTOR box track (identity-guarded): ``{"bbx_xys", "identity_fallback"}``."""
+    from gvhmr.utils.geo.hmr_cam import get_bbx_xys_from_xyxy
+    from gvhmr.utils.video_io_utils import get_video_lwh
+
+    length = get_video_lwh(video_path)[0]
     if length != len(canonical_xys):
         raise ValueError(
             f"{vid}: video has {length} frames but the canonical preprocessing has {len(canonical_xys)} — "
             f"the composed/supplied video doesn't match the benchmark protocol."
         )
-
-    # 1) boxes — regenerate with the chosen detector, then identity-check against the canonical track.
-    if stages["detector"] is not None:
-        bbx_xyxy = stages["detector"].get_one_track(str(video_path)).float()
+    if detector is None:
+        return {"bbx_xys": canonical_xys.clone().float(), "identity_fallback": False}
+    cache = support_dir / "preproc_variants/_stages/boxes" / detector / f"{vid}.pt"
+    if cache.exists() and not overwrite:
+        return torch.load(cache, weights_only=False)
+    with _locked(cache):
+        if cache.exists() and not overwrite:
+            return torch.load(cache, weights_only=False)
+        bbx_xyxy = stages.get("detector").get_one_track(str(video_path)).float()
         bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy, base_enlarge=1.2).float()
-        if not same_identity(bbx_xys, canonical_xys):
-            report.identity_fallbacks.append(vid)
+        fallback = not same_identity(bbx_xys, canonical_xys)
+        if fallback:
             bbx_xys = canonical_xys.clone().float()
-    else:
-        bbx_xys = canonical_xys.clone().float()
+        out = {"bbx_xys": bbx_xys, "identity_fallback": fallback}
+        _atomic_save(out, cache)
+    return out
 
-    # 2) 2D keypoints on the variant boxes.
-    kp2d = stages["pose2d"].extract(str(video_path), bbx_xys)
 
-    # 3) features on the variant boxes; the flip-test protocol needs them on the mirrored video too.
-    features = stages["backbone"].extract_video_features(str(video_path), bbx_xys)
-    flip_video = video_path.with_name(f"_tmp_flip_{video_path.name}")
-    try:
-        reader = get_video_reader(video_path)
-        writer = get_writer(flip_video, fps=30, crf=17)
-        for img in reader:
-            writer.write_frame(np.ascontiguousarray(img[:, ::-1]))
-        writer.close()
-        reader.close()
+def _stage_kp2d(
+    support_dir: Path,
+    video_path: Path,
+    vid: str,
+    detector: str | None,
+    pose2d: str | None,
+    bbx_xys: torch.Tensor,
+    stages: _LazyStages,
+    overwrite: bool,
+) -> torch.Tensor:
+    """Per-(detector, pose2d) keypoints — the only genuinely per-combo model pass."""
+    key = f"{detector or 'canonical'}-{pose2d or 'vitpose'}"
+    cache = support_dir / "preproc_variants/_stages/kp2d" / key / f"{vid}.pt"
+    if cache.exists() and not overwrite:
+        return torch.load(cache, weights_only=False)
+    with _locked(cache):
+        if cache.exists() and not overwrite:
+            return torch.load(cache, weights_only=False)
+        kp2d = stages.get("pose2d").extract(str(video_path), bbx_xys).float().cpu()
+        _atomic_save(kp2d, cache)
+    return kp2d
+
+
+def _stage_feats(
+    support_dir: Path,
+    video_path: Path,
+    vid: str,
+    detector: str | None,
+    backbone: str | None,
+    bbx_xys: torch.Tensor,
+    stages: _LazyStages,
+    overwrite: bool,
+) -> dict:
+    """Per-(detector, backbone) features incl. the flip-test pass — shared by every pose2d choice:
+    ``{"features", "flip_features", "flip_bbx_xys"}``."""
+    from gvhmr.utils.geo.flip_utils import flip_bbx_xys
+    from gvhmr.utils.video_io_utils import get_video_lwh
+
+    key = f"{detector or 'canonical'}-{backbone or 'hmr2'}"
+    cache = support_dir / "preproc_variants/_stages/feats" / key / f"{vid}.pt"
+    if cache.exists() and not overwrite:
+        return torch.load(cache, weights_only=False)
+    with _locked(cache):
+        if cache.exists() and not overwrite:
+            return torch.load(cache, weights_only=False)
+        width = get_video_lwh(video_path)[1]
+        features = stages.get("backbone").extract_video_features(str(video_path), bbx_xys)
+        flip_video = _ensure_flip_video(support_dir, video_path)
         flip_xys = flip_bbx_xys(bbx_xys, width)
-        flip_features = stages["backbone"].extract_video_features(str(flip_video), flip_xys)
-    finally:
-        flip_video.unlink(missing_ok=True)
+        flip_features = stages.get("backbone").extract_video_features(str(flip_video), flip_xys)
+        out = {
+            "features": features.float().cpu(),
+            "flip_features": flip_features.float().cpu(),
+            "flip_bbx_xys": flip_xys,
+        }
+        _atomic_save(out, cache)
+    return out
 
-    return {
-        "bbx_xys": bbx_xys,
-        "kp2d": kp2d.float().cpu(),
-        "features": features.float().cpu(),
-        "flip_bbx_xys": flip_xys,
-        "flip_features": flip_features.float().cpu(),
-    }
+
+def _extract_stages(
+    support_dir: Path,
+    video_path: Path,
+    canonical_xys: torch.Tensor,
+    combo: tuple[str | None, str | None, str | None],
+    stages: _LazyStages,
+    vid: str,
+    report: VariantReport,
+    overwrite: bool,
+):
+    """Assemble one sequence's artifacts from the shared stage caches (computing what's missing)."""
+    detector, pose2d, backbone = combo
+    boxes = _stage_boxes(support_dir, video_path, vid, detector, canonical_xys, stages, overwrite)
+    if boxes["identity_fallback"]:
+        report.identity_fallbacks.append(vid)
+    bbx_xys = boxes["bbx_xys"]
+    kp2d = _stage_kp2d(support_dir, video_path, vid, detector, pose2d, bbx_xys, stages, overwrite)
+    feats = _stage_feats(support_dir, video_path, vid, detector, backbone, bbx_xys, stages, overwrite)
+    return {"bbx_xys": bbx_xys, "kp2d": kp2d, **feats}
 
 
 def _resolve_stage(group: str, name: str) -> tuple[str, dict]:
@@ -256,21 +398,6 @@ def _resolve_stage(group: str, name: str) -> tuple[str, dict]:
     conf = OmegaConf.to_container(node, resolve=True)
     impl = conf.pop("name")
     return impl, {k: v for k, v in conf.items() if v is not None}
-
-
-def _make_stages(detector: str | None, pose2d: str | None, backbone: str | None) -> dict:
-    """Construct the chosen stage implementations (detector=None ⇒ keep canonical boxes)."""
-    from gvhmr.utils.preproc.base import make_backbone, make_detector, make_pose2d
-
-    stages: dict = {"detector": None}
-    if detector is not None:
-        impl, kwargs = _resolve_stage("detector", detector)
-        stages["detector"] = make_detector(impl, **kwargs)
-    impl, kwargs = _resolve_stage("pose2d", pose2d or "vitpose")
-    stages["pose2d"] = make_pose2d(impl, **kwargs)
-    impl, kwargs = _resolve_stage("backbone", backbone or "hmr2")
-    stages["backbone"] = make_backbone(impl, **kwargs)
-    return stages
 
 
 # --- dataset-specific generation (canonical schema in, canonical schema out) ------------------------
@@ -294,7 +421,7 @@ def generate_3dpw_variant(
     feat_dir.mkdir(parents=True, exist_ok=True)
     flip_dir.mkdir(parents=True, exist_ok=True)
 
-    stages = _make_stages(detector, pose2d, backbone)
+    stages = _LazyStages(detector, pose2d, backbone)
     new_bbx: dict = {}
     new_kp2d: dict = {}
     bbx_pt, kp2d_pt = out / "preproc_test_bbx.pt", out / "preproc_test_kp2d.pt"
@@ -313,7 +440,16 @@ def generate_3dpw_variant(
                 f"{video_path} missing — the packs ship no videos (not redistributable). Pass --raw-dir "
                 f"pointing at the official 3DPW download to compose them once."
             )
-        r = _extract_stages(video_path, vid2bbx[vid]["bbx_xys"], stages, vid, report)
+        r = _extract_stages(
+            support_dir,
+            video_path,
+            vid2bbx[vid]["bbx_xys"],
+            (detector, pose2d, backbone),
+            stages,
+            vid,
+            report,
+            overwrite,
+        )
         new_bbx[vid] = {"bbx_xys": r["bbx_xys"]}
         new_kp2d[vid] = r["kp2d"]
         img_wh = labels[vid]["img_wh"]
@@ -322,7 +458,7 @@ def generate_3dpw_variant(
         torch.save(new_bbx, bbx_pt)  # checkpoint progress after every sequence (resumable)
         torch.save(new_kp2d, kp2d_pt)
         report.generated.append(vid)
-        Log.info(f"[ok]{vid}[/] regenerated ({len(report.generated) + len(report.cached)}/{len(labels)})")
+        Log.info(f"[ok]{vid}[/] assembled ({len(report.generated) + len(report.cached)}/{len(labels)})")
     return report
 
 
@@ -346,7 +482,7 @@ def generate_emdb_variant(
     if overlay_pt.exists() and not overwrite:
         overlay = torch.load(overlay_pt, weights_only=False)
 
-    stages = _make_stages(detector, pose2d, backbone)
+    stages = _LazyStages(detector, pose2d, backbone)
     for vid in labels:
         if vid in overlay and (flip_dir / f"{vid}.pt").exists() and not overwrite:
             report.cached.append(vid)
@@ -357,12 +493,21 @@ def generate_emdb_variant(
                 f"{video_path} missing — the packs ship no videos (not redistributable). Pass --raw-dir "
                 f"pointing at the official EMDB download to compose them once."
             )
-        r = _extract_stages(video_path, labels[vid]["bbx_xys"], stages, vid, report)
+        r = _extract_stages(
+            support_dir,
+            video_path,
+            labels[vid]["bbx_xys"],
+            (detector, pose2d, backbone),
+            stages,
+            vid,
+            report,
+            overwrite,
+        )
         overlay[vid] = {"bbx_xys": r["bbx_xys"], "kp2d": r["kp2d"], "features": r["features"]}
         torch.save({"features": r["flip_features"], "bbx_xys": r["flip_bbx_xys"]}, flip_dir / f"{vid}.pt")
         torch.save(overlay, overlay_pt)  # checkpoint progress after every sequence (resumable)
         report.generated.append(vid)
-        Log.info(f"[ok]{vid}[/] regenerated ({len(report.generated) + len(report.cached)}/{len(labels)})")
+        Log.info(f"[ok]{vid}[/] assembled ({len(report.generated) + len(report.cached)}/{len(labels)})")
     return report
 
 
