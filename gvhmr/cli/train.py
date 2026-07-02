@@ -64,7 +64,16 @@ def train(cfg: DictConfig) -> None:
     if not has_ckpt_cb and cfg.pl_trainer.get("enable_checkpointing", True):
         Log.warning("No checkpoint-callback found. Disabling PL auto checkpointing.")
         cfg.pl_trainer = {**cfg.pl_trainer, "enable_checkpointing": False}
-    logger = hydra.utils.instantiate(cfg.logger, _recursive_=False)
+    # The logger group defaults to wandb for real training; degrade gracefully if its backend
+    # isn't installed (base installs won't have wandb/tensorboard) rather than crashing a run.
+    try:
+        logger = hydra.utils.instantiate(cfg.logger, _recursive_=False)
+    except (ImportError, ModuleNotFoundError) as e:
+        Log.warning(
+            f"Logger backend unavailable ({type(e).__name__}: {e}); training without a logger. "
+            "Install it with [gvhmr]uv sync --extra train[/] (wandb + tensorboard)."
+        )
+        logger = None
 
     if cfg.task == "test":
         Log.info("Test mode forces full-precision.")

@@ -1,0 +1,4 @@
+# @package _global_
+# No experiment logger — losses/metrics show only in the progress bar. Selected by default in
+# train.yaml so a bare/smoke run needs no logging backend installed.
+logger: null

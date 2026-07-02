@@ -25,6 +25,7 @@ defaults:
           - metric_rich
           - metric_3dpw
     - override /network: gvhmr/relative_transformer
+    - override /logger: wandb # Weights & Biases (needs `uv sync --extra train`; wandb login / WANDB_MODE=offline)
 
 exp_name_base: mixed
 exp_name_var: ""
@@ -63,9 +64,3 @@ pl_trainer:
     max_epochs: 500
     check_val_every_n_epoch: 10
     devices: 2
-
-logger:
-    _target_: pytorch_lightning.loggers.TensorBoardLogger
-    save_dir: ${output_dir} # /save_dir/name/version/sub_dir
-    name: ""
-    version: "tb" # merge name and version

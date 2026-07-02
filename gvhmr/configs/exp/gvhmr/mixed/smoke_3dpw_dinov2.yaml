@@ -70,5 +70,3 @@ pl_trainer:
     check_val_every_n_epoch: 1
     enable_checkpointing: False
     devices: 2 # device-aware forces 1 off-CUDA
-
-logger: null

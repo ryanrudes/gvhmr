@@ -82,6 +82,11 @@ dev = [
 # below) so `uv sync --extra render` installs it and a later `uv sync` never prunes it.
 render = ["pytorch3d"]
 
+# Experiment logging for `gvhmr train`: Weights & Biases (the default logger, `logger=wandb`) plus
+# TensorBoard (the alt, `logger=tensorboard`). W&B is offline-capable (`export WANDB_MODE=offline`,
+# logs under <output_dir>/wandb/); otherwise run `wandb login` once to stream online.
+train = ["wandb>=0.17", "tensorboard"]
+
 # --- PyTorch CUDA backend (Linux): pick the one matching your GPU ---------------------------------
 # uv can't auto-detect the GPU for `uv sync` (`--torch-backend=auto` is uv-pip-only) and a lockfile
 # can't gate wheels on CUDA version (no marker exists), so the CUDA build is an explicit, mutually-

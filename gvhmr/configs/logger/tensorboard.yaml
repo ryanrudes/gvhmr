@@ -1,0 +1,8 @@
+# @package _global_
+# TensorBoard event files under the run's output_dir (view with `tensorboard --logdir outputs`).
+# Needs the `tensorboard` package: `uv sync --extra train`. `logger=tensorboard` on any train run.
+logger:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    save_dir: ${output_dir} # /save_dir/name/version/sub_dir
+    name: ""
+    version: "tb" # merge name and version

@@ -1,0 +1,10 @@
+# @package _global_
+# Weights & Biases — the default logger for real training (exp=gvhmr/mixed/mixed). Needs the
+# `wandb` package: `uv sync --extra train`. It's offline-capable: `export WANDB_MODE=offline` logs
+# locally under <output_dir>/wandb/ (sync later with `wandb sync`); otherwise run `wandb login` once
+# to stream online. Point it at your project/entity with `logger.project=… logger.entity=…`.
+logger:
+    _target_: pytorch_lightning.loggers.WandbLogger
+    project: gvhmr
+    name: ${exp_name}
+    save_dir: ${output_dir}

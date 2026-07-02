@@ -21,6 +21,7 @@ defaults:
   - test_datasets: null
   - endecoder: null # normalize/unnormalize data
   - refiner: null
+  - logger: none # experiment logger group (none / tensorboard / wandb); exp files override
 
   # global-override
   - exp: ??? # set "data, model and callbacks" in yaml
@@ -48,5 +49,3 @@ pl_trainer:
   num_sanity_val_steps: 0 # disable sanity check
   precision: 32
   inference_mode: False
-
-logger: null

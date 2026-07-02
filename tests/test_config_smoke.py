@@ -52,6 +52,21 @@ def test_train_config_composes() -> None:
     assert "model" in cfg
     assert "pl_trainer" in cfg
     assert cfg.exp_name
+    # real training defaults to the Weights & Biases logger (configs/logger group)
+    assert cfg.logger is not None and cfg.logger._target_.endswith("WandbLogger")
+    assert cfg.logger.project == "gvhmr"
+
+
+def test_logger_group_swaps_by_name() -> None:
+    # `logger` is a config group (none / tensorboard / wandb): `mixed` defaults to wandb, the smoke
+    # test to none (no backend needed), and any run can swap by name.
+    with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):
+        smoke = compose(config_name="train", overrides=["exp=gvhmr/mixed/smoke_3dpw"])
+        assert smoke.logger is None  # inherits the `none` default
+        tb = compose(config_name="train", overrides=["exp=gvhmr/mixed/smoke_3dpw", "logger=tensorboard"])
+        assert tb.logger._target_.endswith("TensorBoardLogger") and tb.logger.version == "tb"
+        off = compose(config_name="train", overrides=["exp=gvhmr/mixed/mixed", "logger=none"])
+        assert off.logger is None  # wandb default can be turned off by name
 
 
 def test_preproc_groups_compose_and_swap_by_name() -> None:

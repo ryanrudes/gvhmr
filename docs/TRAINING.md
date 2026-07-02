@@ -41,6 +41,26 @@ uv run gvhmr train global/task=gvhmr/test_3dpw_emdb_rich exp=gvhmr/mixed/mixed \
   ckpt_path=inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
 ```
 
+## Logging (Weights & Biases)
+
+Real training (`exp=gvhmr/mixed/mixed`) logs to **Weights & Biases** by default — the model already emits
+every loss/metric/timer via `self.log(...)`, so they stream straight to W&B. Install the backend and pick
+your mode:
+
+```bash
+uv sync --extra train                 # wandb + tensorboard
+wandb login                           # once — stream online to your account
+# …or log locally with no account:
+export WANDB_MODE=offline             # writes <output_dir>/wandb/; `wandb sync <dir>` to upload later
+uv run gvhmr train exp=gvhmr/mixed/mixed
+```
+
+Point it at your workspace with `logger.project=my-proj logger.entity=my-team` (defaults to project
+`gvhmr`, run name `${exp_name}`). `logger` is a config group, so swap the backend by name:
+`logger=tensorboard` (event files under `output_dir`, view with `tensorboard --logdir outputs`) or
+`logger=none` (progress-bar only). If the backend package isn't installed, training logs a warning and
+continues without a logger rather than crashing.
+
 ## Data layout & gated downloads
 
 All training/eval data lives under `<DATA_ROOT>/<DATASET>/hmr4d_support/` as precomputed `.pt`/`.pth` packs
