@@ -41,6 +41,15 @@ uv sync --extra cu128 --extra preproc   # combine with other extras as usual
 The CUDA extras are mutually exclusive and pin torch **< 2.8** (newer wheels carry a broken `nvshmem`
 dependency that fails to import). `gvhmr info` shows the resolved torch and `cuda ✓` once synced.
 
+> **Older datacenter GPUs (V100 / P100) → use `cu126`, not `cu128`.** The CUDA version above is only half
+> the story — the **GPU architecture** matters too. The `cu128` wheel is compiled for `sm_75+` (Turing
+> onward) plus Blackwell, and **dropped Volta `sm_70` (V100) and Pascal `sm_60` (P100)**: on those it fails
+> with *"CUDA-capable device(s) is/are busy or unavailable"* (or a `sm_70 is not compatible` warning) even
+> with a brand-new driver. The `cu126` wheel still ships `sm_50…sm_90` (P100 → A100 → H100), so it's the
+> right pick on clusters that have V100/P100 nodes (common on HPC). Rule of thumb: **A100/H100 only →
+> `cu128` or `cu126`; any V100/P100 in the mix → `cu126`.** Verify on a GPU node with
+> `python -c "import torch; print(torch.cuda.get_arch_list())"`.
+
 > On a GPU box, **pass your extra every time** — `uv sync --extra cu128`, `uv run --extra cu128 …` — or
 > set `UV_NO_SYNC=1`; a bare `uv sync` reverts torch to the PyPI default.
 
