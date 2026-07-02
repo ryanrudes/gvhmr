@@ -46,7 +46,7 @@ Uses **uv** + a **hatchling** build backend. Base install runs on CPU / Apple-Si
 MPS; heavy/GPU-only pieces are optional extras.
 
 ```bash
-scripts/install.sh           # user-facing one-command install (platform/GPU detect → uv sync → records [env])
+scripts/install.sh           # user-facing one-command install (platform/GPU detect → uv sync → records [env]); --dev adds tooling
 uv sync --extra dev          # base + test/lint/typecheck tooling (works on macOS)
 bin/gvhmr --help             # the CLI (Typer + Rich) WITHOUT uv's auto-re-sync; `gvhmr info` for a diagnostic
 bin/gvhmr demo VIDEO -s      # run the demo (needs --extra preproc; rendering is base — moderngl)
@@ -97,23 +97,30 @@ mesh the moderngl renderer draws): `--skeleton` (world-frame skeleton-only video
 `render_mesh`/`render_with_ground`), and `--skeleton-joints` for a subset (groups like `legs`/`left_arm`,
 or joint names/indices; a bone draws only when both endpoints are kept). Left side warm, right cool.
 
-Extras: `preproc` (YOLO/ViTPose/pycolmap), `rtmpose` (rtmlib/onnxruntime — the alt 2D-pose backend),
-`vis` (wis3d/viser), `notebook`, `render` (optional pytorch3d fallback). Mesh rendering works out of the
-box (moderngl is a base dep).
+Extras: `preproc` (YOLO/ViTPose/pycolmap — **`gvhmr demo` needs it**), `rtmpose` (rtmlib/onnxruntime —
+the alt 2D-pose backend), `train` (wandb + tensorboard loggers), `dpvo` (numba/pypose — DPVO's locked,
+torch-ABI-free runtime deps; see DPVO below), `vis` (wis3d/viser), `notebook`, `render` (optional
+pytorch3d fallback). Mesh rendering works out of the box (moderngl is a base dep).
 
 **CUDA torch (Linux).** uv can't auto-pick a CUDA build for `uv sync` (`--torch-backend=auto` is
 `uv pip`-only) and a lock can't gate wheels on CUDA version — so the CUDA build is an explicit, mutually-
 exclusive **extra**: `cpu` / `cu124` / `cu126` / `cu128` (route torch/torchvision to a PyTorch index;
 declared `conflicts` in `[tool.uv]`). `uv sync --extra cu128` (pick nearest ≤ `nvidia-smi`'s CUDA;
-cu128 covers 12.8–13.x via back-compat). They pin **torch < 2.8** — newer wheels have a broken `nvshmem`
-dep that won't import. macOS uses bare `uv sync` (MPS). CI uses `--extra cpu`.
+cu128 covers 12.8–13.x via back-compat; **V100/P100 need cu126** — cu128 dropped sm_70/sm_60). They pin
+**torch < 2.8** — newer wheels have a broken `nvshmem` dep that won't import. macOS uses bare `uv sync`
+(MPS). CI uses `--extra cpu`. `scripts/install.sh` picks all of this automatically and records it in
+`[env]`, so `gvhmr env sync` can replay it.
 
-**DPVO** (CUDA-only SLAM) is installed by `scripts/setup_dpvo.sh` (not a uv extra — it compiles CUDA
-extensions): the script detects the CUDA version → `uv sync --extra cuXXX` → builds DPVO from a thin fork
-(`ryanrudes/DPVO`) that vendors Eigen 3.4.0 + carries modern-PyTorch build patches (`.scalar_type()`
-dispatch, `loop_closure` packaging, `torch.amp`). The vendored `gvhmr/utils/preproc/dpvo_default.yaml`
-lets the pip-installed `dpvo` find its config. DPVO lives outside the lock, so use `UV_NO_SYNC=1` (or
-pass `--extra cuXXX` consistently) to keep a bare `uv sync` from pruning it. See `docs/INSTALL.md`.
+**DPVO** (CUDA-only SLAM) is set up by `scripts/setup_dpvo.sh`: it detects the CUDA version →
+`uv sync --extra cuXXX --extra preproc --extra dpvo` → compiles the CUDA pieces (dpvo + torch-scatter,
+which can't live in the lock) from a thin fork (`ryanrudes/DPVO`) that vendors Eigen 3.4.0 + carries
+modern-PyTorch build patches (`.scalar_type()` dispatch, `loop_closure` packaging, `torch.amp`) → records
+`dpvo = true` in `[env]`. The torch-ABI-free runtime deps (numba/pypose) ARE locked, via the `dpvo`
+extra — that's what pins numpy where numba needs it (a sync used to float numpy past numba's cap and
+break every DPVO box). The vendored `gvhmr/utils/preproc/dpvo_default.yaml` lets the pip-installed
+`dpvo` find its config. The compiled bits still live outside the lock, so avoid bare `uv sync` / plain
+`uv run` — `bin/gvhmr` + `gvhmr env sync` (`--inexact`) are the safe paths, and re-running the script
+recovers a pruned DPVO (idempotent). See `docs/INSTALL.md`.
 
 **Asset roots, config file & fetching.** Machine-local settings — where large assets live (`checkpoints` /
 `data` / `body_models` / `scene`), the default model version per stage, and the recorded environment
