@@ -51,8 +51,9 @@ void main() {
 
 def make_renderer(width, height, device=None, faces=None, K=None, prefer_gpu=True):
     """Pick the overlay renderer: the fast GPU one (moderngl, ~real-time, no pytorch3d) when
-    available, else pytorch3d. The GPU path works wherever a GL/Metal context exists (Apple
-    Silicon, most desktops); a headless box with no GPU falls back to pytorch3d (CUDA)."""
+    available, else pytorch3d. The GPU path works wherever a GL/Metal context exists — Apple
+    Silicon, most desktops, and headless NVIDIA nodes via EGL (see ``_standalone_context``); a
+    box with no usable GPU context falls back to pytorch3d (CUDA)."""
     from gvhmr.utils.pylogger import Log
 
     if prefer_gpu:
@@ -87,6 +88,20 @@ def _np(x):
     return x.detach().cpu().numpy() if isinstance(x, torch.Tensor) else np.asarray(x)
 
 
+def _standalone_context(moderngl):
+    """Create a headless GL context, falling back to EGL on displayless nodes.
+
+    moderngl's default backend uses GLX/X11 and dies with ``XOpenDisplay: cannot open
+    display`` on headless HPC/cluster GPU nodes (and containers). NVIDIA GPUs render fine
+    through EGL there, so try the platform default first (CGL on macOS, GLX on an X11
+    desktop) and fall back to the EGL backend.
+    """
+    try:
+        return moderngl.create_standalone_context()
+    except Exception:
+        return moderngl.create_standalone_context(backend="egl")
+
+
 class ModernGLRenderer:
     """GPU renderer with the same call surface the demo uses on the pytorch3d ``Renderer``."""
 
@@ -102,7 +117,7 @@ class ModernGLRenderer:
         self.ground = None  # (verts, faces, colors)
 
         self._mgl = moderngl
-        self.ctx = moderngl.create_standalone_context()
+        self.ctx = _standalone_context(moderngl)
         self.ctx.enable(moderngl.DEPTH_TEST)
         self.prog = self.ctx.program(vertex_shader=_VERT_SHADER, fragment_shader=_FRAG_SHADER)
         self.fbo = self.ctx.framebuffer(
