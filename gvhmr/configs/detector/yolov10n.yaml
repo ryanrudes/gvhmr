@@ -1,0 +1,4 @@
+# yolov10n — ultralytics YOLO detector (auto-downloads yolov10n.pt). Select: --detector yolov10n
+name: yolo
+ckpt: yolov10n.pt
+conf: 0.5

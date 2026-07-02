@@ -23,10 +23,28 @@ app = typer.Typer(
 # The swappable stages the config file can pin a default for — the same Hydra groups the CLI flags select.
 MODEL_KEYS = ("detector", "pose2d", "backbone", "camera")
 DEMO_DEFAULTS = {"detector": "yolo", "pose2d": "vitpose", "backbone": "hmr2", "camera": "simplevo"}
-MODEL_NOTES = {
-    "pose2d": "rtmpose needs `uv sync --extra rtmpose`",
-    "backbone": "non-hmr2 requires a retrain (Tier B)",
-    "camera": "dpvo=CUDA-only; dust3r/vggt=scene-aware metric (setup_scene_aware.sh)",
+STAGE_DESC = {
+    "detector": "person detector/tracker (ultralytics YOLO)",
+    "pose2d": "2D-pose estimator (must emit COCO-17)",
+    "backbone": "image-feature backbone",
+    "camera": "moving-camera backend",
+}
+# Per-option one-liners for the stages with a handful of choices (detector is grouped by family instead).
+OPTION_DOCS = {
+    "pose2d": {
+        "vitpose": "ViTPose-Huge — released default (heatmap top-down)",
+        "rtmpose": "RTMPose-m — SimCC via rtmlib/ONNX; needs `uv sync --extra rtmpose`",
+    },
+    "backbone": {
+        "hmr2": "HMR2.0a ViT, 1024-d — the released, trained conditioning",
+        "dinov2": "DINOv2 (ungated) — inference needs a retrain (Tier B)",
+    },
+    "camera": {
+        "simplevo": "SIFT visual odometry — rotation only (default; any device)",
+        "dpvo": "deep patch VO — full 6-DoF incl. translation (CUDA-only; setup_dpvo.sh)",
+        "dust3r": "DUSt3R + Depth-Anything — scene-aware metric camera (MPS/CPU/CUDA)",
+        "vggt": "VGGT + Depth-Anything — scene-aware metric, single forward pass",
+    },
 }
 
 
@@ -37,10 +55,49 @@ def _group_options(group: str) -> list[str]:
     return sorted(p.stem for p in (PROJ_ROOT / "gvhmr" / "configs" / group).glob("*.yaml"))
 
 
-def _model_comment(key: str) -> str:
-    opts = ", ".join(_group_options(key)) or "?"
-    note = MODEL_NOTES.get(key)
-    return f"options: {opts}" + (f" — {note}" if note else "")
+def _fam_num(family: str) -> int:
+    return int("".join(c for c in family if c.isdigit()) or 0)
+
+
+_SIZE_RANK = {c: i for i, c in enumerate("tnsmbclxe")}  # ultralytics size letters, small → large
+
+
+def _detector_block() -> list[str]:
+    """A grouped-by-family comment for the (many) YOLO detector presets — readable at any count."""
+    fams: dict[str, list[str]] = {}
+    for o in _group_options("detector"):
+        if o == "yolo":
+            continue  # the default alias (= yolov8x), noted separately
+        fams.setdefault(o[:-1], []).append(o)
+    lines = [f"detector — {STAGE_DESC['detector']}. Pick a preset (default `yolo` = yolov8x):"]
+    width = max((len(f) for f in fams), default=0)
+    for fam in sorted(fams, key=_fam_num):
+        sizes = sorted(fams[fam], key=lambda o: _SIZE_RANK.get(o[-1], 99))  # n<s<m<l<x
+        latest = "   (latest, NMS-free)" if fam == "yolo26" else ""
+        lines.append(f"  {fam.ljust(width)}  {' '.join(sizes)}{latest}")
+    lines.append("sizes n<s<m<l<x: accuracy up / speed down. Any other or newer weight: --detector-ckpt <name>.pt")
+    return lines
+
+
+def _model_block(key: str) -> list[str]:
+    """The multiline comment block written above a `[models]` entry (option menu, per stage)."""
+    if key == "detector":
+        return _detector_block()
+    lines = [f"{key} — {STAGE_DESC[key]}. Options:"]
+    docs = OPTION_DOCS.get(key, {})
+    opts = _group_options(key)
+    width = max((len(o) for o in opts), default=0)
+    lines += [f"  {o.ljust(width)}  {docs.get(o, '')}".rstrip() for o in opts]
+    return lines
+
+
+def _options_summary(key: str) -> str:
+    """A compact one-liner for `config show` (families for the big detector list, else the names)."""
+    opts = _group_options(key)
+    if len(opts) <= 6:
+        return ", ".join(opts)
+    fams = sorted({o[:-1] for o in opts if o != "yolo"}, key=_fam_num)
+    return f"{len(opts)} presets — families {', '.join(fams)} (sizes n/s/m/l/x)"
 
 
 def _current_paths() -> dict[str, str]:
@@ -58,11 +115,9 @@ def _current_models() -> dict[str, str]:
 def _write(paths: dict[str, str], models: dict[str, str], target) -> None:
     from gvhmr.utils import assets, localconfig
 
-    path_comments = {k: assets.ROOTS[k][3] for k in assets.ROOTS}
-    model_comments = {k: _model_comment(k) for k in MODEL_KEYS}
-    written = localconfig.write_config(
-        target, paths, models, path_comments=path_comments, model_comments=model_comments
-    )
+    path_entries = [(k, paths[k], [f"{k} — {assets.ROOTS[k][3]}"]) for k in paths]
+    model_entries = [(k, models[k], _model_block(k)) for k in MODEL_KEYS]
+    written = localconfig.write_config(target, [("paths", path_entries), ("models", model_entries)])
     console.print(f"[ok]✓ wrote[/] [muted]{written}[/]")
 
 
@@ -97,7 +152,7 @@ def show() -> None:
     for key in MODEL_KEYS:
         chosen = localconfig.model_default(key)
         using = f"[gvhmr]{chosen}[/] [dim](config)[/]" if chosen else f"{DEMO_DEFAULTS[key]} [dim](default)[/]"
-        models.add_row(key, using, ", ".join(_group_options(key)))
+        models.add_row(key, using, _options_summary(key))
     console.print(models)
 
 
@@ -129,7 +184,7 @@ def set_(
     else:
         console.print(f"[err]unknown key '{key}'[/] — paths: {', '.join(paths)} · models: {', '.join(models)}")
         raise typer.Exit(1)
-    _write(paths, models, localconfig.config_file() or localconfig.DEFAULT_CONFIG_PATH)
+    _write(paths, models, localconfig.target_config_path())
 
 
 @app.command()
@@ -162,14 +217,15 @@ def init() -> None:
     models = dict(DEMO_DEFAULTS)
     if Confirm.ask("Choose default model versions now? [dim](else keep the released defaults)[/]", default=False):
         for k in MODEL_KEYS:
-            opts = _group_options(k)
-            note = MODEL_NOTES.get(k)
-            if note:
-                console.print(f"  [dim]{k}: {note}[/]")
-            models[k] = Prompt.ask(f"  {k}", choices=opts, default=DEMO_DEFAULTS[k])
+            for line in _model_block(k):
+                console.print(f"  [dim]{line}[/]")
+            if k == "detector":  # too many YOLO presets to list as choices — free text (default yolo)
+                models[k] = Prompt.ask(f"  {k}", default=DEMO_DEFAULTS[k])
+            else:
+                models[k] = Prompt.ask(f"  {k}", choices=_group_options(k), default=DEMO_DEFAULTS[k])
 
-    # 3) Where to write.
-    target = Path(Prompt.ask("Write config to", default=str(localconfig.DEFAULT_CONFIG_PATH))).expanduser()
+    # 3) Where to write (honors $GVHMR_CONFIG / an existing file as the default).
+    target = Path(Prompt.ask("Write config to", default=str(localconfig.target_config_path()))).expanduser()
     _write(paths, models, target)
     show()
 

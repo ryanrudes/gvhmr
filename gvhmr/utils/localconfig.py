@@ -36,6 +36,16 @@ def config_file() -> Path | None:
     return None
 
 
+def target_config_path() -> Path:
+    """Where ``gvhmr config init/set`` should *write*: the active file if one exists, else ``$GVHMR_CONFIG``
+    if set (even when it doesn't exist yet), else the XDG default — so writes honor $GVHMR_CONFIG."""
+    if (active := config_file()) is not None:
+        return active
+    if env := os.environ.get("GVHMR_CONFIG"):
+        return Path(env).expanduser()
+    return DEFAULT_CONFIG_PATH
+
+
 def _load_table(name: str) -> dict:
     """A top-level table (e.g. ``paths`` / ``models``) of the active config file (empty if none/unreadable)."""
     f = config_file()
@@ -75,36 +85,30 @@ def model_default(key: str) -> str | None:
     return str(v) if v not in (None, "") else None
 
 
-def _render_section(name: str, entries: dict[str, str], comments: dict[str, str]) -> list[str]:
-    out = [f"[{name}]"]
-    width = max((len(k) for k in entries), default=0)
-    for k, v in entries.items():
-        line = f"{k.ljust(width)} = '{v}'"  # TOML literal string: path-safe, no escaping needed
-        if c := comments.get(k):
-            line += f"  # {c}"
-        out.append(line)
-    return out
+#: A section is (name, entries); each entry is (key, value, comment_lines) — comments render ABOVE the key.
+Section = tuple[str, list[tuple[str, str, list[str]]]]
 
 
-def write_config(
-    target: Path,
-    paths: dict[str, str],
-    models_: dict[str, str] | None = None,
-    *,
-    path_comments: dict[str, str] | None = None,
-    model_comments: dict[str, str] | None = None,
-) -> Path:
-    """Write a readable ``[paths]`` (+ optional ``[models]``) config file, creating parent dirs. Returns it."""
+def render_config(sections: list[Section]) -> str:
+    """Render a readable TOML file with multiline comment blocks above each key (literal strings)."""
     out = [
         "# GVHMR configuration — all your local settings in one readable place.",
         "# A friendly alternative to the $GVHMR_* env vars + CLI flags; edit freely, or use `gvhmr config`.",
         "# Precedence: env var / CLI flag > this file > built-in default.  Inspect with `gvhmr config show`.",
-        "",
-        *_render_section("paths", paths, path_comments or {}),
     ]
-    if models_:
-        out += ["", *_render_section("models", models_, model_comments or {})]
+    for name, entries in sections:
+        out.append(f"\n[{name}]")
+        for i, (key, value, comments) in enumerate(entries):
+            if i:
+                out.append("")  # blank line between entries for readability
+            out += [f"# {c}" for c in comments]
+            out.append(f"{key} = '{value}'")  # TOML literal string: path-safe, no escaping needed
+    return "\n".join(out) + "\n"
+
+
+def write_config(target: Path, sections: list[Section]) -> Path:
+    """Write the config file (creating parent dirs). Returns the path written."""
     target = Path(target).expanduser()
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text("\n".join(out) + "\n")
+    target.write_text(render_config(sections))
     return target

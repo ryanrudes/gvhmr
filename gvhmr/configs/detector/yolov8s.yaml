@@ -1,0 +1,4 @@
+# yolov8s — ultralytics YOLO detector (auto-downloads yolov8s.pt). Select: --detector yolov8s
+name: yolo
+ckpt: yolov8s.pt
+conf: 0.5

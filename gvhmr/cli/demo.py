@@ -154,7 +154,7 @@ def build_demo_cfg(
 
     ``config_overrides`` are extra raw Hydra overrides (the pluggable-stage selections, ``--recipe``,
     and ``--set`` passthrough) assembled by :func:`run`; they are applied *after* the base options so a
-    ``--set`` can override anything, and a name selector (``detector=yolo11``) overrides a ``--recipe``."""
+    ``--set`` can override anything, and a name selector (``detector=yolo11x``) overrides a ``--recipe``."""
     video = Path(video)
     assert video.exists(), f"Video not found at {video}"
     length, width, height = get_video_lwh(video)

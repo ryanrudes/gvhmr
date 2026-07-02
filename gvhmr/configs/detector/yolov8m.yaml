@@ -1,0 +1,4 @@
+# yolov8m — ultralytics YOLO detector (auto-downloads yolov8m.pt). Select: --detector yolov8m
+name: yolo
+ckpt: yolov8m.pt
+conf: 0.5

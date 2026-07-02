@@ -59,7 +59,7 @@ swappable stage:
 ```
 stage          interface (cache contract)                       selector           today
 ─────          ──────────────────────────                       ────────           ─────
-detector    →  bbx_xyxy (L,4) → bbx_xys (L,3)                    --detector    ✅   group; yolo, yolo11
+detector    →  bbx_xyxy (L,4) → bbx_xys (L,3)                    --detector    ✅   group; yolo + v8..v26×sizes
 pose2d      →  COCO-17 (L,17,3) [x,y,conf]                       --pose2d      ✅   group; vitpose, rtmpose
 camera      →  R_w2c (L,3,3) [+ metric T_w2c for world]          --camera      ✅   group (was --slam)
 scene       →  T_w2c (L,4,4) metric                              --camera dust3r ✅
@@ -87,8 +87,8 @@ Ordered by dependency and risk — earliest phases are self-contained and need n
   guarded `preproc/__init__.py` so the registry imports on the base/CI install; demo wired to build via
   `make_detector`/`make_pose2d` with `cfg.detector` / `cfg.detector_ckpt` / `cfg.pose2d` / `cfg.pose2d_ckpt`
   overrides; `tests/test_preproc_pluggable.py` pins the contract (241 tests green, golden intact).
-  → You can already point at a different weight file via config (e.g. a `yolov11x.pt`).
-- ✅ **CLI weight-swap:** `gvhmr demo … --detector-ckpt yolov11x.pt` / `--pose2d-ckpt …` thread through to the
+  → You can already point at a different weight file via config (e.g. a `yolo11x.pt`).
+- ✅ **CLI weight-swap:** `gvhmr demo … --detector-ckpt yolo11x.pt` / `--pose2d-ckpt …` thread through to the
   registry (`+detector_ckpt`/`+pose2d_ckpt` config overrides), so a newer weight is reachable from the CLI.
 - ✅ **Config groups + name selectors (done):** detector/pose2d/backbone/camera are first-class Hydra groups
   (`gvhmr/configs/{detector,pose2d,backbone,camera}/`), selected by `--detector`/`--pose2d`/`--backbone`/
@@ -97,9 +97,9 @@ Ordered by dependency and risk — earliest phases are self-contained and need n
 - ✅ **First non-default implementation (done):** `pose2d=rtmpose` — RTMPose via rtmlib/ONNXRuntime (ungated,
   no mmcv), a genuinely different architecture emitting COCO-17. Optional dep `uv sync --extra rtmpose`;
   verified end-to-end. The COCO-17 assert (`relative_transformer.py`) stays the contract guard.
-- Drop-ins enabled: YOLOv9/10/11/12 (ultralytics, same `.track()` API, `--detector yolo11`); RTMPose landed,
+- Drop-ins enabled: YOLOv9/10/11/12 (ultralytics, same `.track()` API, `--detector yolo26x`); RTMPose landed,
   and RTMO / Sapiens / DWPose / MoveNet fit **iff configured to COCO-17**.
-- **Acceptance:** ✅ `gvhmr demo … --detector yolo11 --pose2d rtmpose --camera dust3r` composes; golden green;
+- **Acceptance:** ✅ `gvhmr demo … --detector yolo26x --pose2d rtmpose --camera dust3r` composes; golden green;
   `test_preproc_pluggable` + `test_config_smoke` assert the registry, group composition, and name-swap.
 
 ### Phase A2 — newer scene-aware backend  ✅ **Done**

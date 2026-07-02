@@ -70,7 +70,7 @@ def test_preproc_groups_compose_and_swap_by_name() -> None:
         assert cfg.pose2d.model_name == "ViTPose_huge_coco_256x192" and cfg.pose2d.ckpt_path is None
         assert cfg.camera.scale == 0.5 and cfg.camera.step == 8 and cfg.camera.method == "sift"
         # name selection swaps the whole group (here: a newer YOLO weight)
-        swapped = compose(config_name="demo", overrides=["video_name=x", "detector=yolo11"])
+        swapped = compose(config_name="demo", overrides=["video_name=x", "detector=yolo11x"])
         assert swapped.detector.ckpt.endswith("yolo11x.pt")
         # the camera backend (formerly the --slam selector) is a group too, carrying its knobs
         cam = compose(config_name="demo", overrides=["video_name=x", "camera=dust3r"])

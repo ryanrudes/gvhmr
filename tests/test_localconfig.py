@@ -28,7 +28,7 @@ def _child(env: dict, code: str) -> str:
 
 def test_config_file_drives_paths_and_models(tmp_path):
     cfg = tmp_path / "gvhmr.toml"
-    cfg.write_text("[paths]\ndata = '/vol/data'\n[models]\ndetector = 'yolo11'\ncamera = 'vggt'\n")
+    cfg.write_text("[paths]\ndata = '/vol/data'\n[models]\ndetector = 'yolo11x'\ncamera = 'vggt'\n")
     # GVHMR_CONFIG selects the file; clear any inherited data-root env so the file is what's tested.
     env = {"GVHMR_CONFIG": str(cfg), "GVHMR_DATA_ROOT": ""}
     out = _child(
@@ -37,7 +37,7 @@ def test_config_file_drives_paths_and_models(tmp_path):
         "print(assets.DATA_ROOT); print(localconfig.model_default('detector')); print(localconfig.model_default('camera'))",
     )
     assert "/vol/data" in out
-    assert "yolo11" in out
+    assert "yolo11x" in out
     assert "vggt" in out
 
 
@@ -61,14 +61,18 @@ def test_no_config_no_env_uses_default(tmp_path):
 
 
 def test_write_config_round_trips(tmp_path):
+    # sections: [(section, [(key, value, comment_lines)])] — comments render ABOVE each key.
     target = localconfig.write_config(
         tmp_path / "c.toml",
-        {"data": "/d", "checkpoints": "/c"},
-        {"detector": "yolo11"},
-        model_comments={"detector": "options: yolo, yolo11"},
+        [
+            ("paths", [("data", "/d", ["data — training/eval packs"])]),
+            ("models", [("detector", "yolo11x", ["detector — options:", "  yolo11x  YOLO11-x"])]),
+        ],
     )
     with open(target, "rb") as f:
         data = tomllib.load(f)
     assert data["paths"]["data"] == "/d"
-    assert data["models"]["detector"] == "yolo11"
-    assert "options: yolo, yolo11" in target.read_text()  # the option-menu comment is written
+    assert data["models"]["detector"] == "yolo11x"
+    text = target.read_text()
+    assert "# detector — options:" in text  # multiline comment block above the key
+    assert "YOLO11-x" in text

@@ -75,7 +75,8 @@ Hydra config **group** (`gvhmr/configs/{detector,pose2d,backbone,camera}/`), sha
 mechanism as the model/network groups. Choose an implementation by name (`--detector`/`--pose2d`/
 `--backbone`/`--camera`), bundle a set of choices into a committable `--recipe` (`configs/recipe/`), or tweak
 any knob with `--set key=val` (precedence: recipe → name flag → `--set`). Defaults are the released models,
-so the default `predict` path stays **golden-byte-identical**. Real alternatives today: `--detector yolo11`,
+so the default `predict` path stays **golden-byte-identical**. Real alternatives today: `--detector yolo26x`
+(every YOLO family×size is a preset; any other via `--detector-ckpt`),
 `--pose2d rtmpose` (needs `--extra rtmpose`), `--camera dust3r|vggt`, `--backbone dinov2` (needs a retrain).
 `gvhmr extract-features VIDEOS OUT --backbone <name>` writes the training feature cache for a backbone swap.
 Full guide `docs/CONFIGURATION.md`; roadmap/rationale `docs/EXTENSIBILITY.md`; training `docs/TRAINING.md`.

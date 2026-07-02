@@ -101,7 +101,10 @@ def demo(
     ] = None,
     detector: Annotated[
         str | None,
-        typer.Option("--detector", help="Detector backend by name [dim](e.g. [gvhmr]yolo[/], [gvhmr]yolo11[/])[/]."),
+        typer.Option(
+            "--detector",
+            help="Detector preset [dim](yolo=default; any family×size: [gvhmr]yolo11x[/], [gvhmr]yolo26x[/], … — `gvhmr config` lists them)[/].",
+        ),
     ] = None,
     pose2d: Annotated[
         str | None,

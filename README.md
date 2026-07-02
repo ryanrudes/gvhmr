@@ -133,7 +133,7 @@ roadmap in [`docs/EXTENSIBILITY.md`](docs/EXTENSIBILITY.md). Already landed:
   group**, one config system shared with `train`. Pick an implementation, bundle choices into a *recipe*, or
   tweak any knob — full guide in [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md):
   ```shell
-  gvhmr demo clip.mp4 --detector yolo11 --pose2d rtmpose --camera dust3r   # pick implementations
+  gvhmr demo clip.mp4 --detector yolo26x --pose2d rtmpose --camera dust3r  # pick implementations
   gvhmr demo clip.mp4 --recipe accurate                                    # a committable bundle
   gvhmr demo clip.mp4 --set detector.conf=0.4                              # tweak a knob
   ```

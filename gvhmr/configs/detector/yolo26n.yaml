@@ -1,0 +1,4 @@
+# yolo26n — ultralytics YOLO detector (auto-downloads yolo26n.pt). Select: --detector yolo26n
+name: yolo
+ckpt: yolo26n.pt
+conf: 0.5

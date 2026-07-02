@@ -1,5 +1,0 @@
-# YOLO11-x detector — a newer ultralytics backbone, same COCO-person tracking API as the default.
-# ultralytics auto-downloads "yolo11x.pt" on first use. Select with:  gvhmr demo VIDEO --detector yolo11
-name: yolo
-ckpt: yolo11x.pt
-conf: 0.5

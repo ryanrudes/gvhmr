@@ -1,0 +1,4 @@
+# yolo12x — ultralytics YOLO detector (auto-downloads yolo12x.pt). Select: --detector yolo12x
+name: yolo
+ckpt: yolo12x.pt
+conf: 0.5
