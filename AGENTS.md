@@ -46,13 +46,22 @@ Uses **uv** + a **hatchling** build backend. Base install runs on CPU / Apple-Si
 MPS; heavy/GPU-only pieces are optional extras.
 
 ```bash
+scripts/install.sh           # user-facing one-command install (platform/GPU detect → uv sync → records [env])
 uv sync --extra dev          # base + test/lint/typecheck tooling (works on macOS)
-uv run gvhmr --help          # the CLI (Typer + Rich); `gvhmr info` for a diagnostic
-uv run gvhmr demo VIDEO -s   # run the demo (needs --extra preproc; render needs pytorch3d)
+bin/gvhmr --help             # the CLI (Typer + Rich) WITHOUT uv's auto-re-sync; `gvhmr info` for a diagnostic
+bin/gvhmr demo VIDEO -s      # run the demo (needs --extra preproc; rendering is base — moderngl)
+bin/gvhmr env sync           # replay the recorded env through uv (--inexact — never prunes DPVO/extras)
 make check                   # the REQUIRED CI gates locally (ruff format --check + pytest) — run before pushing
 make fmt                     # format the WHOLE tree; make lint / typecheck / test are the rest
 uv run pre-commit install    # (or `make hooks`) once — auto-runs `ruff format` on commit, pinned to CI's ruff
 ```
+
+**Users should never need raw uv.** `scripts/install.sh` / the `gvhmr config init` wizard record the
+box's torch build + extras in the config file's `[env]` table (`gvhmr/cli/envcmd.py`); `gvhmr env sync`
+replays them with `--inexact` so a sync never prunes the out-of-band DPVO or a CUDA torch. `bin/gvhmr`
+is the no-re-sync wrapper (plain `uv run` re-syncs to the lock's defaults first — the classic trap;
+the Makefile uses `uv run --no-sync` for the same reason). `gvhmr info` detects env drift and points
+at `gvhmr env sync`.
 
 **Formatting must match CI.** CI's one required style gate is `ruff format --check gvhmr tools tests` (the
 lint/pyright jobs are advisory). Format the **whole tree** (`make fmt`), not just the files you touched —
@@ -62,8 +71,8 @@ the same ruff version) enforces this on commit; `make check` reproduces the full
 ## CLI & console output
 
 The CLI is a **Typer** app in `gvhmr/cli/`
-(`gvhmr demo`/`demo-folder`/`train`/`bench`/`info`/`download`/`extract-features`/`config`); the `tools/`
-scripts are thin backward-compat shims. **All console output goes through the
+(`gvhmr demo`/`demo-folder`/`train`/`bench`/`info`/`download`/`extract-features`/`config`/`env`); the
+`tools/` scripts are thin backward-compat shims. **All console output goes through the
 one shared Rich console in `gvhmr/utils/console.py`** — use `Log` (Rich-backed logging),
 `track(...)` for progress bars (drop-in for tqdm), `status(...)` for spinners, `rule(...)`
 for section dividers, and `console.print(...)`. Don't use bare `print()` or `tqdm` in
@@ -107,12 +116,14 @@ lets the pip-installed `dpvo` find its config. DPVO lives outside the lock, so u
 pass `--extra cuXXX` consistently) to keep a bare `uv sync` from pruning it. See `docs/INSTALL.md`.
 
 **Asset roots, config file & fetching.** Machine-local settings — where large assets live (`checkpoints` /
-`data` / `body_models` / `scene`) and the default model version per stage — live in one readable TOML file
-(`~/.config/gvhmr/config.toml`), managed with **`gvhmr config`** (`init` wizard / `show` / `set`). Everything
+`data` / `body_models` / `scene`), the default model version per stage, and the recorded environment
+(`[env]`) — live in one readable TOML file (**`<repo>/gvhmr.toml`**, gitignored; lookup `$GVHMR_CONFIG`
+(authoritative when set) → `./gvhmr.toml` → `<repo>/gvhmr.toml` → legacy `~/.config/gvhmr/config.toml`),
+managed with **`gvhmr config`** (`init` wizard / `show` / `set`). Everything
 resolves through `gvhmr/utils/localconfig.py` (`resolve()`) + `gvhmr/utils/assets.py` (`ROOTS`), with
 precedence **env var / CLI flag > config file > default** — so the file is the friendly baseline and the
 `$GVHMR_*` env vars (`GVHMR_CHECKPOINTS` / `GVHMR_BODY_MODELS` / `GVHMR_DATA_ROOT` / `GVHMR_DATA`) still win
-for CI / one-offs. `gvhmr download [demo|slam|all]` fetches checkpoints and `gvhmr download --data <DS,…>`
+for CI / one-offs. The test suite is hermetic to it (conftest points `$GVHMR_CONFIG` at a non-file). `gvhmr download [demo|slam|all]` fetches checkpoints and `gvhmr download --data <DS,…>`
 the packs (HF mirror `camenduru/GVHMR`) into those roots; `gvhmr demo` auto-fetches missing checkpoints and
 reads the config `[models]` defaults; `gvhmr info` / `gvhmr config show` show what's present + where. Body
 models are registration-gated (can't auto-download — the tooling prints the sign-up + target path).

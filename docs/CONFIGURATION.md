@@ -14,16 +14,22 @@ video ─► detector ─► pose2d ─► backbone ─► camera ─► motion 
 
 ## Your config file — one readable place (`gvhmr config`)
 
-Machine-local settings — **where large assets live** and **which model version each stage uses by default** —
-go in one readable TOML file (`~/.config/gvhmr/config.toml`) instead of scattered env vars. Set it up
-interactively, or edit it by hand:
+Machine-local settings — **where large assets live**, **which model version each stage uses by default**,
+and **the recorded Python environment** — go in one readable TOML file instead of scattered env vars. It
+lives **inside the repository** by default (`<repo>/gvhmr.toml`, gitignored). Set it up interactively, or
+edit it by hand:
 
 ```bash
-gvhmr config init                       # wizard: pick asset folders + default models → writes the file
+gvhmr config init                       # wizard: asset folders + default models + managed env → writes the file
 gvhmr config show                       # table of every setting, its value, and where it came from
 gvhmr config set camera vggt            # change one thing non-interactively (validated against the options)
 gvhmr config set checkpoints /vol/gvhmr/ckpts
+gvhmr config set torch cu126            # env fields too — apply with `gvhmr env sync`
 ```
+
+Lookup order: **`$GVHMR_CONFIG`** (when set it is authoritative — that exact file or nothing, no
+fallback) → `./gvhmr.toml` (current directory) → `<repo>/gvhmr.toml` → `~/.config/gvhmr/config.toml`
+(legacy). `gvhmr config` warns if it ever writes to a location outside this chain.
 
 The file is **self-documenting** — every model line lists all its options:
 
@@ -49,14 +55,23 @@ pose2d = 'vitpose'
 
 # camera — options: simplevo (default), dpvo (CUDA), dust3r, vggt (scene-aware metric)
 camera = 'simplevo'
+
+[env]
+# torch — the torch backend for this box: none (PyPI wheel: macOS/MPS), cpu, or cu124/cu126/cu128
+torch = 'cu128'
+# extras — comma-separated install extras `gvhmr env sync` applies (preproc = the demo's models)
+extras = 'preproc'
+# dpvo — 'true' when DPVO (CUDA SLAM) is installed out-of-band by scripts/setup_dpvo.sh
+dpvo = 'false'
 ```
 
 (`gvhmr config init` generates the full file — every stage's options listed above its value.)
 
-`gvhmr download` fetches into `[paths]`; `gvhmr demo` reads `[models]` as its defaults. **Precedence for
-everything is: env var / CLI flag > this file > built-in default** — the file is your baseline, and a one-off
-flag or `$GVHMR_*` env var still wins (`gvhmr config show` reveals the source of each value, so a stray env
-var is never a mystery). A project-local `./gvhmr.toml` is also honored if you prefer per-checkout config.
+`gvhmr download` fetches into `[paths]`; `gvhmr demo` reads `[models]` as its defaults; **`gvhmr env
+sync`** replays `[env]` through uv (`--inexact`, so nothing is ever pruned) — after the installer or
+wizard records it once, you never run uv by hand. **Precedence for everything is: env var / CLI flag >
+this file > built-in default** — the file is your baseline, and a one-off flag or `$GVHMR_*` env var
+still wins (`gvhmr config show` reveals the source of each value, so a stray env var is never a mystery).
 
 ## Overriding per run (CLI)
 
