@@ -8,6 +8,9 @@ Stubs moderngl so the logic is exercised without a GPU, a display, or moderngl i
 
 from __future__ import annotations
 
+import torch
+
+from gvhmr.utils.vis.renderer import _look_at_rotation, get_global_cameras_static
 from gvhmr.utils.vis.renderer_gl import _standalone_context
 
 
@@ -39,3 +42,26 @@ def test_falls_back_to_egl_when_headless() -> None:
     ctx = _standalone_context(mgl)
     assert ctx == "ctx(backend=egl)"
     assert mgl.calls == [None, "egl"]  # tried default first, then EGL
+
+
+def test_look_at_rotation_is_orthonormal() -> None:
+    """The pure-torch look-at yields proper rotation matrices (RᵀR = I, det = +1)."""
+    cam = torch.tensor([[3.0, 2.0, 5.0], [-4.0, 1.0, 0.0]])
+    at = torch.zeros(2, 3)
+    R = _look_at_rotation(cam, at)
+    assert R.shape == (2, 3, 3)
+    assert torch.allclose(R @ R.mT, torch.eye(3).expand(2, 3, 3), atol=1e-5)
+    assert torch.allclose(torch.det(R), torch.ones(2), atol=1e-5)
+
+
+def test_global_cameras_static_needs_no_pytorch3d() -> None:
+    """Regression: this world-camera helper hard-required pytorch3d (look_at_rotation /
+    PointLights) and raised NameError on the moderngl path. It must now run pure-torch."""
+    torch.manual_seed(0)
+    verts = torch.randn(10, 100, 3) * 0.3 + torch.tensor([0.0, 1.0, 0.0])
+    R, T, _lights = get_global_cameras_static(verts)
+    length = verts.shape[0]
+    assert R.shape == (length, 3, 3)
+    assert T.shape == (length, 3)
+    assert torch.isfinite(R).all() and torch.isfinite(T).all()
+    assert torch.allclose(R @ R.mT, torch.eye(3).expand(length, 3, 3), atol=1e-4)

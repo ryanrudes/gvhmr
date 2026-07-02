@@ -15,7 +15,6 @@ try:
         SoftPhongShader,
         TexturesVertex,
     )
-    from pytorch3d.renderer.cameras import look_at_rotation
     from pytorch3d.structures import Meshes
     from pytorch3d.structures.meshes import join_meshes_as_scene
 
@@ -296,6 +295,26 @@ def create_meshes(verts, faces, colors):
     return join_meshes_as_scene(meshes)
 
 
+def _look_at_rotation(camera_position, at, up=(0.0, 1.0, 0.0)):
+    """Pure-torch port of ``pytorch3d.renderer.look_at_rotation`` — so the world-camera setup
+    (and thus the moderngl render path) needs no pytorch3d. Returns an (N, 3, 3) world→view
+    rotation in pytorch3d's convention (the camera looks down +z in view space)."""
+    import torch.nn.functional as F
+
+    device, dtype = camera_position.device, camera_position.dtype
+    at_t = torch.as_tensor(at, dtype=dtype, device=device).reshape(-1, 3).expand_as(camera_position)
+    up_t = torch.as_tensor(up, dtype=dtype, device=device).reshape(-1, 3).expand_as(camera_position)
+
+    z_axis = F.normalize(at_t - camera_position, eps=1e-5, dim=1)
+    x_axis = F.normalize(torch.cross(up_t, z_axis, dim=1), eps=1e-5, dim=1)
+    y_axis = F.normalize(torch.cross(z_axis, x_axis, dim=1), eps=1e-5, dim=1)
+    is_close = torch.isclose(x_axis, torch.zeros_like(x_axis), atol=5e-3).all(dim=1, keepdim=True)
+    if is_close.any():  # up nearly parallel to the view direction — rebuild x from y×z
+        x_axis = torch.where(is_close, F.normalize(torch.cross(y_axis, z_axis, dim=1), eps=1e-5, dim=1), x_axis)
+    R = torch.cat((x_axis[:, None, :], y_axis[:, None, :], z_axis[:, None, :]), dim=1)
+    return R.transpose(1, 2)
+
+
 def get_global_cameras(verts, device="cuda", distance=5, position=(-5.0, 5.0, 0.0)):
     """This always put object at the center of view"""
     positions = torch.tensor([position]).repeat(len(verts), 1)
@@ -305,10 +324,10 @@ def get_global_cameras(verts, device="cuda", distance=5, position=(-5.0, 5.0, 0.
     directions = directions / torch.norm(directions, dim=-1).unsqueeze(-1) * distance
     positions = targets - directions
 
-    rotation = look_at_rotation(positions, targets).mT
+    rotation = _look_at_rotation(positions, targets).mT
     translation = -(rotation @ positions.unsqueeze(-1)).squeeze(-1)
 
-    lights = PointLights(device=device, location=[position])
+    lights = PointLights(device=device, location=[position]) if _HAS_PYTORCH3D else None
     return rotation, translation, lights
 
 
@@ -343,10 +362,10 @@ def get_global_cameras_static(
     positions = position.unsqueeze(0).repeat(L, 1)
     target_centers = target_center.unsqueeze(0).repeat(L, 1)
     target_centers[:, 1] = target_center_height
-    rotation = look_at_rotation(positions, target_centers).mT
+    rotation = _look_at_rotation(positions, target_centers).mT
     translation = -(rotation @ positions.unsqueeze(-1)).squeeze(-1)
 
-    lights = PointLights(device=device, location=[position.tolist()])
+    lights = PointLights(device=device, location=[position.tolist()]) if _HAS_PYTORCH3D else None
     return rotation, translation, lights
 
 
