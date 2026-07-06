@@ -1,10 +1,12 @@
-# GVHMR gradio demo — HuggingFace **Docker** Space.
+# GVHMR gradio demo — legacy **CPU Docker** Space (local / offline testing).
 #
-# Why Docker instead of the gradio SDK: a base dependency, `chumpy` (loads legacy SMPL .pkl body
-# models), ships a legacy setup.py that does `import pip` at build time. The gradio SDK installs
-# `requirements.txt` with PEP 517 build isolation, whose isolated build env has no `pip`, so the
-# chumpy wheel build fails. Here we install chumpy first with build isolation disabled (the base
-# env has pip + setuptools + numpy), then the rest — a robust, self-contained build.
+# Production HuggingFace Spaces use the **Gradio SDK + ZeroGPU** path (`app.py` + `requirements.txt`;
+# see space/README.md). Docker cannot use ZeroGPU.
+#
+# Why this Dockerfile exists: `chumpy` (legacy SMPL .pkl loader) ships a setup.py that does
+# `import pip` at build time. The Gradio SDK builder uses PEP 517 isolation (no pip in the build
+# env), so we bootstrap chumpy in `app.py` instead. This Docker image keeps the old CPU-only path
+# for developers who want `docker build` without ZeroGPU.
 
 FROM python:3.11-slim
 

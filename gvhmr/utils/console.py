@@ -8,7 +8,9 @@ progress bars, and ``status`` for an indeterminate spinner.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+import contextlib
+from collections.abc import Callable, Iterable, Iterator
+from contextvars import ContextVar
 from typing import TypeVar
 
 from rich.console import Console
@@ -40,6 +42,45 @@ THEME = Theme(
 )
 
 console = Console(theme=THEME, highlight=False)
+
+# Optional hook for UIs (e.g. Gradio ``gr.Progress``): maps Rich ``track()`` advances to a global 0–1 fraction.
+_progress_hook: ContextVar[Callable[[float, str], None] | None] = ContextVar("_progress_hook", default=None)
+_progress_phase: ContextVar[tuple[float, float, str] | None] = ContextVar("_progress_phase", default=None)
+
+
+def _notify_progress(local_frac: float, desc: str) -> None:
+    hook = _progress_hook.get()
+    if hook is None:
+        return
+    phase = _progress_phase.get()
+    if phase is not None:
+        start, end, phase_desc = phase
+        frac = start + max(0.0, min(1.0, local_frac)) * (end - start)
+        hook(frac, desc or phase_desc)
+    else:
+        hook(max(0.0, min(1.0, local_frac)), desc)
+
+
+@contextlib.contextmanager
+def progress_hook(callback: Callable[[float, str], None] | None):
+    """While active, forward ``track()`` progress to ``callback(fraction, description)``."""
+    token = _progress_hook.set(callback)
+    try:
+        yield
+    finally:
+        _progress_hook.reset(token)
+
+
+@contextlib.contextmanager
+def progress_phase(start: float, end: float, desc: str = ""):
+    """Map nested ``track()`` progress into the global ``[start, end]`` range for the active hook."""
+    token = _progress_phase.set((start, end, desc))
+    try:
+        if _progress_hook.get() is not None:
+            _notify_progress(0.0, desc)
+        yield
+    finally:
+        _progress_phase.reset(token)
 
 
 def progress_columns() -> tuple[ProgressColumn, ...]:
@@ -90,10 +131,17 @@ def track(
         except TypeError:
             total = None
     with progress(transient=not leave) as prog:
-        task = prog.add_task(label, total=total)
+        task_id = prog.add_task(label, total=total)
+        if _progress_hook.get() is not None:
+            _notify_progress(0.0, label)
         for item in iterable:
             yield item
-            prog.advance(task)
+            prog.advance(task_id)
+            if total:
+                completed = prog.tasks[task_id].completed
+                _notify_progress(completed / total, label)
+            elif _progress_hook.get() is not None:
+                _notify_progress(0.0, label)
 
 
 def status(message: str):

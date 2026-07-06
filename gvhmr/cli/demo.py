@@ -21,7 +21,7 @@ from rich.table import Table
 from gvhmr import PROJ_ROOT
 from gvhmr.configs import register_store_gvhmr
 from gvhmr.model.gvhmr.gvhmr_pl_demo import DemoPL
-from gvhmr.utils.console import console, rule, status, track
+from gvhmr.utils.console import console, progress_phase, rule, status, track
 from gvhmr.utils.device import device_name, get_device, to_device
 from gvhmr.utils.geo.hmr_cam import convert_K_to_K4, create_camera_sensor, estimate_K, get_bbx_xys_from_xyxy
 from gvhmr.utils.geo.rotations import quaternion_to_matrix
@@ -272,103 +272,111 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
     verbose = cfg.verbose
 
     # 1) bbox tracking (pluggable detector; default YOLO). Config group cfg.detector — swap with --detector.
-    if not Path(paths.bbx).exists():
-        tracker = make_detector(cfg.detector.name, **_ctor_kwargs(cfg.detector))
-        bbx_xyxy = tracker.get_one_track(video_path).float()  # (L, 4)
-        bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy, base_enlarge=1.2).float()  # (L, 3)
-        torch.save({"bbx_xyxy": bbx_xyxy, "bbx_xys": bbx_xys}, paths.bbx)
-        del tracker
-    else:
-        bbx_xys = torch.load(paths.bbx, weights_only=False)["bbx_xys"]
-        Log.info(f"bbox cached: [muted]{paths.bbx}[/]")
-    if verbose:
-        video = read_video_np(video_path)
-        bbx_xyxy = torch.load(paths.bbx, weights_only=False)["bbx_xyxy"]
-        save_video(draw_bbx_xyxy_on_image_batch(bbx_xyxy, video), cfg.paths.bbx_xyxy_video_overlay)
+    with progress_phase(0.10, 0.22, "Tracking person"):
+        if not Path(paths.bbx).exists():
+            tracker = make_detector(cfg.detector.name, **_ctor_kwargs(cfg.detector))
+            bbx_xyxy = tracker.get_one_track(video_path).float()  # (L, 4)
+            bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy, base_enlarge=1.2).float()  # (L, 3)
+            torch.save({"bbx_xyxy": bbx_xyxy, "bbx_xys": bbx_xys}, paths.bbx)
+            del tracker
+        else:
+            bbx_xys = torch.load(paths.bbx, weights_only=False)["bbx_xys"]
+            Log.info(f"bbox cached: [muted]{paths.bbx}[/]")
+        if verbose:
+            video = read_video_np(video_path)
+            bbx_xyxy = torch.load(paths.bbx, weights_only=False)["bbx_xyxy"]
+            save_video(draw_bbx_xyxy_on_image_batch(bbx_xyxy, video), cfg.paths.bbx_xyxy_video_overlay)
 
     # 2) 2D keypoints (pluggable 2D-pose; default ViTPose → COCO-17). Config group cfg.pose2d — swap with --pose2d.
-    if not Path(paths.vitpose).exists():
-        vitpose_extractor = make_pose2d(cfg.pose2d.name, **_ctor_kwargs(cfg.pose2d))
-        vitpose = vitpose_extractor.extract(video_path, bbx_xys)
-        torch.save(vitpose, paths.vitpose)
-        del vitpose_extractor
-    else:
-        vitpose = torch.load(paths.vitpose, weights_only=False)
-        Log.info(f"vitpose cached: [muted]{paths.vitpose}[/]")
-    if verbose:
-        video = read_video_np(video_path)
-        save_video(draw_coco17_skeleton_batch(video, vitpose, 0.5), paths.vitpose_video_overlay)
+    with progress_phase(0.22, 0.38, "2D pose estimation"):
+        if not Path(paths.vitpose).exists():
+            vitpose_extractor = make_pose2d(cfg.pose2d.name, **_ctor_kwargs(cfg.pose2d))
+            vitpose = vitpose_extractor.extract(video_path, bbx_xys)
+            torch.save(vitpose, paths.vitpose)
+            del vitpose_extractor
+        else:
+            vitpose = torch.load(paths.vitpose, weights_only=False)
+            Log.info(f"vitpose cached: [muted]{paths.vitpose}[/]")
+        if verbose:
+            video = read_video_np(video_path)
+            save_video(draw_coco17_skeleton_batch(video, vitpose, 0.5), paths.vitpose_video_overlay)
 
     # 3) image features (pluggable backbone; default HMR2 ViT). Swapping it needs a retrain — see
     #    docs/EXTENSIBILITY.md Tier B. Config group cfg.backbone — swap with --backbone.
-    if not Path(paths.vit_features).exists():
-        extractor = make_backbone(cfg.backbone.name, **_ctor_kwargs(cfg.backbone))
-        vit_features = extractor.extract_video_features(video_path, bbx_xys)
-        torch.save(vit_features, paths.vit_features)
-        del extractor
-    else:
-        Log.info(f"vit_features cached: [muted]{paths.vit_features}[/]")
+    with progress_phase(0.38, 0.58, "Image features"):
+        if not Path(paths.vit_features).exists():
+            extractor = make_backbone(cfg.backbone.name, **_ctor_kwargs(cfg.backbone))
+            vit_features = extractor.extract_video_features(video_path, bbx_xys)
+            torch.save(vit_features, paths.vit_features)
+            del extractor
+        else:
+            Log.info(f"vit_features cached: [muted]{paths.vit_features}[/]")
 
     # 3b) flip-test: re-extract image features on the horizontally-flipped video (TTA)
-    if flip_test and not flip_feat_path(cfg).exists():
-        import numpy as np
+    if flip_test:
+        with progress_phase(0.58, 0.64, "Flip-test features"):
+            if not flip_feat_path(cfg).exists():
+                import numpy as np
 
-        from gvhmr.utils.geo.flip_utils import flip_bbx_xys
+                from gvhmr.utils.geo.flip_utils import flip_bbx_xys
 
-        length, width, _ = get_video_lwh(video_path)
-        flip_video = Path(cfg.preprocess_dir) / "flipped_input.mp4"
-        if not flip_video.exists():
-            reader, writer = get_video_reader(video_path), get_writer(flip_video, fps=30, crf=CRF)
-            for img in track(reader, total=length, desc="Mirroring video"):
-                writer.write_frame(np.ascontiguousarray(img[:, ::-1]))
-            writer.close()
-            reader.close()
-        extractor = make_backbone(cfg.backbone.name, **_ctor_kwargs(cfg.backbone))
-        feat_flip = extractor.extract_video_features(str(flip_video), flip_bbx_xys(bbx_xys, width))
-        torch.save(feat_flip, flip_feat_path(cfg))
-        del extractor
+                length, width, _ = get_video_lwh(video_path)
+                flip_video = Path(cfg.preprocess_dir) / "flipped_input.mp4"
+                if not flip_video.exists():
+                    reader, writer = get_video_reader(video_path), get_writer(flip_video, fps=30, crf=CRF)
+                    for img in track(reader, total=length, desc="Mirroring video"):
+                        writer.write_frame(np.ascontiguousarray(img[:, ::-1]))
+                    writer.close()
+                    reader.close()
+                extractor = make_backbone(cfg.backbone.name, **_ctor_kwargs(cfg.backbone))
+                feat_flip = extractor.extract_video_features(str(flip_video), flip_bbx_xys(bbx_xys, width))
+                torch.save(feat_flip, flip_feat_path(cfg))
+                del extractor
 
     # 4) camera (SimpleVO / DPVO / DUSt3R-SLAM), unless static. Config group cfg.camera — swap with --camera.
     if not static_cam:
-        if not Path(paths.slam).exists():
-            cam = cfg.camera
-            if cam.name == "dust3r":
-                # scene-aware, metric camera on MPS/CPU/CUDA — recovers translation (DPVO does too but
-                # is CUDA-only; SimpleVO's translation is unreliable). (L, 4, 4) metric T_w2c numpy.
-                from gvhmr.utils.preproc.dust3r_slam import run_dust3r_slam
+        with progress_phase(0.64, 0.80, "Camera motion"):
+            if not Path(paths.slam).exists():
+                cam = cfg.camera
+                if cam.name == "dust3r":
+                    # scene-aware, metric camera on MPS/CPU/CUDA — recovers translation (DPVO does too but
+                    # is CUDA-only; SimpleVO's translation is unreliable). (L, 4, 4) metric T_w2c numpy.
+                    from gvhmr.utils.preproc.dust3r_slam import run_dust3r_slam
 
-                with status("DUSt3R scene-aware camera tracking"):
-                    result = run_dust3r_slam(cfg.video_path, max_depth=cam.max_depth)
-                Log.info(f"DUSt3R camera: scale {result['scale']:.1f}, reconstruction conf {result['conf']:.2f}")
-                torch.save(result["T_w2c"], paths.slam)
-            elif cam.name == "vggt":
-                # VGGT: one feed-forward pass for camera + depth (scale-ambiguous), Depth-Anything fixes
-                # the metric scale — same T_w2c contract as dust3r, faster/no global-alignment optimizer.
-                from gvhmr.utils.preproc.vggt_slam import run_vggt_slam
+                    with status("DUSt3R scene-aware camera tracking"):
+                        result = run_dust3r_slam(cfg.video_path, max_depth=cam.max_depth)
+                    Log.info(f"DUSt3R camera: scale {result['scale']:.1f}, reconstruction conf {result['conf']:.2f}")
+                    torch.save(result["T_w2c"], paths.slam)
+                elif cam.name == "vggt":
+                    # VGGT: one feed-forward pass for camera + depth (scale-ambiguous), Depth-Anything fixes
+                    # the metric scale — same T_w2c contract as dust3r, faster/no global-alignment optimizer.
+                    from gvhmr.utils.preproc.vggt_slam import run_vggt_slam
 
-                with status("VGGT scene-aware camera tracking"):
-                    result = run_vggt_slam(cfg.video_path, max_depth=cam.max_depth)
-                Log.info(f"VGGT camera: scale {result['scale']:.1f}, depth conf {result['conf']:.2f}")
-                torch.save(result["T_w2c"], paths.slam)
-            elif cam.name == "dpvo":
-                from gvhmr.utils.preproc.slam import SLAMModel
+                    with status("VGGT scene-aware camera tracking"):
+                        result = run_vggt_slam(cfg.video_path, max_depth=cam.max_depth)
+                    Log.info(f"VGGT camera: scale {result['scale']:.1f}, depth conf {result['conf']:.2f}")
+                    torch.save(result["T_w2c"], paths.slam)
+                elif cam.name == "dpvo":
+                    from gvhmr.utils.preproc.slam import SLAMModel
 
-                length, width, height = get_video_lwh(cfg.video_path)
-                K_fullimg = estimate_K(width, height)
-                model = SLAMModel(
-                    video_path, width, height, convert_K_to_K4(K_fullimg), buffer=cam.buffer, resize=cam.resize
-                )
-                with status("DPVO camera tracking"):
-                    while model.track():
-                        pass
-                torch.save(model.process(), paths.slam)  # (L, 7) numpy
-            else:  # simplevo
-                from gvhmr.utils.preproc import SimpleVO
+                    length, width, height = get_video_lwh(cfg.video_path)
+                    K_fullimg = estimate_K(width, height)
+                    model = SLAMModel(
+                        video_path, width, height, convert_K_to_K4(K_fullimg), buffer=cam.buffer, resize=cam.resize
+                    )
+                    with status("DPVO camera tracking"):
+                        while model.track():
+                            pass
+                    torch.save(model.process(), paths.slam)  # (L, 7) numpy
+                else:  # simplevo
+                    from gvhmr.utils.preproc import SimpleVO
 
-                simple_vo = SimpleVO(cfg.video_path, scale=cam.scale, step=cam.step, method=cam.method, f_mm=cfg.f_mm)
-                torch.save(simple_vo.compute(), paths.slam)  # (L, 4, 4) numpy
-        else:
-            Log.info(f"camera cached: [muted]{paths.slam}[/]")
+                    simple_vo = SimpleVO(
+                        cfg.video_path, scale=cam.scale, step=cam.step, method=cam.method, f_mm=cfg.f_mm
+                    )
+                    torch.save(simple_vo.compute(), paths.slam)  # (L, 4, 4) numpy
+            else:
+                Log.info(f"camera cached: [muted]{paths.slam}[/]")
 
     Log.info(f"Preprocess done in [ok]{Log.time() - tic:.1f}s[/]")
 

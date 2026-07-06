@@ -1,4 +1,7 @@
-# Installed by the Dockerfile (Docker SDK Space). `chumpy` and CPU `torch` are pre-installed there
-# — chumpy's legacy build needs pip present, which PEP 517 build isolation hides.
-gvhmr[preproc]>=1.0.1
+# Gradio SDK Space (ZeroGPU). `chumpy` + `gvhmr` are bootstrapped in app.py — chumpy's legacy
+# setup.py imports `pip` at build time, which PEP 517 isolation hides on the Gradio builder.
+numpy>=1.26
+setuptools
+wheel
 gradio>=4,<6
+spaces
