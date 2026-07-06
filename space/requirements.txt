@@ -1,4 +1,4 @@
-# Until the PyPI release is live, swap the line below for:
-#   git+https://github.com/ryanrudes/gvhmr.git#egg=gvhmr[preproc]
+# Installed by the Dockerfile (Docker SDK Space). `chumpy` and CPU `torch` are pre-installed there
+# — chumpy's legacy build needs pip present, which PEP 517 build isolation hides.
 gvhmr[preproc]
-gradio>=4
+gradio>=4,<6

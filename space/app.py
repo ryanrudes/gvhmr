@@ -10,6 +10,7 @@ The pipeline is loaded once at module import and cached in a global. Body models
 
 from __future__ import annotations
 
+import os
 import tempfile
 from pathlib import Path
 
@@ -173,4 +174,9 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
 
 
 if __name__ == "__main__":
-    demo.launch()
+    # In the Docker Space, GRADIO_SERVER_NAME/PORT are set in the Dockerfile (0.0.0.0:7860);
+    # fall back to those defaults so `python app.py` also works locally.
+    demo.launch(
+        server_name=os.getenv("GRADIO_SERVER_NAME", "0.0.0.0"),
+        server_port=int(os.getenv("GRADIO_SERVER_PORT", "7860")),
+    )
