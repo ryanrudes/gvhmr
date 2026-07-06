@@ -156,13 +156,28 @@ def _seconds_of_motion(num_frames: int, fps: float) -> float:
     return round(num_frames / fps, 2) if fps else 0.0
 
 
+def _video_path(video) -> str | None:
+    """Normalize Gradio Video value (path str or FileData dict) to a filesystem path."""
+    if video is None:
+        return None
+    if isinstance(video, str):
+        return video
+    if isinstance(video, dict):
+        return video.get("path") or video.get("video")
+    path = getattr(video, "path", None)
+    return str(path) if path else str(video)
+
+
 def _estimate_gpu_duration(
-    video_path: str | None,
+    video_path,
     static_camera: bool,
     camera_backend: str,
     flip_test: bool,
+    *args,
+    **kwargs,
 ) -> int:
     """ZeroGPU queue budget — scale with clip length and the heavier camera backends."""
+    video_path = _video_path(video_path)
     secs = 30.0
     if video_path:
         try:
@@ -194,6 +209,7 @@ def run(
     progress: gr.Progress = gr.Progress(),  # noqa: B008 — gradio's documented DI pattern
 ) -> tuple[str, str, dict]:
     """Run GVHMR on the uploaded video and return (overlay_mp4, npz_path, summary)."""
+    video_path = _video_path(video_path)
     if not video_path:
         raise gr.Error("Please upload a video first.")
 
