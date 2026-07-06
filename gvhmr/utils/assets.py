@@ -159,10 +159,10 @@ def body_models_present(smpl: bool = False) -> bool:
 
 def _gated_error() -> FileNotFoundError:
     return FileNotFoundError(
-        f"SMPL-X body model not found under {BODY_MODEL_ROOT}. These are registration-gated: run "
+        f"SMPL-X body model not found under {BODY_MODEL_ROOT}. It's registration-gated: run "
         f"`gvhmr auth smpl` (one-time MPI login → auto-fetch), or sign up at "
-        f"https://smpl-x.is.tue.mpg.de/ + https://smpl.is.tue.mpg.de/ and place them there "
-        f"(or set $GVHMR_BODY_MODELS). `gvhmr download` prints the exact layout."
+        f"https://smpl-x.is.tue.mpg.de/ and place it there (or set $GVHMR_BODY_MODELS; note SMPL-X and "
+        f"SMPL are separate accounts). `gvhmr download` prints the exact layout."
     )
 
 
@@ -181,13 +181,30 @@ def ensure_body_models(smpl: bool = False, auto: bool = True) -> None:
         return
 
     if auto:
-        from gvhmr.utils import mpi_download
+        from gvhmr.utils import localconfig, mpi_download
 
-        if mpi_download.credentials() is not None:
+        # 1) A user-controlled private mirror (their own copy) is the fast, seamless path — try it first,
+        #    for whichever datasets are still missing. Not redistribution: the repo is the user's own.
+        mirror = localconfig.body_models_mirror()
+        if mirror and ((not have_smplx) or (smpl and not have_smpl)):
             try:
-                placed = mpi_download.fetch_body_models(
-                    BODY_MODEL_ROOT, smplx=not have_smplx, smpl=(smpl and not have_smpl)
+                placed = mpi_download.fetch_from_mirror(
+                    BODY_MODEL_ROOT, mirror, smplx=not have_smplx, smpl=(smpl and not have_smpl)
                 )
+                if placed:
+                    Log.info(f"[ok]Body models fetched[/] from mirror [muted]{mirror}[/] ({len(placed)} file(s))")
+                have_smplx = (BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
+                have_smpl = (BODY_MODEL_ROOT / "smpl/SMPL_NEUTRAL.pkl").exists()
+            except Exception as e:  # noqa: BLE001 — any mirror failure just falls through to MPI
+                Log.warning(f"[warn]Mirror fetch failed[/] ([muted]{mirror}: {e}[/]) — falling back to MPI.")
+
+        # 2) The official MPI source for whatever's still missing. SMPL and SMPL-X are separate accounts —
+        #    only fetch datasets we actually have a login for (one without creds would mask the other).
+        fetch_smplx = (not have_smplx) and mpi_download.credentials("smplx") is not None
+        fetch_smpl = smpl and (not have_smpl) and mpi_download.credentials("smpl") is not None
+        if fetch_smplx or fetch_smpl:
+            try:
+                placed = mpi_download.fetch_body_models(BODY_MODEL_ROOT, smplx=fetch_smplx, smpl=fetch_smpl)
                 Log.info(f"[ok]Body models fetched[/] from MPI ({len(placed)} file(s)) → [muted]{BODY_MODEL_ROOT}[/]")
                 have_smplx = (BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
                 have_smpl = (BODY_MODEL_ROOT / "smpl/SMPL_NEUTRAL.pkl").exists()

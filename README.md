@@ -86,10 +86,12 @@ result.render("overlay.mp4")  # in-cam ∥ world overlay video
 result.save_npz("dance.npz")  # portable SMPL params + intrinsics
 ```
 
-Body models are registration-gated by MPI and **never redistributed** — `gvhmr auth smpl` (or
-`$SMPLX_USER`/`$SMPLX_PW`) fetches them from the official source with *your* account. There's also a
-tensor-level "power path" (`gvhmr.GVHMR.from_pretrained(...).predict(...)`) for your own preprocessing,
-and `save_pretrained` / `push_to_hub` for sharing. Full guide: [docs/LIBRARY.md](docs/LIBRARY.md).
+Body models are registration-gated by MPI and **never redistributed** — `gvhmr auth smpl` fetches them
+from the official source with *your own* account. SMPL and SMPL-X are **separate registrations**: SMPL-X
+(`$SMPLX_USER`/`$SMPLX_PW`) powers motion recovery, and SMPL (`$SMPL_USER`/`$SMPL_PW`, a distinct login)
+is needed only for mesh rendering. There's also a tensor-level "power path"
+(`gvhmr.GVHMR.from_pretrained(...).predict(...)`) for your own preprocessing, and `save_pretrained` /
+`push_to_hub` for sharing. Full guide: [docs/LIBRARY.md](docs/LIBRARY.md).
 
 ## Usage
 

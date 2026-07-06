@@ -156,8 +156,9 @@ def ensure_assets(camera: str, want_render: bool = True, repo: str | None = None
     """Auto-fetch the checkpoints this run needs (so `gvhmr demo` just works).
 
     Body models are registration-gated: :func:`assets.ensure_body_models` credential-fetches them from the
-    official MPI source when a login is available (``gvhmr auth smpl`` / ``$SMPLX_USER``/``$SMPLX_PW``),
-    otherwise raises the actionable sign-up instructions.
+    official MPI source when a login is available (``gvhmr auth smpl`` / ``$SMPLX_USER``/``$SMPLX_PW`` for
+    SMPL-X, ``$SMPL_USER``/``$SMPL_PW`` for SMPL — separate accounts), otherwise raises the actionable
+    sign-up instructions.
     """
     from gvhmr.utils import assets
 

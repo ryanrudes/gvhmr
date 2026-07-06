@@ -3,9 +3,10 @@
 Upload a video → recover SMPL human motion → get a side-by-side (in-camera + world)
 mesh overlay video plus an .npz of the SMPL parameters.
 
-The pipeline is loaded once at module import and cached in a global. Body models
-(SMPL/SMPL-X) are registration-gated and auto-fetched from MPI using the
-`SMPLX_USER` / `SMPLX_PW` env vars — on a Space these are set as repo Secrets.
+The pipeline is loaded once at module import and cached in a global. Body models are
+registration-gated and auto-fetched from MPI. SMPL and SMPL-X are *separate* accounts:
+motion recovery needs SMPL-X (`SMPLX_USER` / `SMPLX_PW`); mesh-overlay rendering also
+needs SMPL (`SMPL_USER` / `SMPL_PW`) — on a Space these are set as repo Secrets.
 """
 
 from __future__ import annotations
@@ -133,10 +134,10 @@ def run(
     except Exception as exc:  # noqa: BLE001 — convert everything to a friendly UI error
         if _is_credentials_error(exc):
             raise gr.Error(
-                "SMPL/SMPL-X body models are gated and could not be fetched. "
-                "The Space owner must set the SMPLX_USER and SMPLX_PW secrets to their own "
-                "MPI (smpl-x.is.tue.mpg.de) login so the body models can be downloaded. "
-                f"Details: {type(exc).__name__}: {exc}"
+                "SMPL/SMPL-X body models are gated and could not be fetched. SMPL and SMPL-X are "
+                "separate MPI registrations: the Space owner must set SMPLX_USER/SMPLX_PW (from a "
+                "smpl-x.is.tue.mpg.de login) and, for mesh rendering, SMPL_USER/SMPL_PW (from a "
+                f"separate smpl.is.tue.mpg.de login) as repo Secrets. Details: {type(exc).__name__}: {exc}"
             ) from exc
         raise gr.Error(f"Inference failed: {type(exc).__name__}: {exc}") from exc
 

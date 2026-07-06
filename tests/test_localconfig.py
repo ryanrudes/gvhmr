@@ -104,6 +104,40 @@ def test_env_table_accessors(tmp_path, monkeypatch):
     assert localconfig.env_dpvo() is False
 
 
+def test_body_models_mirror_resolution(tmp_path, monkeypatch):
+    cfg = tmp_path / "gvhmr.toml"
+    cfg.write_text("[body_models]\nmirror = 'me/gvhmr-body-models'\n")
+    monkeypatch.setenv("GVHMR_CONFIG", str(cfg))
+    monkeypatch.delenv("GVHMR_BODY_MODELS_MIRROR", raising=False)
+    assert localconfig.body_models_mirror() == "me/gvhmr-body-models"
+    # env var wins over the config file
+    monkeypatch.setenv("GVHMR_BODY_MODELS_MIRROR", "other/repo")
+    assert localconfig.body_models_mirror() == "other/repo"
+
+
+def test_body_models_mirror_none_when_unset(tmp_path, monkeypatch):
+    monkeypatch.setenv("GVHMR_CONFIG", str(tmp_path / "nope.toml"))
+    monkeypatch.delenv("GVHMR_BODY_MODELS_MIRROR", raising=False)
+    assert localconfig.body_models_mirror() is None
+
+
+def test_config_set_preserves_body_models_mirror(tmp_path, monkeypatch):
+    """Setting the mirror, then changing an unrelated key, must not drop the mirror (whole-file rewrite)."""
+    from gvhmr.cli import config as cfgcmd
+
+    target = tmp_path / "gvhmr.toml"
+    monkeypatch.setenv("GVHMR_CONFIG", str(target))
+    monkeypatch.delenv("GVHMR_BODY_MODELS_MIRROR", raising=False)
+
+    cfgcmd.write_settings(body_models={"mirror": "you/bm"}, target=target)
+    assert localconfig.body_models_mirror() == "you/bm"
+
+    # A later, unrelated write (a model change) carries the mirror over.
+    cfgcmd.write_settings(models={**cfgcmd._current_models(), "detector": "yolo11x"}, target=target)
+    assert localconfig.body_models_mirror() == "you/bm"
+    assert localconfig.model_default("detector") == "yolo11x"
+
+
 def test_write_config_round_trips(tmp_path):
     # sections: [(section, [(key, value, comment_lines)])] — comments render ABOVE each key.
     target = localconfig.write_config(

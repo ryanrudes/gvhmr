@@ -55,6 +55,11 @@ ENV_DOCS = {
     "dpvo": "dpvo — 'true' when DPVO (CUDA SLAM) is installed out-of-band by scripts/setup_dpvo.sh",
     "scene": "scene — 'true' when the DUSt3R/VGGT scene cameras are set up by scripts/setup_scene_aware.sh",
 }
+BODY_MODELS_MIRROR_DOC = [
+    "mirror — a private HF repo holding YOUR OWN copy of the gated SMPL/SMPL-X models, tried before the",
+    "MPI login (a fast single hf_hub_download). Set it by pushing your copy: `gvhmr body-models push <repo>`.",
+    "NOT a redistribution channel — keep the repo private; you're responsible for the MPI license.",
+]
 
 
 def _group_options(group: str) -> list[str]:
@@ -127,10 +132,17 @@ def _current_env() -> dict[str, str]:
     return {str(k): str(v) for k, v in localconfig.env_table().items()}
 
 
+def _current_body_models() -> dict[str, str]:
+    from gvhmr.utils import localconfig
+
+    return {"mirror": str(localconfig.body_models_table().get("mirror", "") or "")}
+
+
 def write_settings(
     paths: dict[str, str] | None = None,
     models: dict[str, str] | None = None,
     env: dict[str, str] | None = None,
+    body_models: dict[str, str] | None = None,
     target=None,
 ) -> None:
     """Write the config file: the given sections, with any omitted one carried over from the current
@@ -140,11 +152,14 @@ def write_settings(
     paths = paths if paths is not None else _current_paths()
     models = models if models is not None else _current_models()
     env = env if env is not None else _current_env()
+    body_models = body_models if body_models is not None else _current_body_models()
     target = target if target is not None else localconfig.target_config_path()
 
     path_entries = [(k, paths[k], [f"{k} — {assets.ROOTS[k][3]}"]) for k in paths]
     model_entries = [(k, models[k], _model_block(k)) for k in MODEL_KEYS]
     sections: list[localconfig.Section] = [("paths", path_entries), ("models", model_entries)]
+    if body_models.get("mirror"):  # only write the section when a mirror is set (keeps the file clean)
+        sections.append(("body_models", [("mirror", body_models["mirror"], BODY_MODELS_MIRROR_DOC)]))
     if env:
         sections.append(("env", [(k, env[k], [ENV_DOCS.get(k, k)]) for k in ENV_KEYS if k in env]))
     written = localconfig.write_config(target, sections)
@@ -194,6 +209,13 @@ def show() -> None:
         models.add_row(key, using, _options_summary(key))
     console.print(models)
 
+    mirror = localconfig.body_models_mirror()
+    console.print(
+        f"\nbody-models mirror: [gvhmr]{mirror}[/] [dim](your private copy, tried before MPI)[/]"
+        if mirror
+        else "\nbody-models mirror: [muted]none[/] [dim](set one with `gvhmr body-models push <repo>`)[/]"
+    )
+
     if localconfig.env_table():
         console.print(
             f"\nenv: torch=[gvhmr]{localconfig.env_torch() or 'none'}[/] "
@@ -215,16 +237,19 @@ def path() -> None:
 def set_(
     key: str = typer.Argument(
         ...,
-        help="A path key (checkpoints/data/body_models/scene), model stage (detector/…), or env field (torch/extras/dpvo).",
+        help="A path key (checkpoints/data/body_models/scene), model stage (detector/…), env field "
+        "(torch/extras/dpvo), or body_models_mirror.",
     ),
-    value: str = typer.Argument(..., help="The path, model version, or env value to set."),
+    value: str = typer.Argument(..., help="The path, model version, env value, or mirror repo to set."),
 ) -> None:
-    """Set one path, model choice, or env field, non-interactively (writes the config file)."""
+    """Set one path, model choice, env field, or the body-models mirror (writes the config file)."""
     from gvhmr.cli.envcmd import TORCH_CHOICES
     from gvhmr.utils import localconfig
 
     paths, models = _current_paths(), _current_models()
-    if key in paths:
+    if key == "body_models_mirror":
+        write_settings(body_models={"mirror": value}, target=localconfig.target_config_path())
+    elif key in paths:
         paths[key] = value
         write_settings(paths=paths, target=localconfig.target_config_path())
     elif key in models:
@@ -247,7 +272,7 @@ def set_(
     else:
         console.print(
             f"[err]unknown key '{key}'[/] — paths: {', '.join(paths)} · models: {', '.join(models)} · "
-            f"env: {', '.join(ENV_KEYS)}"
+            f"env: {', '.join(ENV_KEYS)} · body_models_mirror"
         )
         raise typer.Exit(1)
 
@@ -291,6 +316,18 @@ def init() -> None:
             else:
                 models[k] = Prompt.ask(f"  {k}", choices=_group_options(k), default=DEMO_DEFAULTS[k])
 
+    # 2b) Optional: a private HF mirror of your own body models — the fast, seamless setup path (falls
+    # back to the gated MPI login). This records the repo; push your copy with `gvhmr body-models push`.
+    body_models = _current_body_models()
+    if Confirm.ask(
+        "Use a private HF mirror for the SMPL/SMPL-X body models? [dim](your own copy → fast pulls)[/]",
+        default=bool(body_models.get("mirror")),
+    ):
+        body_models["mirror"] = Prompt.ask(
+            "  mirror repo [dim](e.g. you/gvhmr-body-models; upload with `gvhmr body-models push`)[/]",
+            default=body_models.get("mirror") or "",
+        )
+
     # 3) The managed environment: torch build + a walk through every optional component, so nothing is
     # discovered later via an error message. Recorded in [env]; `gvhmr env sync` re-applies it anytime.
     env = _current_env()
@@ -317,7 +354,7 @@ def init() -> None:
         env["extras"] = ",".join(chosen)
         # …and the script-installed camera backends (compiled/cloned; offered to run at the end):
         cuda_box = env["torch"].startswith("cu")
-        for key, (desc, script, probe) in SCRIPT_COMPONENTS.items():
+        for key, (desc, _script, probe) in SCRIPT_COMPONENTS.items():
             if key == "dpvo" and not cuda_box:
                 console.print("    [dim]dpvo — skipped: CUDA-only (the scene cameras cover translation).[/]")
                 env.setdefault("dpvo", "false")
@@ -327,7 +364,7 @@ def init() -> None:
 
     # 4) Where to write (honors $GVHMR_CONFIG / an existing file; default is <repo>/gvhmr.toml).
     target = Path(Prompt.ask("Write config to", default=str(localconfig.target_config_path()))).expanduser()
-    write_settings(paths=paths, models=models, env=env, target=target)
+    write_settings(paths=paths, models=models, env=env, body_models=body_models, target=target)
     show()
 
     # 5) Offer to apply everything now — the extras, then the script-installed backends, then checkpoints.

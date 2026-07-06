@@ -40,24 +40,44 @@ the GVHMR/HMR2/ViTPose/YOLO *checkpoints* come from the Hub repo (with fallback 
 `camenduru/GVHMR`).
 
 Instead, GVHMR fetches the body models from the **official MPI source using your own account** — exactly
-what the official `smplx`/SMPLify-X scripts do. Register once at
-[smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de/) and [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de/),
-then either:
+what the official `smplx`/SMPLify-X scripts do. **SMPL and SMPL-X are two separate registrations**, each
+with its own login and license (and often different passwords) — GVHMR never assumes one account works for
+both. SMPL-X (motion recovery) comes from [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de/); SMPL (only
+needed for mesh rendering) from [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de/). Register on each, then
+either:
 
 ```bash
-gvhmr auth smpl                      # prompts for your MPI email + password; stored 0600, fetches now
+gvhmr auth smpl                      # prompts for each account separately; stored 0600, fetches now
 ```
 
-or set environment variables (handy for CI / containers):
+or set per-account environment variables (handy for CI / containers):
 
 ```bash
-export SMPLX_USER="you@example.com"
-export SMPLX_PW="..."
+export SMPLX_USER="you@example.com"   SMPLX_PW="..."   # SMPL-X account (motion recovery)
+export SMPL_USER="you@example.com"    SMPL_PW="..."    # SMPL account (mesh rendering; may differ)
 ```
 
-The models are downloaded and placed on first use (or verified immediately by `gvhmr auth smpl`).
+Each dataset is fetched on first use with its own login (or verified immediately by `gvhmr auth smpl`).
+Missing only the SMPL account still lets motion recovery run — just the overlay rendering is skipped.
 Without credentials, the library falls back to printing the manual sign-up + target-path instructions.
 `gvhmr info` shows what's present and where.
+
+### Faster setup: a private mirror of your own copy
+
+Re-doing the MPI login on every machine is slow. Once you've downloaded the models under your license, you
+can stash **your own copy** in a **private** HF repo you control and have GVHMR pull from it first — a
+single fast `hf_hub_download`, no MPI login in the loop:
+
+```bash
+gvhmr body-models push you/gvhmr-body-models     # uploads THIS machine's copy to your private repo + records it
+gvhmr body-models pull                           # on another machine: fetch from your mirror
+```
+
+This is **not** redistribution and GVHMR never hosts these files: the repo is *yours*, kept *private*, for
+*your* use — you remain responsible for the MPI license (the CLI refuses a public repo without an explicit
+override). GVHMR tries the mirror (`[body_models].mirror` / `$GVHMR_BODY_MODELS_MIRROR`) before the MPI
+source and falls back automatically, so it's purely additive. Set it without pushing via
+`gvhmr config set body_models_mirror you/gvhmr-body-models`.
 
 ## Quickstart
 

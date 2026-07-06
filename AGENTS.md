@@ -152,9 +152,13 @@ progress, …)` returns a `MotionResult` (`result.py`) — `smpl_params_world`/`
 regressor, byte-identical to the renderer); `.save()`/`.save_npz()`/`.render(view=…)`. The "power path"
 `GVHMR.from_pretrained(...).predict(data, …)` is tensor-level (bring-your-own preproc). Hub I/O in
 `hub.py` (`DEFAULT_REPO=ryanrudes/gvhmr`, mirror fallback `camenduru/GVHMR`) — checkpoints only. **Body
-models are never re-hosted**: gated MPI SMPL/SMPL-X fetched per-user via `gvhmr auth smpl` / `$SMPLX_USER`
-/`$SMPLX_PW` (`utils/mpi_download.py`, `cli/hubcmd.py`). Publish: `gvhmr publish-hub`/`publish-space`.
-Full guide `docs/LIBRARY.md`.
+models are never re-hosted**: gated MPI SMPL/SMPL-X fetched per-user via `gvhmr auth smpl`
+(`utils/mpi_download.py`, `cli/hubcmd.py`). **SMPL and SMPL-X are separate MPI accounts** — creds resolve
+per-dataset (`$SMPLX_USER`/`$SMPLX_PW` for SMPL-X, `$SMPL_USER`/`$SMPL_PW` for SMPL; file uses nested
+`[auth.smplx]`/`[auth.smpl]`), never cross-falling-back. Optional fast path: a user's **own private** HF
+mirror (`gvhmr body-models push/pull`; `[body_models].mirror`/`$GVHMR_BODY_MODELS_MIRROR`), tried before
+MPI (`mpi_download.fetch_from_mirror`) — not redistribution (the project never hosts body models). Publish:
+`gvhmr publish-hub`/`publish-space`. Full guide `docs/LIBRARY.md`.
 
 ## Device / MPS
 

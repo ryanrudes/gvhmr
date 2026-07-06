@@ -99,6 +99,28 @@ def model_default(key: str) -> str | None:
     return str(v) if v not in (None, "") else None
 
 
+# --- [body_models] — an optional private HF mirror for the gated SMPL/SMPL-X models --------------------
+
+
+def body_models_table() -> dict:
+    """The ``[body_models]`` table — currently just the optional private ``mirror`` repo."""
+    return _load_table("body_models")
+
+
+def body_models_mirror() -> str | None:
+    """A user-controlled HF repo holding *their own* SMPL/SMPL-X copy, tried before the MPI source.
+
+    This is **not** a redistribution channel: it points at a repo the user owns and keeps private (their
+    license, their storage), so setup is a fast single ``hf_hub_download`` instead of the gated MPI login.
+    Precedence: ``$GVHMR_BODY_MODELS_MIRROR`` > ``[body_models].mirror``; ``None`` if unset.
+    """
+    v = os.environ.get("GVHMR_BODY_MODELS_MIRROR")
+    if v:
+        return v
+    fv = body_models_table().get("mirror")
+    return str(fv) if fv not in (None, "") else None
+
+
 # --- [env] — the recorded Python-environment choices (written by the wizard / installer) ---------------
 # `gvhmr env sync` replays these through uv so users never have to remember extras or fear pruning.
 

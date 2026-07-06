@@ -21,10 +21,11 @@ the left, world on the right) plus an `.npz` file containing the recovered SMPL 
 camera backend (`simplevo`, `dust3r`, `vggt`) for moving cameras, or check *Static camera* for
 a fixed viewpoint.
 
-> **Space owners:** the SMPL/SMPL-X body models are registration-gated and are auto-fetched
-> from MPI at run time. You must set the `SMPLX_USER` and `SMPLX_PW` repo **Secrets** to your
-> own login at [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de) so the body models can be
-> downloaded. A **GPU** is strongly recommended — CPU inference on a short clip can take many
-> minutes.
+> **Space owners:** the body models are registration-gated and auto-fetched from MPI at run time.
+> **SMPL and SMPL-X are separate registrations**, each with its own login. Set the `SMPLX_USER` /
+> `SMPLX_PW` repo **Secrets** from your [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de) login
+> (required for motion recovery) and, to enable the mesh-overlay video, the `SMPL_USER` / `SMPL_PW`
+> Secrets from a *separate* [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de) login. A **GPU** is
+> strongly recommended — CPU inference on a short clip can take many minutes.
 
 Source, documentation, and the full CLI: <https://github.com/ryanrudes/gvhmr>.
