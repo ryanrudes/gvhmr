@@ -1,12 +1,10 @@
-# Gradio SDK Space (ZeroGPU). HF pins gradio + spaces on the builder — do not constrain
-# gradio here (their image installs gradio==6.x).
+# Gradio SDK Space (ZeroGPU). HF pins gradio + spaces + torch==2.11.0 on the builder.
+# Do NOT list gradio, spaces, or torch here — the platform manages those.
 #
-# Do NOT pin torch/torchvision here — ZeroGPU preinstalls torch==2.11.0 and the builder
-# adds `torch<=2.11.0`. Pinning torchvision 0.22.x breaks resolution (it requires torch 2.7).
-# gvhmr[preproc] only needs torch>=2.4, satisfied by the runtime wheel.
-gvhmr[preproc]>=1.0.3
+# Do NOT list gvhmr or chumpy here — chumpy's legacy setup.py imports pip at build time and
+# fails under PEP 517 isolation during the Space build. app.py bootstraps both at runtime
+# (chumpy with --no-build-isolation, then gvhmr[preproc]).
 numpy>=1.26
 pip
 setuptools
 wheel
-# chumpy is bootstrapped in app.py with --no-build-isolation (cannot be declared here).

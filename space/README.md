@@ -31,8 +31,11 @@ a fixed viewpoint.
 > `ZERO_GPU_DURATION=600` (seconds) raises the per-call cap for longer clips on PRO.
 >
 > **Torch:** ZeroGPU preinstalls `torch==2.11.0` (builder adds `torch<=2.11.0`). Do **not** pin
-> torch/torchvision in `requirements.txt` — PyPI torchvision 0.22.x requires torch 2.7 and breaks the
-> build. `gvhmr[preproc]` only needs `torch>=2.4`, which the runtime wheel satisfies.
+> torch/torchvision in `requirements.txt`.
+>
+> **gvhmr / chumpy:** also **not** in `requirements.txt` — `chumpy` cannot build during the Space
+> image build (PEP 517 isolation). `app.py` installs `chumpy` with `--no-build-isolation`, then
+> `gvhmr[preproc]`, on the first inference request.
 >
 > **Body models** are registration-gated and never bundled. **Recommended — private mirror:** on your
 > laptop, register at [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de) +

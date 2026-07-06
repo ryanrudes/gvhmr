@@ -96,7 +96,7 @@ def _pip_install(*packages: str) -> None:
 
 
 def _bootstrap_deps() -> None:
-    """Install chumpy (no-build-isolation); gvhmr comes from requirements.txt at build time."""
+    """Install chumpy (no-build-isolation) then gvhmr — cannot run at Space build time."""
     _apply_bootstrap_smpl_compat()
 
     try:
@@ -107,7 +107,7 @@ def _bootstrap_deps() -> None:
     try:
         import gvhmr  # noqa: F401
     except ImportError:
-        # Runtime fallback — ZeroGPU already ships torch 2.11; do not pull PyPI torch 2.12+.
+        # ZeroGPU preinstalls torch 2.11 — chumpy must be present first (see requirements.txt).
         _pip_install("gvhmr[preproc]>=1.0.3")
 
     from gvhmr.utils._smpl_compat import apply
