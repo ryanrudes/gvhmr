@@ -34,29 +34,49 @@ LEGACY_CONFIG_PATH = _xdg_config_home() / "gvhmr" / "config.toml"
 DEFAULT_CONFIG_PATH = PROJ_ROOT / "gvhmr.toml"
 
 
+def _pip_installed() -> bool:
+    """True when the package was installed from PyPI/wheel (not an editable checkout)."""
+    return "site-packages" in PROJ_ROOT.as_posix()
+
+
 def config_file() -> Path | None:
     """The active config file.
 
     ``$GVHMR_CONFIG``, when set, is **authoritative**: that exact file is used, and if it doesn't exist
     there is no config (no silent fallback to another file). Otherwise the first that exists of
-    ``./gvhmr.toml`` / ``<repo>/gvhmr.toml`` / the legacy ``~/.config/gvhmr/config.toml``.
+    ``./gvhmr.toml`` / ``~/.config/gvhmr/config.toml`` (pip installs) or ``<repo>/gvhmr.toml`` /
+    the legacy XDG path.
     """
     if env := os.environ.get("GVHMR_CONFIG"):
         p = Path(env).expanduser()
         return p if p.is_file() else None
-    for cand in (Path("gvhmr.toml"), DEFAULT_CONFIG_PATH, LEGACY_CONFIG_PATH):
-        if cand.is_file():
-            return cand
+    candidates = [Path("gvhmr.toml")]
+    if _pip_installed():
+        candidates.append(LEGACY_CONFIG_PATH)
+    else:
+        candidates.append(DEFAULT_CONFIG_PATH)
+    candidates.append(LEGACY_CONFIG_PATH)
+    seen: set[Path] = set()
+    for cand in candidates:
+        c = cand.expanduser()
+        if c in seen:
+            continue
+        seen.add(c)
+        if c.is_file():
+            return c
     return None
 
 
 def target_config_path() -> Path:
     """Where ``gvhmr config init/set`` / ``gvhmr env record`` should *write*: the active file if one
-    exists, else ``$GVHMR_CONFIG`` if set (even when it doesn't exist yet), else the in-repo default."""
+    exists, else ``$GVHMR_CONFIG`` if set (even when it doesn't exist yet), else the user config dir
+    for pip installs or the in-repo default for editable checkouts."""
     if (active := config_file()) is not None:
         return active
     if env := os.environ.get("GVHMR_CONFIG"):
         return Path(env).expanduser()
+    if _pip_installed():
+        return LEGACY_CONFIG_PATH
     return DEFAULT_CONFIG_PATH
 
 

@@ -79,6 +79,11 @@ override). GVHMR tries the mirror (`[body_models].mirror` / `$GVHMR_BODY_MODELS_
 source and falls back automatically, so it's purely additive. Set it without pushing via
 `gvhmr config set body_models_mirror you/gvhmr-body-models`.
 
+Authenticate for a **private** mirror with `$HF_TOKEN`, `$HUGGING_FACE_HUB_TOKEN`, or
+`huggingface-cli login` (also `--token` on `gvhmr body-models pull`). In a **Jupyter notebook**, set the
+token in Python — `os.environ["HF_TOKEN"] = "hf_…"` — not with `!export HF_TOKEN=…` (that only affects the
+shell subprocess, not the Python kernel or later `!gvhmr` calls).
+
 ## Quickstart
 
 ### One-liner

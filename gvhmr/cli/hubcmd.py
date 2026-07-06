@@ -128,6 +128,7 @@ def body_models_push(
 
     from gvhmr.utils import assets, mpi_download
     from gvhmr.utils.console import console, rule
+    from gvhmr.utils.hf_token import resolve_hf_token
     from gvhmr.utils.net import ensure_ca_bundle
 
     rule("[gvhmr]gvhmr body-models push[/]")
@@ -148,7 +149,7 @@ def body_models_push(
         raise typer.Exit(1)
 
     ensure_ca_bundle()
-    api = HfApi(token=token)
+    api = HfApi(token=resolve_hf_token(token))
     api.create_repo(repo, repo_type="model", private=private, exist_ok=True)
     for path, rel in uploads:
         with console.status(f"Uploading {rel}…"):
@@ -189,9 +190,13 @@ def body_models_pull(
             "`gvhmr config set body_models_mirror <repo>`."
         )
         raise typer.Exit(1)
-    placed = mpi_download.fetch_from_mirror(
-        assets.BODY_MODEL_ROOT, repo, smplx=True, smpl=True, genders=genders, token=token
-    )
+    try:
+        placed = mpi_download.fetch_from_mirror(
+            assets.BODY_MODEL_ROOT, repo, smplx=True, smpl=True, genders=genders, token=token
+        )
+    except PermissionError as e:
+        console.print(f"[err]{e}[/]")
+        raise typer.Exit(1) from e
     if not placed:
         console.print(f"[warn]Nothing pulled[/] — files already present, or [muted]{repo}[/] has none of them.")
         return

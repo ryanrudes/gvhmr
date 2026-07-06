@@ -195,7 +195,9 @@ def ensure_body_models(smpl: bool = False, auto: bool = True) -> None:
                     Log.info(f"[ok]Body models fetched[/] from mirror [muted]{mirror}[/] ({len(placed)} file(s))")
                 have_smplx = (BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
                 have_smpl = (BODY_MODEL_ROOT / "smpl/SMPL_NEUTRAL.pkl").exists()
-            except Exception as e:  # noqa: BLE001 — any mirror failure just falls through to MPI
+            except PermissionError:
+                raise
+            except Exception as e:  # noqa: BLE001 — any other mirror failure just falls through to MPI
                 Log.warning(f"[warn]Mirror fetch failed[/] ([muted]{mirror}: {e}[/]) — falling back to MPI.")
 
         # 2) The official MPI source for whatever's still missing. SMPL and SMPL-X are separate accounts —

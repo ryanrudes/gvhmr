@@ -295,11 +295,13 @@ def fetch_from_mirror(
     back to MPI for the rest). Repo-not-found / auth / network errors propagate to the caller.
     """
     from huggingface_hub import hf_hub_download
-    from huggingface_hub.utils import EntryNotFoundError
+    from huggingface_hub.utils import EntryNotFoundError, HfHubHTTPError
 
+    from gvhmr.utils.hf_token import resolve_hf_token
     from gvhmr.utils.net import ensure_ca_bundle
 
     ensure_ca_bundle()
+    token = resolve_hf_token(token)
     body_model_root = Path(body_model_root)
     placed: list[Path] = []
     todo = [k for k, on in (("smplx", smplx), ("smpl", smpl)) if on]
@@ -311,5 +313,15 @@ def fetch_from_mirror(
                 got = hf_hub_download(repo, rel, local_dir=str(body_model_root), token=token)
             except EntryNotFoundError:
                 continue  # not in this mirror — leave it for the MPI fallback
+            except HfHubHTTPError as e:
+                if e.response.status_code in (401, 403):
+                    raise PermissionError(
+                        f"Could not read private mirror '{repo}' (HTTP {e.response.status_code}). "
+                        "Authenticate with a token that can read the repo: set $HF_TOKEN or "
+                        "$HUGGING_FACE_HUB_TOKEN, run `huggingface-cli login`, or pass `--token`. "
+                        "In a notebook use os.environ['HF_TOKEN'] = '...' — shell `export` does not "
+                        "work in `!` cells."
+                    ) from e
+                raise
             placed.append(Path(got))
     return placed

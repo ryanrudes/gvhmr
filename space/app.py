@@ -5,7 +5,7 @@ mesh overlay video plus an .npz of the SMPL parameters.
 
 Uses Hugging Face **ZeroGPU** (free shared GPU for visitors; the Space owner selects the
 ZeroGPU hardware flavor in Settings — requires a PRO/Team/Enterprise plan to host). Inference
-runs inside ``@spaces.GPU``; the pipeline is loaded once at startup on ``cuda``.
+runs inside ``@spaces.GPU``; the pipeline loads lazily on first request (inside the GPU decorator).
 
 Body models: configure a private mirror (`GVHMR_BODY_MODELS_MIRROR` + `HF_TOKEN`) or MPI
 Secrets — see space/README.md.
@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import traceback
 from pathlib import Path
 
 # ZeroGPU: import `spaces` before any torch/CUDA import (HF requirement).
@@ -45,7 +46,17 @@ Source & docs: [{REPO_URL}]({REPO_URL}).
 
 
 def _bootstrap_deps() -> None:
-    """Install chumpy (no-build-isolation) and gvhmr before the heavy imports."""
+    """Install gvhmr + chumpy (no-build-isolation) before the heavy imports."""
+    try:
+        import gvhmr  # noqa: F401
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "gvhmr[preproc]>=1.0.3"])
+
+    # chumpy needs legacy shims on Python 3.11+ — install them before importing chumpy.
+    from gvhmr.utils._smpl_compat import apply
+
+    apply()
+
     try:
         import chumpy  # noqa: F401
     except ImportError:
@@ -61,35 +72,33 @@ def _bootstrap_deps() -> None:
                 "chumpy==0.70",
             ]
         )
-    try:
-        import gvhmr  # noqa: F401
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "gvhmr[preproc]>=1.0.2"])
 
 
 _bootstrap_deps()
 
 # --------------------------------------------------------------------------------------
-# Pipeline: load once on cuda (ZeroGPU emulation outside @spaces.GPU, real GPU inside).
+# Pipeline: lazy load inside @spaces.GPU (avoids import-time failures on ZeroGPU builders).
 # --------------------------------------------------------------------------------------
 _PIPE = None
 _LOAD_ERROR: str | None = None
 
 
-def _load_pipeline() -> None:
-    """Populate the module-global pipeline, capturing any load error as a string."""
+def _get_pipeline():
+    """Return the cached pipeline, loading it on first use."""
     global _PIPE, _LOAD_ERROR
+    if _PIPE is not None:
+        return _PIPE
+    if _LOAD_ERROR is not None:
+        raise RuntimeError(_LOAD_ERROR)
     try:
         import gvhmr
 
-        # ZeroGPU expects weights on cuda at module scope; override with GVHMR_DEVICE=cpu locally.
         device = os.getenv("GVHMR_DEVICE", "cuda")
         _PIPE = gvhmr.pipeline("human-motion-recovery", model="ryanrudes/gvhmr", device=device)
+        return _PIPE
     except Exception as exc:  # noqa: BLE001 — surface any failure to the UI, keep it up
-        _LOAD_ERROR = f"{type(exc).__name__}: {exc}"
-
-
-_load_pipeline()
+        _LOAD_ERROR = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+        raise RuntimeError(_LOAD_ERROR) from exc
 
 
 def _is_credentials_error(exc: Exception) -> bool:
@@ -106,6 +115,9 @@ def _is_credentials_error(exc: Exception) -> bool:
         "registration-gated",
         "smpl-x body model",
         "mirror",
+        "401",
+        "403",
+        "permissionerror",
     )
     return any(n in text for n in needles)
 
@@ -152,12 +164,15 @@ def run(
     progress: gr.Progress = gr.Progress(),  # noqa: B008 — gradio's documented DI pattern
 ) -> tuple[str, str, dict]:
     """Run GVHMR on the uploaded video and return (overlay_mp4, npz_path, summary)."""
-    if _PIPE is None:
-        raise gr.Error(
-            f"The GVHMR pipeline failed to load, so inference is unavailable. Details: {_LOAD_ERROR or 'unknown error'}"
-        )
     if not video_path:
         raise gr.Error("Please upload a video first.")
+
+    try:
+        pipe = _get_pipeline()
+    except RuntimeError as exc:
+        raise gr.Error(
+            f"The GVHMR pipeline failed to load, so inference is unavailable. Details: {exc}"
+        ) from exc
 
     camera = None if static_camera else camera_backend
     out_dir = Path(tempfile.mkdtemp(prefix="gvhmr_"))
@@ -167,7 +182,7 @@ def run(
 
     try:
         progress(0.0, desc="Starting…")
-        result = _PIPE(
+        result = pipe(
             video_path,
             static_camera=static_camera,
             camera=camera,
@@ -216,11 +231,6 @@ def _toggle_camera(static_camera: bool) -> gr.Dropdown:
 
 with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
     gr.Markdown(DESCRIPTION)
-
-    if _PIPE is None:
-        gr.Markdown(
-            f"> ⚠️ **The pipeline failed to load — inference is disabled.** `{_LOAD_ERROR}`",
-        )
 
     with gr.Row():
         with gr.Column():

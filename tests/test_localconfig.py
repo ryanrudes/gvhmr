@@ -89,6 +89,17 @@ def test_lookup_falls_back_to_repo_then_legacy(tmp_path, monkeypatch):
     assert localconfig.config_file() == repo_file  # …but the repo-local file wins
 
 
+def test_pip_install_target_config_path(tmp_path, monkeypatch):
+    """PyPI installs must not write gvhmr.toml under site-packages."""
+    monkeypatch.delenv("GVHMR_CONFIG", raising=False)
+    (tmp_path / "empty").mkdir()
+    monkeypatch.chdir(tmp_path / "empty")  # no ./gvhmr.toml in cwd
+    legacy = tmp_path / "xdg" / "config.toml"
+    monkeypatch.setattr(localconfig, "LEGACY_CONFIG_PATH", legacy)
+    monkeypatch.setattr(localconfig, "_pip_installed", lambda: True)
+    assert localconfig.target_config_path() == legacy
+
+
 def test_env_table_accessors(tmp_path, monkeypatch):
     cfg = tmp_path / "gvhmr.toml"
     cfg.write_text("[env]\ntorch = 'cu126'\nextras = 'preproc, dev'\ndpvo = 'true'\nscene = 'true'\n")
