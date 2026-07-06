@@ -40,8 +40,9 @@ overlay video and an `.npz` of the SMPL parameters.
 Source & docs: [{REPO_URL}]({REPO_URL}).
 
 > Runs on **ZeroGPU** when the Space owner has selected that hardware — much faster than CPU.
-> Free HF accounts get a few minutes of GPU time per day; [HF PRO](https://huggingface.co/pricing)
-> gets a larger daily quota.
+> **Each inference call gets 60 seconds of GPU time on the free tier** (HF default for
+> `@spaces.GPU`); use short clips (~10–15 s), *Static camera*, and skip flip-test when possible.
+> Space owners on PRO can raise the cap with a `ZERO_GPU_DURATION` Secret (seconds).
 """
 
 
@@ -168,6 +169,11 @@ def _video_path(video) -> str | None:
     return str(path) if path else str(video)
 
 
+def _zero_gpu_duration_cap() -> int:
+    """Max seconds requested per ``@spaces.GPU`` call (HF free tier default: 60)."""
+    return int(os.getenv("ZERO_GPU_DURATION", "60"))
+
+
 def _estimate_gpu_duration(
     video_path,
     static_camera: bool,
@@ -176,17 +182,21 @@ def _estimate_gpu_duration(
     *args,
     **kwargs,
 ) -> int:
-    """ZeroGPU queue budget — scale with clip length and the heavier camera backends."""
+    """ZeroGPU queue budget — HF free tier defaults to 60 s per ``@spaces.GPU`` call."""
+    cap = _zero_gpu_duration_cap()
+    if cap <= 60:
+        return 60
+
     video_path = _video_path(video_path)
     secs = 30.0
     if video_path:
         try:
             import cv2
 
-            cap = cv2.VideoCapture(video_path)
-            fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-            frames = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0.0
-            cap.release()
+            cap_vid = cv2.VideoCapture(video_path)
+            fps = cap_vid.get(cv2.CAP_PROP_FPS) or 30.0
+            frames = cap_vid.get(cv2.CAP_PROP_FRAME_COUNT) or 0.0
+            cap_vid.release()
             if fps > 0 and frames > 0:
                 secs = float(frames / fps)
         except Exception:  # noqa: BLE001
@@ -194,7 +204,8 @@ def _estimate_gpu_duration(
     per_sec = 5.0 if flip_test else 3.5
     if not static_camera and camera_backend in ("dust3r", "vggt"):
         per_sec *= 1.6
-    return int(min(600, max(120, 60 + secs * per_sec)))
+    bootstrap = 35  # cold-start pip/bootstrap + checkpoint load (first call)
+    return int(min(cap, max(60, bootstrap + secs * per_sec)))
 
 
 # --------------------------------------------------------------------------------------

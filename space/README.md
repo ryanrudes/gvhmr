@@ -27,6 +27,8 @@ a fixed viewpoint.
 > **Space owners:** this Space targets **ZeroGPU** (free shared GPU for visitors — you must select
 > the **ZeroGPU** hardware flavor under Space Settings; hosting ZeroGPU requires
 > [HF PRO / Team / Enterprise](https://huggingface.co/pricing)). Docker Spaces cannot use ZeroGPU.
+> Each `@spaces.GPU` call gets **60 seconds of GPU time by default** on the free tier; optional Secret
+> `ZERO_GPU_DURATION=600` (seconds) raises the per-call cap for longer clips on PRO.
 >
 > **Body models** are registration-gated and never bundled. **Recommended — private mirror:** on your
 > laptop, register at [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de) +
