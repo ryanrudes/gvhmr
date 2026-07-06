@@ -64,7 +64,7 @@ def _bootstrap_deps() -> None:
     try:
         import gvhmr  # noqa: F401
     except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "gvhmr[preproc]>=1.0.1"])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "gvhmr[preproc]>=1.0.2"])
 
 
 _bootstrap_deps()
