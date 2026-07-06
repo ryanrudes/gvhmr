@@ -19,6 +19,7 @@ import sys
 import tempfile
 import traceback
 from pathlib import Path
+from typing import Any
 
 # ZeroGPU: import `spaces` before any torch/CUDA import (HF requirement).
 import spaces
@@ -26,8 +27,27 @@ import gradio as gr
 
 REPO_URL = "https://github.com/ryanrudes/gvhmr"
 
+DEFAULT_HUB_REPO = os.getenv("GVHMR_HUB_REPO", "ryanrudes/gvhmr")
+# ZeroGPU runtime torch — keep in sync with space/requirements.txt (do not pull PyPI torch 2.12+).
+ZEROGPU_TORCH = "torch==2.11.0"
+ZEROGPU_TORCHVISION = "torchvision==0.22.0"
+
 # Camera backends shown in the UI. DPVO is CUDA-only and intentionally omitted.
 CAMERA_BACKENDS = ["simplevo", "dust3r", "vggt"]
+
+# Curated preprocessing presets (full list: `gvhmr config show` / docs/CONFIGURATION.md).
+DETECTOR_CHOICES = [
+    "yolo",
+    "yolov8n",
+    "yolov8s",
+    "yolov8m",
+    "yolov8l",
+    "yolov8x",
+    "yolo11x",
+    "yolo26x",
+]
+POSE2D_CHOICES = ["vitpose"]  # rtmpose needs the optional rtmlib extra (not installed here)
+BACKBONE_CHOICES = ["hmr2", "dinov2"]
 
 DESCRIPTION = f"""
 # GVHMR — World-Grounded Human Motion Recovery
@@ -44,6 +64,13 @@ Source & docs: [{REPO_URL}]({REPO_URL}).
 > `@spaces.GPU`); use short clips (~10–15 s), *Static camera*, and skip flip-test when possible.
 > Space owners on PRO can raise the cap with a `ZERO_GPU_DURATION` Secret (seconds).
 """
+
+
+def _hub_repo_choices() -> list[str]:
+    choices = [DEFAULT_HUB_REPO, "camenduru/GVHMR"]
+    if extra := os.getenv("GVHMR_HUB_REPO_OPTIONS", ""):
+        choices.extend(item.strip() for item in extra.split(",") if item.strip())
+    return list(dict.fromkeys(choices))
 
 
 def _apply_bootstrap_smpl_compat() -> None:
@@ -72,13 +99,7 @@ def _pip_install(*packages: str) -> None:
 
 
 def _bootstrap_deps() -> None:
-    """Install chumpy (no-build-isolation) then gvhmr — order matters on HF Spaces.
-
-    ``chumpy``'s legacy ``setup.py`` imports ``pip`` at build time; PEP 517 isolation (the default)
-    has no pip in the build env. ``gvhmr`` depends on ``chumpy``, so installing ``gvhmr`` first
-    always triggers that broken build. Install ``chumpy`` with ``--no-build-isolation`` first,
-    then ``gvhmr[preproc]`` reuses the already-built wheel.
-    """
+    """Install chumpy (no-build-isolation); gvhmr comes from requirements.txt at build time."""
     _apply_bootstrap_smpl_compat()
 
     try:
@@ -89,6 +110,8 @@ def _bootstrap_deps() -> None:
     try:
         import gvhmr  # noqa: F401
     except ImportError:
+        # Runtime fallback — pin ZeroGPU-compatible torch BEFORE gvhmr (PyPI torch 2.12+ breaks dynamo).
+        _pip_install(ZEROGPU_TORCH, ZEROGPU_TORCHVISION)
         _pip_install("gvhmr[preproc]>=1.0.3")
 
     from gvhmr.utils._smpl_compat import apply
@@ -106,30 +129,60 @@ def _ensure_bootstrapped() -> None:
     _bootstrap_deps()
     _BOOTSTRAPPED = True
 
+
 # --------------------------------------------------------------------------------------
-# Pipeline: lazy load inside @spaces.GPU (avoids import-time failures on ZeroGPU builders).
+# Pipeline cache: lazy load inside @spaces.GPU (keyed by hub repo + stage presets).
 # --------------------------------------------------------------------------------------
-_PIPE = None
-_LOAD_ERROR: str | None = None
+_PIPES: dict[tuple, Any] = {}
+_PIPE_ERRORS: dict[tuple, str] = {}
 
 
-def _get_pipeline():
-    """Return the cached pipeline, loading it on first use."""
-    global _PIPE, _LOAD_ERROR
-    if _PIPE is not None:
-        return _PIPE
-    if _LOAD_ERROR is not None:
-        raise RuntimeError(_LOAD_ERROR)
+def _pipeline_key(
+    model_repo: str,
+    revision: str,
+    detector: str,
+    pose2d: str,
+    backbone: str,
+) -> tuple:
+    device = os.getenv("GVHMR_DEVICE", "cuda")
+    rev = (revision or "").strip()
+    return (model_repo.strip(), rev, detector, pose2d, backbone, device)
+
+
+def _get_pipeline(
+    *,
+    model_repo: str,
+    revision: str,
+    detector: str,
+    pose2d: str,
+    backbone: str,
+):
+    """Return a cached pipeline for the selected weights + preprocessing presets."""
+    key = _pipeline_key(model_repo, revision, detector, pose2d, backbone)
+    if key in _PIPES:
+        return _PIPES[key]
+    if key in _PIPE_ERRORS:
+        raise RuntimeError(_PIPE_ERRORS[key])
     try:
         _ensure_bootstrapped()
         import gvhmr
 
-        device = os.getenv("GVHMR_DEVICE", "cuda")
-        _PIPE = gvhmr.pipeline("human-motion-recovery", model="ryanrudes/gvhmr", device=device)
-        return _PIPE
+        rev = (revision or "").strip() or None
+        pipe = gvhmr.pipeline(
+            "human-motion-recovery",
+            model=model_repo.strip(),
+            revision=rev,
+            detector=detector,
+            pose2d=pose2d,
+            backbone=backbone,
+            device=key[-1],
+        )
+        _PIPES[key] = pipe
+        return pipe
     except Exception as exc:  # noqa: BLE001 — surface any failure to the UI, keep it up
-        _LOAD_ERROR = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
-        raise RuntimeError(_LOAD_ERROR) from exc
+        msg = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+        _PIPE_ERRORS[key] = msg
+        raise RuntimeError(msg) from exc
 
 
 def _is_credentials_error(exc: Exception) -> bool:
@@ -217,6 +270,11 @@ def run(
     static_camera: bool,
     camera_backend: str,
     flip_test: bool,
+    hub_repo: str,
+    hub_revision: str,
+    detector: str,
+    pose2d: str,
+    backbone: str,
     progress: gr.Progress = gr.Progress(),  # noqa: B008 — gradio's documented DI pattern
 ) -> tuple[str, str, dict]:
     """Run GVHMR on the uploaded video and return (overlay_mp4, npz_path, summary)."""
@@ -225,7 +283,13 @@ def run(
         raise gr.Error("Please upload a video first.")
 
     try:
-        pipe = _get_pipeline()
+        pipe = _get_pipeline(
+            model_repo=hub_repo,
+            revision=hub_revision,
+            detector=detector,
+            pose2d=pose2d,
+            backbone=backbone,
+        )
     except RuntimeError as exc:
         raise gr.Error(
             f"The GVHMR pipeline failed to load, so inference is unavailable. Details: {exc}"
@@ -261,6 +325,11 @@ def run(
             "fps": result.fps,
             "camera": result.camera,
             "seconds_of_motion": _seconds_of_motion(result.num_frames, result.fps),
+            "weights_repo": hub_repo.strip(),
+            "weights_revision": (hub_revision or "").strip() or "default",
+            "detector": detector,
+            "pose2d": pose2d,
+            "backbone": backbone,
         }
         progress(1.0, desc="Done")
         return str(overlay_path), str(npz_path), summary
@@ -300,6 +369,37 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
                 info="Ignored when 'Static camera' is checked. dpvo is CUDA-only and not offered here.",
             )
             flip_in = gr.Checkbox(value=False, label="Flip-test (slower, more accurate)")
+
+            with gr.Accordion("Model settings", open=False):
+                hub_repo_in = gr.Dropdown(
+                    choices=_hub_repo_choices(),
+                    value=DEFAULT_HUB_REPO,
+                    allow_custom_value=True,
+                    label="Weights repo (Hub model id)",
+                    info="GVHMR checkpoint repo — default is the released weights.",
+                )
+                hub_revision_in = gr.Textbox(
+                    label="Hub revision (optional)",
+                    placeholder="main, a tag, or commit hash — blank = default branch",
+                )
+                detector_in = gr.Dropdown(
+                    choices=DETECTOR_CHOICES,
+                    value="yolo",
+                    label="Detector",
+                    info="Default `yolo` = YOLOv8-x (released preset).",
+                )
+                pose2d_in = gr.Dropdown(
+                    choices=POSE2D_CHOICES,
+                    value="vitpose",
+                    label="2D pose",
+                )
+                backbone_in = gr.Dropdown(
+                    choices=BACKBONE_CHOICES,
+                    value="hmr2",
+                    label="Feature backbone",
+                    info="`dinov2` only works with a GVHMR checkpoint trained on DINOv2 features.",
+                )
+
             run_btn = gr.Button("Recover motion", variant="primary")
 
         with gr.Column():
@@ -310,7 +410,17 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
     static_in.change(_toggle_camera, inputs=static_in, outputs=camera_in)
     run_btn.click(
         run,
-        inputs=[video_in, static_in, camera_in, flip_in],
+        inputs=[
+            video_in,
+            static_in,
+            camera_in,
+            flip_in,
+            hub_repo_in,
+            hub_revision_in,
+            detector_in,
+            pose2d_in,
+            backbone_in,
+        ],
         outputs=[overlay_out, npz_out, summary_out],
     )
 

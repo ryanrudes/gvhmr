@@ -30,6 +30,9 @@ a fixed viewpoint.
 > Each `@spaces.GPU` call gets **60 seconds of GPU time by default** on the free tier; optional Secret
 > `ZERO_GPU_DURATION=600` (seconds) raises the per-call cap for longer clips on PRO.
 >
+> **Torch:** `requirements.txt` pins `torch==2.11.0` (ZeroGPU-supported). Do not let `gvhmr` pull
+> PyPI torch 2.12+ at runtime — it breaks `torch._dynamo` on the Space builder.
+>
 > **Body models** are registration-gated and never bundled. **Recommended — private mirror:** on your
 > laptop, register at [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de) +
 > [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de), run `gvhmr auth smpl`, then
@@ -42,3 +45,7 @@ a fixed viewpoint.
 > A legacy **CPU Docker** build (`space/Dockerfile`) remains for local/offline testing without ZeroGPU.
 
 Source, documentation, and the full CLI: <https://github.com/ryanrudes/gvhmr>.
+
+The Space UI exposes **Model settings** (weights Hub repo + optional revision, detector, 2D-pose,
+feature backbone). Space owners can set `GVHMR_HUB_REPO` / `GVHMR_HUB_REPO_OPTIONS` Secrets to pre-seed
+extra repo choices for visitors.

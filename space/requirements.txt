@@ -1,7 +1,13 @@
 # Gradio SDK Space (ZeroGPU). HF pins gradio + spaces on the builder — do not constrain
-# gradio here (their image installs gradio==6.x). `chumpy` + `gvhmr` bootstrap in app.py
-# (chumpy must use --no-build-isolation — cannot be declared here).
+# gradio here (their image installs gradio==6.x).
+#
+# ZeroGPU supports torch 2.8–2.11 only. Pin BEFORE gvhmr — otherwise pip pulls PyPI torch
+# 2.12+ over the runtime wheel and torch._dynamo fails (Config deprecated=…).
+torch==2.11.0
+torchvision==0.22.0
+gvhmr[preproc]>=1.0.3
 numpy>=1.26
 pip
 setuptools
 wheel
+# chumpy is bootstrapped in app.py with --no-build-isolation (cannot be declared here).
