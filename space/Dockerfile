@@ -16,8 +16,10 @@ ENV PYTHONUNBUFFERED=1 \
     GRADIO_SERVER_NAME=0.0.0.0 \
     GRADIO_SERVER_PORT=7860
 
-# System libraries for OpenCV / video IO / OpenGL mesh rendering.
+# System libraries for OpenCV / video IO / OpenGL mesh rendering, plus a C/C++ toolchain —
+# the `preproc` extra builds native wheels from sdist (e.g. cython-bbox) that need gcc.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
         ffmpeg libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
