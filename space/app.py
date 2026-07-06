@@ -59,7 +59,17 @@ _load_pipeline()
 def _is_credentials_error(exc: Exception) -> bool:
     """Heuristic: does this exception look like missing gated-body-model credentials?"""
     text = f"{type(exc).__name__} {exc}".lower()
-    needles = ("smplx_user", "smplx_pw", "body model", "body_model", "credential", "registration", "mpi")
+    needles = (
+        "smplx_user",
+        "smplx_pw",
+        "body model",
+        "body_model",
+        "credential",
+        "registration",
+        "mpi",
+        "registration-gated",
+        "smpl-x body model",
+    )
     return any(n in text for n in needles)
 
 

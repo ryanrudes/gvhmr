@@ -23,6 +23,10 @@ def _build_demo_pl(ckpt_path: str | Path) -> DemoPL:
 
     import gvhmr.model.gvhmr.gvhmr_pl_demo  # noqa: F401 — registers the demo model in MainStore
     from gvhmr.configs import register_store_gvhmr
+    from gvhmr.utils import assets
+
+    # EnDecoder embeds a lite SMPL-X body model at init — same as `gvhmr demo ensure_assets`.
+    assets.ensure_body_models(smpl=False)
 
     register_store_gvhmr()
     with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):
