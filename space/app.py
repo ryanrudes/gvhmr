@@ -29,22 +29,44 @@ REPO_URL = "https://github.com/ryanrudes/gvhmr"
 
 DEFAULT_HUB_REPO = os.getenv("GVHMR_HUB_REPO", "ryanrudes/gvhmr")
 
-# Camera backends shown in the UI. DPVO is CUDA-only and intentionally omitted.
-CAMERA_BACKENDS = ["simplevo", "dust3r", "vggt"]
-
-# Curated preprocessing presets (full list: `gvhmr config show` / docs/CONFIGURATION.md).
+# All presets from gvhmr/configs/{detector,pose2d,backbone,camera}/ — keep in sync with the repo.
 DETECTOR_CHOICES = [
     "yolo",
+    "yolo11l",
+    "yolo11m",
+    "yolo11n",
+    "yolo11s",
+    "yolo11x",
+    "yolo12l",
+    "yolo12m",
+    "yolo12n",
+    "yolo12s",
+    "yolo12x",
+    "yolo26l",
+    "yolo26m",
+    "yolo26n",
+    "yolo26s",
+    "yolo26x",
+    "yolov10b",
+    "yolov10l",
+    "yolov10m",
+    "yolov10n",
+    "yolov10s",
+    "yolov10x",
+    "yolov8l",
+    "yolov8m",
     "yolov8n",
     "yolov8s",
-    "yolov8m",
-    "yolov8l",
     "yolov8x",
-    "yolo11x",
-    "yolo26x",
+    "yolov9c",
+    "yolov9e",
+    "yolov9m",
+    "yolov9s",
+    "yolov9t",
 ]
-POSE2D_CHOICES = ["vitpose"]  # rtmpose needs the optional rtmlib extra (not installed here)
+POSE2D_CHOICES = ["vitpose", "rtmpose"]
 BACKBONE_CHOICES = ["hmr2", "dinov2"]
+CAMERA_CHOICES = ["simplevo", "dpvo", "dust3r", "vggt"]
 
 DESCRIPTION = f"""
 # GVHMR — World-Grounded Human Motion Recovery
@@ -359,10 +381,10 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
             video_in = gr.Video(label="Input video", sources=["upload"])
             static_in = gr.Checkbox(value=False, label="Static camera")
             camera_in = gr.Dropdown(
-                choices=CAMERA_BACKENDS,
+                choices=CAMERA_CHOICES,
                 value="simplevo",
                 label="Camera backend",
-                info="Ignored when 'Static camera' is checked. dpvo is CUDA-only and not offered here.",
+                info="Ignored when 'Static camera' is checked. dpvo needs compiled DPVO (not on this Space).",
             )
             flip_in = gr.Checkbox(value=False, label="Flip-test (slower, more accurate)")
 
@@ -381,13 +403,16 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
                 detector_in = gr.Dropdown(
                     choices=DETECTOR_CHOICES,
                     value="yolo",
+                    allow_custom_value=True,
                     label="Detector",
-                    info="Default `yolo` = YOLOv8-x (released preset).",
+                    info="All YOLO presets from gvhmr config (`yolo` = yolov8x). Custom weights via name or .pt stem.",
                 )
                 pose2d_in = gr.Dropdown(
                     choices=POSE2D_CHOICES,
                     value="vitpose",
+                    allow_custom_value=True,
                     label="2D pose",
+                    info="`rtmpose` needs the optional rtmlib extra (not installed here).",
                 )
                 backbone_in = gr.Dropdown(
                     choices=BACKBONE_CHOICES,
