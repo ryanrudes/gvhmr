@@ -1,0 +1,62 @@
+name: Release
+
+# Build, validate, and publish the `gvhmr` distribution to PyPI on a version tag.
+#
+# Publishing uses PyPI **Trusted Publishing** (OIDC) — no API token secret. One-time setup: add this repo
+# as a trusted publisher for the `gvhmr` project on PyPI (Project → Settings → Publishing), workflow
+# `release.yml`, environment `pypi`. Then push a tag: `git tag v1.0.1 && git push --tags`.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: # allow a manual build (validates, but does not publish without a tag)
+
+jobs:
+  build:
+    name: Build & validate distributions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Build sdist + wheel
+        run: uv build
+      - name: Check metadata + README rendering
+        run: uvx twine check dist/*
+      - name: Import smoke test (from the built wheel, no heavy deps)
+        run: |
+          uv venv /tmp/relcheck
+          uv pip install --python /tmp/relcheck --no-deps dist/*.whl
+          /tmp/relcheck/bin/python - <<'PY'
+          import gvhmr
+          print("gvhmr", gvhmr.__version__)
+          need = ["pipeline", "recover", "GVHMR", "GVHMRPipeline", "MotionResult"]
+          missing = [n for n in need if n not in gvhmr.__all__]
+          assert not missing, f"missing public API: {missing}"
+          PY
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # Only publish for an actual tag push (workflow_dispatch just builds/validates).
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    environment: pypi
+    permissions:
+      id-token: write # OIDC token for PyPI Trusted Publishing
+    steps:
+      - name: Download built distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

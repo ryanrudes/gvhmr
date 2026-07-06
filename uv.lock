@@ -3,38 +3,50 @@ revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
     "python_full_version < '3.12' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
 ]
@@ -324,6 +336,62 @@ wheels = [
 ]
 
 [[package]]
+name = "audioop-lts"
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/38/53/946db57842a50b2da2e0c1e34bd37f36f5aadba1a929a3971c5d7841dbca/audioop_lts-0.2.2.tar.gz", hash = "sha256:64d0c62d88e67b98a1a5e71987b7aa7b5bcffc7dcee65b635823dbdd0a8dbbd0", size = 30686, upload-time = "2025-08-05T16:43:17.409Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/d4/94d277ca941de5a507b07f0b592f199c22454eeaec8f008a286b3fbbacd6/audioop_lts-0.2.2-cp313-abi3-macosx_10_13_universal2.whl", hash = "sha256:fd3d4602dc64914d462924a08c1a9816435a2155d74f325853c1f1ac3b2d9800", size = 46523, upload-time = "2025-08-05T16:42:20.836Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/5a/656d1c2da4b555920ce4177167bfeb8623d98765594af59702c8873f60ec/audioop_lts-0.2.2-cp313-abi3-macosx_10_13_x86_64.whl", hash = "sha256:550c114a8df0aafe9a05442a1162dfc8fec37e9af1d625ae6060fed6e756f303", size = 27455, upload-time = "2025-08-05T16:42:22.283Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/83/ea581e364ce7b0d41456fb79d6ee0ad482beda61faf0cab20cbd4c63a541/audioop_lts-0.2.2-cp313-abi3-macosx_11_0_arm64.whl", hash = "sha256:9a13dc409f2564de15dd68be65b462ba0dde01b19663720c68c1140c782d1d75", size = 26997, upload-time = "2025-08-05T16:42:23.849Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/3b/e8964210b5e216e5041593b7d33e97ee65967f17c282e8510d19c666dab4/audioop_lts-0.2.2-cp313-abi3-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:51c916108c56aa6e426ce611946f901badac950ee2ddaf302b7ed35d9958970d", size = 85844, upload-time = "2025-08-05T16:42:25.208Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/2e/0a1c52faf10d51def20531a59ce4c706cb7952323b11709e10de324d6493/audioop_lts-0.2.2-cp313-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:47eba38322370347b1c47024defbd36374a211e8dd5b0dcbce7b34fdb6f8847b", size = 85056, upload-time = "2025-08-05T16:42:26.559Z" },
+    { url = "https://files.pythonhosted.org/packages/75/e8/cd95eef479656cb75ab05dfece8c1f8c395d17a7c651d88f8e6e291a63ab/audioop_lts-0.2.2-cp313-abi3-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:ba7c3a7e5f23e215cb271516197030c32aef2e754252c4c70a50aaff7031a2c8", size = 93892, upload-time = "2025-08-05T16:42:27.902Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/1e/a0c42570b74f83efa5cca34905b3eef03f7ab09fe5637015df538a7f3345/audioop_lts-0.2.2-cp313-abi3-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:def246fe9e180626731b26e89816e79aae2276f825420a07b4a647abaa84becc", size = 96660, upload-time = "2025-08-05T16:42:28.9Z" },
+    { url = "https://files.pythonhosted.org/packages/50/d5/8a0ae607ca07dbb34027bac8db805498ee7bfecc05fd2c148cc1ed7646e7/audioop_lts-0.2.2-cp313-abi3-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:e160bf9df356d841bb6c180eeeea1834085464626dc1b68fa4e1d59070affdc3", size = 79143, upload-time = "2025-08-05T16:42:29.929Z" },
+    { url = "https://files.pythonhosted.org/packages/12/17/0d28c46179e7910bfb0bb62760ccb33edb5de973052cb2230b662c14ca2e/audioop_lts-0.2.2-cp313-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:4b4cd51a57b698b2d06cb9993b7ac8dfe89a3b2878e96bc7948e9f19ff51dba6", size = 84313, upload-time = "2025-08-05T16:42:30.949Z" },
+    { url = "https://files.pythonhosted.org/packages/84/ba/bd5d3806641564f2024e97ca98ea8f8811d4e01d9b9f9831474bc9e14f9e/audioop_lts-0.2.2-cp313-abi3-musllinux_1_2_ppc64le.whl", hash = "sha256:4a53aa7c16a60a6857e6b0b165261436396ef7293f8b5c9c828a3a203147ed4a", size = 93044, upload-time = "2025-08-05T16:42:31.959Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/5e/435ce8d5642f1f7679540d1e73c1c42d933331c0976eb397d1717d7f01a3/audioop_lts-0.2.2-cp313-abi3-musllinux_1_2_riscv64.whl", hash = "sha256:3fc38008969796f0f689f1453722a0f463da1b8a6fbee11987830bfbb664f623", size = 78766, upload-time = "2025-08-05T16:42:33.302Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/3b/b909e76b606cbfd53875693ec8c156e93e15a1366a012f0b7e4fb52d3c34/audioop_lts-0.2.2-cp313-abi3-musllinux_1_2_s390x.whl", hash = "sha256:15ab25dd3e620790f40e9ead897f91e79c0d3ce65fe193c8ed6c26cffdd24be7", size = 87640, upload-time = "2025-08-05T16:42:34.854Z" },
+    { url = "https://files.pythonhosted.org/packages/30/e7/8f1603b4572d79b775f2140d7952f200f5e6c62904585d08a01f0a70393a/audioop_lts-0.2.2-cp313-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:03f061a1915538fd96272bac9551841859dbb2e3bf73ebe4a23ef043766f5449", size = 86052, upload-time = "2025-08-05T16:42:35.839Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/96/c37846df657ccdda62ba1ae2b6534fa90e2e1b1742ca8dcf8ebd38c53801/audioop_lts-0.2.2-cp313-abi3-win32.whl", hash = "sha256:3bcddaaf6cc5935a300a8387c99f7a7fbbe212a11568ec6cf6e4bc458c048636", size = 26185, upload-time = "2025-08-05T16:42:37.04Z" },
+    { url = "https://files.pythonhosted.org/packages/34/a5/9d78fdb5b844a83da8a71226c7bdae7cc638861085fff7a1d707cb4823fa/audioop_lts-0.2.2-cp313-abi3-win_amd64.whl", hash = "sha256:a2c2a947fae7d1062ef08c4e369e0ba2086049a5e598fda41122535557012e9e", size = 30503, upload-time = "2025-08-05T16:42:38.427Z" },
+    { url = "https://files.pythonhosted.org/packages/34/25/20d8fde083123e90c61b51afb547bb0ea7e77bab50d98c0ab243d02a0e43/audioop_lts-0.2.2-cp313-abi3-win_arm64.whl", hash = "sha256:5f93a5db13927a37d2d09637ccca4b2b6b48c19cd9eda7b17a2e9f77edee6a6f", size = 24173, upload-time = "2025-08-05T16:42:39.704Z" },
+    { url = "https://files.pythonhosted.org/packages/58/a7/0a764f77b5c4ac58dc13c01a580f5d32ae8c74c92020b961556a43e26d02/audioop_lts-0.2.2-cp313-cp313t-macosx_10_13_universal2.whl", hash = "sha256:73f80bf4cd5d2ca7814da30a120de1f9408ee0619cc75da87d0641273d202a09", size = 47096, upload-time = "2025-08-05T16:42:40.684Z" },
+    { url = "https://files.pythonhosted.org/packages/aa/ed/ebebedde1a18848b085ad0fa54b66ceb95f1f94a3fc04f1cd1b5ccb0ed42/audioop_lts-0.2.2-cp313-cp313t-macosx_10_13_x86_64.whl", hash = "sha256:106753a83a25ee4d6f473f2be6b0966fc1c9af7e0017192f5531a3e7463dce58", size = 27748, upload-time = "2025-08-05T16:42:41.992Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/6e/11ca8c21af79f15dbb1c7f8017952ee8c810c438ce4e2b25638dfef2b02c/audioop_lts-0.2.2-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:fbdd522624141e40948ab3e8cdae6e04c748d78710e9f0f8d4dae2750831de19", size = 27329, upload-time = "2025-08-05T16:42:42.987Z" },
+    { url = "https://files.pythonhosted.org/packages/84/52/0022f93d56d85eec5da6b9da6a958a1ef09e80c39f2cc0a590c6af81dcbb/audioop_lts-0.2.2-cp313-cp313t-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:143fad0311e8209ece30a8dbddab3b65ab419cbe8c0dde6e8828da25999be911", size = 92407, upload-time = "2025-08-05T16:42:44.336Z" },
+    { url = "https://files.pythonhosted.org/packages/87/1d/48a889855e67be8718adbc7a01f3c01d5743c325453a5e81cf3717664aad/audioop_lts-0.2.2-cp313-cp313t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:dfbbc74ec68a0fd08cfec1f4b5e8cca3d3cd7de5501b01c4b5d209995033cde9", size = 91811, upload-time = "2025-08-05T16:42:45.325Z" },
+    { url = "https://files.pythonhosted.org/packages/98/a6/94b7213190e8077547ffae75e13ed05edc488653c85aa5c41472c297d295/audioop_lts-0.2.2-cp313-cp313t-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:cfcac6aa6f42397471e4943e0feb2244549db5c5d01efcd02725b96af417f3fe", size = 100470, upload-time = "2025-08-05T16:42:46.468Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/e9/78450d7cb921ede0cfc33426d3a8023a3bda755883c95c868ee36db8d48d/audioop_lts-0.2.2-cp313-cp313t-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:752d76472d9804ac60f0078c79cdae8b956f293177acd2316cd1e15149aee132", size = 103878, upload-time = "2025-08-05T16:42:47.576Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/e2/cd5439aad4f3e34ae1ee852025dc6aa8f67a82b97641e390bf7bd9891d3e/audioop_lts-0.2.2-cp313-cp313t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:83c381767e2cc10e93e40281a04852facc4cd9334550e0f392f72d1c0a9c5753", size = 84867, upload-time = "2025-08-05T16:42:49.003Z" },
+    { url = "https://files.pythonhosted.org/packages/68/4b/9d853e9076c43ebba0d411e8d2aa19061083349ac695a7d082540bad64d0/audioop_lts-0.2.2-cp313-cp313t-musllinux_1_2_aarch64.whl", hash = "sha256:c0022283e9556e0f3643b7c3c03f05063ca72b3063291834cca43234f20c60bb", size = 90001, upload-time = "2025-08-05T16:42:50.038Z" },
+    { url = "https://files.pythonhosted.org/packages/58/26/4bae7f9d2f116ed5593989d0e521d679b0d583973d203384679323d8fa85/audioop_lts-0.2.2-cp313-cp313t-musllinux_1_2_ppc64le.whl", hash = "sha256:a2d4f1513d63c795e82948e1305f31a6d530626e5f9f2605408b300ae6095093", size = 99046, upload-time = "2025-08-05T16:42:51.111Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/67/a9f4fb3e250dda9e9046f8866e9fa7d52664f8985e445c6b4ad6dfb55641/audioop_lts-0.2.2-cp313-cp313t-musllinux_1_2_riscv64.whl", hash = "sha256:c9c8e68d8b4a56fda8c025e538e639f8c5953f5073886b596c93ec9b620055e7", size = 84788, upload-time = "2025-08-05T16:42:52.198Z" },
+    { url = "https://files.pythonhosted.org/packages/70/f7/3de86562db0121956148bcb0fe5b506615e3bcf6e63c4357a612b910765a/audioop_lts-0.2.2-cp313-cp313t-musllinux_1_2_s390x.whl", hash = "sha256:96f19de485a2925314f5020e85911fb447ff5fbef56e8c7c6927851b95533a1c", size = 94472, upload-time = "2025-08-05T16:42:53.59Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/32/fd772bf9078ae1001207d2df1eef3da05bea611a87dd0e8217989b2848fa/audioop_lts-0.2.2-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:e541c3ef484852ef36545f66209444c48b28661e864ccadb29daddb6a4b8e5f5", size = 92279, upload-time = "2025-08-05T16:42:54.632Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/41/affea7181592ab0ab560044632571a38edaf9130b84928177823fbf3176a/audioop_lts-0.2.2-cp313-cp313t-win32.whl", hash = "sha256:d5e73fa573e273e4f2e5ff96f9043858a5e9311e94ffefd88a3186a910c70917", size = 26568, upload-time = "2025-08-05T16:42:55.627Z" },
+    { url = "https://files.pythonhosted.org/packages/28/2b/0372842877016641db8fc54d5c88596b542eec2f8f6c20a36fb6612bf9ee/audioop_lts-0.2.2-cp313-cp313t-win_amd64.whl", hash = "sha256:9191d68659eda01e448188f60364c7763a7ca6653ed3f87ebb165822153a8547", size = 30942, upload-time = "2025-08-05T16:42:56.674Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/ca/baf2b9cc7e96c179bb4a54f30fcd83e6ecb340031bde68f486403f943768/audioop_lts-0.2.2-cp313-cp313t-win_arm64.whl", hash = "sha256:c174e322bb5783c099aaf87faeb240c8d210686b04bd61dfd05a8e5a83d88969", size = 24603, upload-time = "2025-08-05T16:42:57.571Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/73/413b5a2804091e2c7d5def1d618e4837f1cb82464e230f827226278556b7/audioop_lts-0.2.2-cp314-cp314t-macosx_10_13_universal2.whl", hash = "sha256:f9ee9b52f5f857fbaf9d605a360884f034c92c1c23021fb90b2e39b8e64bede6", size = 47104, upload-time = "2025-08-05T16:42:58.518Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/8c/daa3308dc6593944410c2c68306a5e217f5c05b70a12e70228e7dd42dc5c/audioop_lts-0.2.2-cp314-cp314t-macosx_10_13_x86_64.whl", hash = "sha256:49ee1a41738a23e98d98b937a0638357a2477bc99e61b0f768a8f654f45d9b7a", size = 27754, upload-time = "2025-08-05T16:43:00.132Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/86/c2e0f627168fcf61781a8f72cab06b228fe1da4b9fa4ab39cfb791b5836b/audioop_lts-0.2.2-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:5b00be98ccd0fc123dcfad31d50030d25fcf31488cde9e61692029cd7394733b", size = 27332, upload-time = "2025-08-05T16:43:01.666Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/bd/35dce665255434f54e5307de39e31912a6f902d4572da7c37582809de14f/audioop_lts-0.2.2-cp314-cp314t-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:a6d2e0f9f7a69403e388894d4ca5ada5c47230716a03f2847cfc7bd1ecb589d6", size = 92396, upload-time = "2025-08-05T16:43:02.991Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/d2/deeb9f51def1437b3afa35aeb729d577c04bcd89394cb56f9239a9f50b6f/audioop_lts-0.2.2-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:f9b0b8a03ef474f56d1a842af1a2e01398b8f7654009823c6d9e0ecff4d5cfbf", size = 91811, upload-time = "2025-08-05T16:43:04.096Z" },
+    { url = "https://files.pythonhosted.org/packages/76/3b/09f8b35b227cee28cc8231e296a82759ed80c1a08e349811d69773c48426/audioop_lts-0.2.2-cp314-cp314t-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:2b267b70747d82125f1a021506565bdc5609a2b24bcb4773c16d79d2bb260bbd", size = 100483, upload-time = "2025-08-05T16:43:05.085Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/15/05b48a935cf3b130c248bfdbdea71ce6437f5394ee8533e0edd7cfd93d5e/audioop_lts-0.2.2-cp314-cp314t-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:0337d658f9b81f4cd0fdb1f47635070cc084871a3d4646d9de74fdf4e7c3d24a", size = 103885, upload-time = "2025-08-05T16:43:06.197Z" },
+    { url = "https://files.pythonhosted.org/packages/83/80/186b7fce6d35b68d3d739f228dc31d60b3412105854edb975aa155a58339/audioop_lts-0.2.2-cp314-cp314t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:167d3b62586faef8b6b2275c3218796b12621a60e43f7e9d5845d627b9c9b80e", size = 84899, upload-time = "2025-08-05T16:43:07.291Z" },
+    { url = "https://files.pythonhosted.org/packages/49/89/c78cc5ac6cb5828f17514fb12966e299c850bc885e80f8ad94e38d450886/audioop_lts-0.2.2-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:0d9385e96f9f6da847f4d571ce3cb15b5091140edf3db97276872647ce37efd7", size = 89998, upload-time = "2025-08-05T16:43:08.335Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/4b/6401888d0c010e586c2ca50fce4c903d70a6bb55928b16cfbdfd957a13da/audioop_lts-0.2.2-cp314-cp314t-musllinux_1_2_ppc64le.whl", hash = "sha256:48159d96962674eccdca9a3df280e864e8ac75e40a577cc97c5c42667ffabfc5", size = 99046, upload-time = "2025-08-05T16:43:09.367Z" },
+    { url = "https://files.pythonhosted.org/packages/de/f8/c874ca9bb447dae0e2ef2e231f6c4c2b0c39e31ae684d2420b0f9e97ee68/audioop_lts-0.2.2-cp314-cp314t-musllinux_1_2_riscv64.whl", hash = "sha256:8fefe5868cd082db1186f2837d64cfbfa78b548ea0d0543e9b28935ccce81ce9", size = 84843, upload-time = "2025-08-05T16:43:10.749Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/c0/0323e66f3daebc13fd46b36b30c3be47e3fc4257eae44f1e77eb828c703f/audioop_lts-0.2.2-cp314-cp314t-musllinux_1_2_s390x.whl", hash = "sha256:58cf54380c3884fb49fdd37dfb7a772632b6701d28edd3e2904743c5e1773602", size = 94490, upload-time = "2025-08-05T16:43:12.131Z" },
+    { url = "https://files.pythonhosted.org/packages/98/6b/acc7734ac02d95ab791c10c3f17ffa3584ccb9ac5c18fd771c638ed6d1f5/audioop_lts-0.2.2-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:088327f00488cdeed296edd9215ca159f3a5a5034741465789cad403fcf4bec0", size = 92297, upload-time = "2025-08-05T16:43:13.139Z" },
+    { url = "https://files.pythonhosted.org/packages/13/c3/c3dc3f564ce6877ecd2a05f8d751b9b27a8c320c2533a98b0c86349778d0/audioop_lts-0.2.2-cp314-cp314t-win32.whl", hash = "sha256:068aa17a38b4e0e7de771c62c60bbca2455924b67a8814f3b0dee92b5820c0b3", size = 27331, upload-time = "2025-08-05T16:43:14.19Z" },
+    { url = "https://files.pythonhosted.org/packages/72/bb/b4608537e9ffcb86449091939d52d24a055216a36a8bf66b936af8c3e7ac/audioop_lts-0.2.2-cp314-cp314t-win_amd64.whl", hash = "sha256:a5bf613e96f49712073de86f20dbdd4014ca18efd4d34ed18c75bd808337851b", size = 31697, upload-time = "2025-08-05T16:43:15.193Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/22/91616fe707a5c5510de2cac9b046a30defe7007ba8a0c04f9c08f27df312/audioop_lts-0.2.2-cp314-cp314t-win_arm64.whl", hash = "sha256:b492c3b040153e68b9fdaff5913305aaaba5bb433d8a7f73d5cf6a64ed3cc1dd", size = 25206, upload-time = "2025-08-05T16:43:16.444Z" },
+]
+
+[[package]]
 name = "av"
 version = "17.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -397,6 +465,54 @@ wheels = [
 [package.optional-dependencies]
 css = [
     { name = "tinycss2" },
+]
+
+[[package]]
+name = "brotli"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/16/c92ca344d646e71a43b8bb353f0a6490d7f6e06210f8554c8f874e454285/brotli-1.2.0.tar.gz", hash = "sha256:e310f77e41941c13340a95976fe66a8a95b01e783d430eeaf7a2f87e0a57dd0a", size = 7388632, upload-time = "2025-11-05T18:39:42.86Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7a/ef/f285668811a9e1ddb47a18cb0b437d5fc2760d537a2fe8a57875ad6f8448/brotli-1.2.0-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:15b33fe93cedc4caaff8a0bd1eb7e3dab1c61bb22a0bf5bdfdfd97cd7da79744", size = 863110, upload-time = "2025-11-05T18:38:12.978Z" },
+    { url = "https://files.pythonhosted.org/packages/50/62/a3b77593587010c789a9d6eaa527c79e0848b7b860402cc64bc0bc28a86c/brotli-1.2.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:898be2be399c221d2671d29eed26b6b2713a02c2119168ed914e7d00ceadb56f", size = 445438, upload-time = "2025-11-05T18:38:14.208Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/e1/7fadd47f40ce5549dc44493877db40292277db373da5053aff181656e16e/brotli-1.2.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:350c8348f0e76fff0a0fd6c26755d2653863279d086d3aa2c290a6a7251135dd", size = 1534420, upload-time = "2025-11-05T18:38:15.111Z" },
+    { url = "https://files.pythonhosted.org/packages/12/8b/1ed2f64054a5a008a4ccd2f271dbba7a5fb1a3067a99f5ceadedd4c1d5a7/brotli-1.2.0-cp311-cp311-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:2e1ad3fda65ae0d93fec742a128d72e145c9c7a99ee2fcd667785d99eb25a7fe", size = 1632619, upload-time = "2025-11-05T18:38:16.094Z" },
+    { url = "https://files.pythonhosted.org/packages/89/5a/7071a621eb2d052d64efd5da2ef55ecdac7c3b0c6e4f9d519e9c66d987ef/brotli-1.2.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:40d918bce2b427a0c4ba189df7a006ac0c7277c180aee4617d99e9ccaaf59e6a", size = 1426014, upload-time = "2025-11-05T18:38:17.177Z" },
+    { url = "https://files.pythonhosted.org/packages/26/6d/0971a8ea435af5156acaaccec1a505f981c9c80227633851f2810abd252a/brotli-1.2.0-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:2a7f1d03727130fc875448b65b127a9ec5d06d19d0148e7554384229706f9d1b", size = 1489661, upload-time = "2025-11-05T18:38:18.41Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/75/c1baca8b4ec6c96a03ef8230fab2a785e35297632f402ebb1e78a1e39116/brotli-1.2.0-cp311-cp311-musllinux_1_2_ppc64le.whl", hash = "sha256:9c79f57faa25d97900bfb119480806d783fba83cd09ee0b33c17623935b05fa3", size = 1599150, upload-time = "2025-11-05T18:38:19.792Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/1a/23fcfee1c324fd48a63d7ebf4bac3a4115bdb1b00e600f80f727d850b1ae/brotli-1.2.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:844a8ceb8483fefafc412f85c14f2aae2fb69567bf2a0de53cdb88b73e7c43ae", size = 1493505, upload-time = "2025-11-05T18:38:20.913Z" },
+    { url = "https://files.pythonhosted.org/packages/36/e5/12904bbd36afeef53d45a84881a4810ae8810ad7e328a971ebbfd760a0b3/brotli-1.2.0-cp311-cp311-win32.whl", hash = "sha256:aa47441fa3026543513139cb8926a92a8e305ee9c71a6209ef7a97d91640ea03", size = 334451, upload-time = "2025-11-05T18:38:21.94Z" },
+    { url = "https://files.pythonhosted.org/packages/02/8b/ecb5761b989629a4758c394b9301607a5880de61ee2ee5fe104b87149ebc/brotli-1.2.0-cp311-cp311-win_amd64.whl", hash = "sha256:022426c9e99fd65d9475dce5c195526f04bb8be8907607e27e747893f6ee3e24", size = 369035, upload-time = "2025-11-05T18:38:22.941Z" },
+    { url = "https://files.pythonhosted.org/packages/11/ee/b0a11ab2315c69bb9b45a2aaed022499c9c24a205c3a49c3513b541a7967/brotli-1.2.0-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:35d382625778834a7f3061b15423919aa03e4f5da34ac8e02c074e4b75ab4f84", size = 861543, upload-time = "2025-11-05T18:38:24.183Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/2f/29c1459513cd35828e25531ebfcbf3e92a5e49f560b1777a9af7203eb46e/brotli-1.2.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:7a61c06b334bd99bc5ae84f1eeb36bfe01400264b3c352f968c6e30a10f9d08b", size = 444288, upload-time = "2025-11-05T18:38:25.139Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/6f/feba03130d5fceadfa3a1bb102cb14650798c848b1df2a808356f939bb16/brotli-1.2.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:acec55bb7c90f1dfc476126f9711a8e81c9af7fb617409a9ee2953115343f08d", size = 1528071, upload-time = "2025-11-05T18:38:26.081Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/38/f3abb554eee089bd15471057ba85f47e53a44a462cfce265d9bf7088eb09/brotli-1.2.0-cp312-cp312-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:260d3692396e1895c5034f204f0db022c056f9e2ac841593a4cf9426e2a3faca", size = 1626913, upload-time = "2025-11-05T18:38:27.284Z" },
+    { url = "https://files.pythonhosted.org/packages/03/a7/03aa61fbc3c5cbf99b44d158665f9b0dd3d8059be16c460208d9e385c837/brotli-1.2.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:072e7624b1fc4d601036ab3f4f27942ef772887e876beff0301d261210bca97f", size = 1419762, upload-time = "2025-11-05T18:38:28.295Z" },
+    { url = "https://files.pythonhosted.org/packages/21/1b/0374a89ee27d152a5069c356c96b93afd1b94eae83f1e004b57eb6ce2f10/brotli-1.2.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:adedc4a67e15327dfdd04884873c6d5a01d3e3b6f61406f99b1ed4865a2f6d28", size = 1484494, upload-time = "2025-11-05T18:38:29.29Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/57/69d4fe84a67aef4f524dcd075c6eee868d7850e85bf01d778a857d8dbe0a/brotli-1.2.0-cp312-cp312-musllinux_1_2_ppc64le.whl", hash = "sha256:7a47ce5c2288702e09dc22a44d0ee6152f2c7eda97b3c8482d826a1f3cfc7da7", size = 1593302, upload-time = "2025-11-05T18:38:30.639Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/3b/39e13ce78a8e9a621c5df3aeb5fd181fcc8caba8c48a194cd629771f6828/brotli-1.2.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:af43b8711a8264bb4e7d6d9a6d004c3a2019c04c01127a868709ec29962b6036", size = 1487913, upload-time = "2025-11-05T18:38:31.618Z" },
+    { url = "https://files.pythonhosted.org/packages/62/28/4d00cb9bd76a6357a66fcd54b4b6d70288385584063f4b07884c1e7286ac/brotli-1.2.0-cp312-cp312-win32.whl", hash = "sha256:e99befa0b48f3cd293dafeacdd0d191804d105d279e0b387a32054c1180f3161", size = 334362, upload-time = "2025-11-05T18:38:32.939Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/4e/bc1dcac9498859d5e353c9b153627a3752868a9d5f05ce8dedd81a2354ab/brotli-1.2.0-cp312-cp312-win_amd64.whl", hash = "sha256:b35c13ce241abdd44cb8ca70683f20c0c079728a36a996297adb5334adfc1c44", size = 369115, upload-time = "2025-11-05T18:38:33.765Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/d4/4ad5432ac98c73096159d9ce7ffeb82d151c2ac84adcc6168e476bb54674/brotli-1.2.0-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:9e5825ba2c9998375530504578fd4d5d1059d09621a02065d1b6bfc41a8e05ab", size = 861523, upload-time = "2025-11-05T18:38:34.67Z" },
+    { url = "https://files.pythonhosted.org/packages/91/9f/9cc5bd03ee68a85dc4bc89114f7067c056a3c14b3d95f171918c088bf88d/brotli-1.2.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:0cf8c3b8ba93d496b2fae778039e2f5ecc7cff99df84df337ca31d8f2252896c", size = 444289, upload-time = "2025-11-05T18:38:35.6Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/b6/fe84227c56a865d16a6614e2c4722864b380cb14b13f3e6bef441e73a85a/brotli-1.2.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c8565e3cdc1808b1a34714b553b262c5de5fbda202285782173ec137fd13709f", size = 1528076, upload-time = "2025-11-05T18:38:36.639Z" },
+    { url = "https://files.pythonhosted.org/packages/55/de/de4ae0aaca06c790371cf6e7ee93a024f6b4bb0568727da8c3de112e726c/brotli-1.2.0-cp313-cp313-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:26e8d3ecb0ee458a9804f47f21b74845cc823fd1bb19f02272be70774f56e2a6", size = 1626880, upload-time = "2025-11-05T18:38:37.623Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/16/a1b22cbea436642e071adcaf8d4b350a2ad02f5e0ad0da879a1be16188a0/brotli-1.2.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:67a91c5187e1eec76a61625c77a6c8c785650f5b576ca732bd33ef58b0dff49c", size = 1419737, upload-time = "2025-11-05T18:38:38.729Z" },
+    { url = "https://files.pythonhosted.org/packages/46/63/c968a97cbb3bdbf7f974ef5a6ab467a2879b82afbc5ffb65b8acbb744f95/brotli-1.2.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:4ecdb3b6dc36e6d6e14d3a1bdc6c1057c8cbf80db04031d566eb6080ce283a48", size = 1484440, upload-time = "2025-11-05T18:38:39.916Z" },
+    { url = "https://files.pythonhosted.org/packages/06/9d/102c67ea5c9fc171f423e8399e585dabea29b5bc79b05572891e70013cdd/brotli-1.2.0-cp313-cp313-musllinux_1_2_ppc64le.whl", hash = "sha256:3e1b35d56856f3ed326b140d3c6d9db91740f22e14b06e840fe4bb1923439a18", size = 1593313, upload-time = "2025-11-05T18:38:41.24Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/4a/9526d14fa6b87bc827ba1755a8440e214ff90de03095cacd78a64abe2b7d/brotli-1.2.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:54a50a9dad16b32136b2241ddea9e4df159b41247b2ce6aac0b3276a66a8f1e5", size = 1487945, upload-time = "2025-11-05T18:38:42.277Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/e8/3fe1ffed70cbef83c5236166acaed7bb9c766509b157854c80e2f766b38c/brotli-1.2.0-cp313-cp313-win32.whl", hash = "sha256:1b1d6a4efedd53671c793be6dd760fcf2107da3a52331ad9ea429edf0902f27a", size = 334368, upload-time = "2025-11-05T18:38:43.345Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/91/e739587be970a113b37b821eae8097aac5a48e5f0eca438c22e4c7dd8648/brotli-1.2.0-cp313-cp313-win_amd64.whl", hash = "sha256:b63daa43d82f0cdabf98dee215b375b4058cce72871fd07934f179885aad16e8", size = 369116, upload-time = "2025-11-05T18:38:44.609Z" },
+    { url = "https://files.pythonhosted.org/packages/17/e1/298c2ddf786bb7347a1cd71d63a347a79e5712a7c0cba9e3c3458ebd976f/brotli-1.2.0-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:6c12dad5cd04530323e723787ff762bac749a7b256a5bece32b2243dd5c27b21", size = 863080, upload-time = "2025-11-05T18:38:45.503Z" },
+    { url = "https://files.pythonhosted.org/packages/84/0c/aac98e286ba66868b2b3b50338ffbd85a35c7122e9531a73a37a29763d38/brotli-1.2.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:3219bd9e69868e57183316ee19c84e03e8f8b5a1d1f2667e1aa8c2f91cb061ac", size = 445453, upload-time = "2025-11-05T18:38:46.433Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/f1/0ca1f3f99ae300372635ab3fe2f7a79fa335fee3d874fa7f9e68575e0e62/brotli-1.2.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:963a08f3bebd8b75ac57661045402da15991468a621f014be54e50f53a58d19e", size = 1528168, upload-time = "2025-11-05T18:38:47.371Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/a6/2ebfc8f766d46df8d3e65b880a2e220732395e6d7dc312c1e1244b0f074a/brotli-1.2.0-cp314-cp314-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:9322b9f8656782414b37e6af884146869d46ab85158201d82bab9abbcb971dc7", size = 1627098, upload-time = "2025-11-05T18:38:48.385Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/2f/0976d5b097ff8a22163b10617f76b2557f15f0f39d6a0fe1f02b1a53e92b/brotli-1.2.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:cf9cba6f5b78a2071ec6fb1e7bd39acf35071d90a81231d67e92d637776a6a63", size = 1419861, upload-time = "2025-11-05T18:38:49.372Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/97/d76df7176a2ce7616ff94c1fb72d307c9a30d2189fe877f3dd99af00ea5a/brotli-1.2.0-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:7547369c4392b47d30a3467fe8c3330b4f2e0f7730e45e3103d7d636678a808b", size = 1484594, upload-time = "2025-11-05T18:38:50.655Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/93/14cf0b1216f43df5609f5b272050b0abd219e0b54ea80b47cef9867b45e7/brotli-1.2.0-cp314-cp314-musllinux_1_2_ppc64le.whl", hash = "sha256:fc1530af5c3c275b8524f2e24841cbe2599d74462455e9bae5109e9ff42e9361", size = 1593455, upload-time = "2025-11-05T18:38:51.624Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/73/3183c9e41ca755713bdf2cc1d0810df742c09484e2e1ddd693bee53877c1/brotli-1.2.0-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:d2d085ded05278d1c7f65560aae97b3160aeb2ea2c0b3e26204856beccb60888", size = 1488164, upload-time = "2025-11-05T18:38:53.079Z" },
+    { url = "https://files.pythonhosted.org/packages/64/6a/0c78d8f3a582859236482fd9fa86a65a60328a00983006bcf6d83b7b2253/brotli-1.2.0-cp314-cp314-win32.whl", hash = "sha256:832c115a020e463c2f67664560449a7bea26b0c1fdd690352addad6d0a08714d", size = 339280, upload-time = "2025-11-05T18:38:54.02Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/10/56978295c14794b2c12007b07f3e41ba26acda9257457d7085b0bb3bb90c/brotli-1.2.0-cp314-cp314-win_amd64.whl", hash = "sha256:e7c0af964e0b4e3412a0ebf341ea26ec767fa0b4cf81abb5e897c9338b5ad6a3", size = 375639, upload-time = "2025-11-05T18:38:55.67Z" },
 ]
 
 [[package]]
@@ -1026,6 +1142,22 @@ wheels = [
 ]
 
 [[package]]
+name = "fastapi"
+version = "0.139.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "annotated-doc" },
+    { name = "pydantic" },
+    { name = "starlette" },
+    { name = "typing-extensions" },
+    { name = "typing-inspection" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d3/af/a5f50ccfa659ec1802cb4ca842c23f06d906a8cc9aef6016a2caeea3d4ed/fastapi-0.139.0.tar.gz", hash = "sha256:99ab7b2d92223c76d6cf10757ab3f89d45b38267fc20b2a136cf02f6beac3145", size = 423016, upload-time = "2026-07-01T16:35:33.436Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/7c/8e3c6ad324ea5cb36604fc3f968554887891c316d9dfde57761611d907ad/fastapi-0.139.0-py3-none-any.whl", hash = "sha256:cf15e1e9e667ddb0ad63811e60bd11390d1aac838ca4a7a23f421807b2308189", size = 130339, upload-time = "2026-07-01T16:35:32.19Z" },
+]
+
+[[package]]
 name = "fastjsonschema"
 version = "2.21.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1306,6 +1438,70 @@ wheels = [
 ]
 
 [[package]]
+name = "gradio"
+version = "6.19.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "audioop-lts", marker = "python_full_version >= '3.13' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+    { name = "brotli" },
+    { name = "fastapi" },
+    { name = "gradio-client" },
+    { name = "groovy" },
+    { name = "hf-gradio" },
+    { name = "httpx" },
+    { name = "huggingface-hub" },
+    { name = "jinja2" },
+    { name = "markupsafe" },
+    { name = "numpy" },
+    { name = "orjson" },
+    { name = "packaging" },
+    { name = "pandas" },
+    { name = "pillow" },
+    { name = "pydantic" },
+    { name = "pydub" },
+    { name = "python-multipart" },
+    { name = "pytz" },
+    { name = "pyyaml" },
+    { name = "safehttpx" },
+    { name = "semantic-version" },
+    { name = "starlette" },
+    { name = "tomlkit" },
+    { name = "typer" },
+    { name = "typing-extensions" },
+    { name = "uvicorn" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e0/c4/07ebe72aea259e9e49b660d8890679a459dc76081e659570bba8662677c4/gradio-6.19.0.tar.gz", hash = "sha256:04d0ad1450b3e34683dee76934b47d93b7b655bb506e1e9e9b7b7ab4c9eb8090", size = 47125070, upload-time = "2026-06-17T19:30:22.042Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/81/c5/eaafbf58bffbd28ce940af11a173aacba888ddc4f7b022de2b85bace2842/gradio-6.19.0-py3-none-any.whl", hash = "sha256:da6c947afca06392f31068c9077e74763a4eb2b81097879dd88b2a1bf28b518e", size = 31278296, upload-time = "2026-06-17T19:30:18.321Z" },
+]
+
+[[package]]
+name = "gradio-client"
+version = "2.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "fsspec" },
+    { name = "httpx" },
+    { name = "huggingface-hub" },
+    { name = "packaging" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e8/e6/6b6029f5fe2ad7f1211105d530e34d991014c2cae463f9223033031cfc4f/gradio_client-2.5.0.tar.gz", hash = "sha256:4cde99bad62149595c30c90876ca2e405e3a13687ecf895474f3412cb476673d", size = 59013, upload-time = "2026-04-20T23:16:21.518Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/78/81/0a861b8e1ff42960139c6cd4c7dd591292fa09ea1ae2d87677441cba4c00/gradio_client-2.5.0-py3-none-any.whl", hash = "sha256:d43e2179c29076292a76485ad7ed2e6eaa19d14ac58283bd7f5beabfe4ca958c", size = 59952, upload-time = "2026-04-20T23:16:20.186Z" },
+]
+
+[[package]]
+name = "groovy"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/52/36/bbdede67400277bef33d3ec0e6a31750da972c469f75966b4930c753218f/groovy-0.1.2.tar.gz", hash = "sha256:25c1dc09b3f9d7e292458aa762c6beb96ea037071bf5e917fc81fb78d2231083", size = 17325, upload-time = "2025-02-28T20:24:56.068Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/28/27/3d6dcadc8a3214d8522c1e7f6a19554e33659be44546d44a2f7572ac7d2a/groovy-0.1.2-py3-none-any.whl", hash = "sha256:7f7975bab18c729a257a8b1ae9dcd70b7cafb1720481beae47719af57c35fa64", size = 14090, upload-time = "2025-02-28T20:24:55.152Z" },
+]
+
+[[package]]
 name = "grpcio"
 version = "1.81.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1365,6 +1561,7 @@ dependencies = [
     { name = "chumpy" },
     { name = "einops" },
     { name = "ffmpeg-python" },
+    { name = "huggingface-hub" },
     { name = "hydra-colorlog" },
     { name = "hydra-core" },
     { name = "hydra-zen" },
@@ -1376,6 +1573,7 @@ dependencies = [
     { name = "omegaconf" },
     { name = "opencv-python" },
     { name = "pytorch-lightning" },
+    { name = "requests" },
     { name = "rich" },
     { name = "scikit-image" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
@@ -1402,6 +1600,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+app = [
+    { name = "gradio" },
+]
 cpu = [
     { name = "torch", version = "2.12.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
     { name = "torch", version = "2.12.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-5-gvhmr-cpu') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
@@ -1469,6 +1670,8 @@ requires-dist = [
     { name = "cython-bbox", marker = "extra == 'preproc'" },
     { name = "einops", specifier = ">=0.8" },
     { name = "ffmpeg-python" },
+    { name = "gradio", marker = "extra == 'app'", specifier = ">=4" },
+    { name = "huggingface-hub", specifier = ">=0.23" },
     { name = "hydra-colorlog", specifier = ">=1.2" },
     { name = "hydra-core", specifier = ">=1.3" },
     { name = "hydra-zen", specifier = ">=0.13" },
@@ -1494,6 +1697,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pytorch-lightning", specifier = ">=2.3" },
     { name = "pytorch3d", marker = "extra == 'render'", git = "https://github.com/facebookresearch/pytorch3d.git" },
+    { name = "requests", specifier = ">=2.28" },
     { name = "rich", specifier = ">=13" },
     { name = "rtmlib", marker = "extra == 'rtmpose'" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
@@ -1523,7 +1727,7 @@ requires-dist = [
     { name = "wis3d", marker = "extra == 'vis'" },
     { name = "yacs", marker = "extra == 'preproc'" },
 ]
-provides-extras = ["preproc", "rtmpose", "vis", "notebook", "dev", "render", "train", "dpvo", "cpu", "cu124", "cu126", "cu128"]
+provides-extras = ["preproc", "rtmpose", "app", "vis", "notebook", "dev", "render", "train", "dpvo", "cpu", "cu124", "cu126", "cu128"]
 
 [[package]]
 name = "h11"
@@ -1532,6 +1736,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/01/ee/02a2c011bdab74c6fb3c75474d40b3052059d95df7e73351460c8588d963/h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1", size = 101250, upload-time = "2025-04-24T03:35:25.427Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86", size = 37515, upload-time = "2025-04-24T03:35:24.344Z" },
+]
+
+[[package]]
+name = "hf-gradio"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "gradio-client" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ce/86/c9694b7cfada5780e75769e60dc161a161f4dd7fc91b61db5e3a3338bef9/hf_gradio-0.4.1.tar.gz", hash = "sha256:a017d942618f0d495a58ee4563047fa04bef614c00e0cb789a9a6d0633cffa7b", size = 6560, upload-time = "2026-04-22T14:01:32.334Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/30/2d/afff2ee87e75d8eb85c92bb8cf0e15b05c23c2ebd8fd8dec781d8601ed7f/hf_gradio-0.4.1-py3-none-any.whl", hash = "sha256:76b8cb8be6abe62d74c1ad2d35b42f0629db89aa9e1a8d033cecfe7c856eeab3", size = 4482, upload-time = "2026-04-17T19:53:31.827Z" },
 ]
 
 [[package]]
@@ -3029,7 +3246,8 @@ version = "12.4.5.8"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3044,7 +3262,8 @@ version = "12.6.4.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3059,7 +3278,8 @@ version = "12.8.3.14"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 wheels = [
@@ -3084,7 +3304,8 @@ version = "12.4.127"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3099,7 +3320,8 @@ version = "12.6.80"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3116,7 +3338,8 @@ version = "12.8.57"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 wheels = [
@@ -3141,7 +3364,8 @@ version = "12.4.127"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3156,7 +3380,8 @@ version = "12.6.77"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3171,7 +3396,8 @@ version = "12.8.61"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 wheels = [
@@ -3196,7 +3422,8 @@ version = "12.4.127"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3211,7 +3438,8 @@ version = "12.6.77"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3228,7 +3456,8 @@ version = "12.8.57"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 wheels = [
@@ -3243,7 +3472,8 @@ version = "9.1.0.70"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -3260,7 +3490,8 @@ version = "9.5.1.17"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -3278,7 +3509,8 @@ version = "9.7.1.26"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
@@ -3322,7 +3554,8 @@ version = "11.2.1.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -3340,7 +3573,8 @@ version = "11.3.0.4"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -3360,7 +3594,8 @@ version = "11.3.3.41"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
@@ -3387,7 +3622,8 @@ version = "1.11.1.6"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3401,7 +3637,8 @@ version = "1.13.0.11"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 wheels = [
@@ -3425,7 +3662,8 @@ version = "10.3.5.147"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3440,7 +3678,8 @@ version = "10.3.7.77"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3457,7 +3696,8 @@ version = "10.3.9.55"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 wheels = [
@@ -3487,7 +3727,8 @@ version = "11.6.1.9"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -3507,7 +3748,8 @@ version = "11.7.1.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -3529,7 +3771,8 @@ version = "11.7.2.55"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
@@ -3562,7 +3805,8 @@ version = "12.3.1.170"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -3580,7 +3824,8 @@ version = "12.5.4.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -3600,7 +3845,8 @@ version = "12.5.7.53"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
@@ -3618,7 +3864,8 @@ version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3633,10 +3880,12 @@ version = "0.6.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
 ]
 wheels = [
@@ -3670,7 +3919,8 @@ version = "2.21.5"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3683,10 +3933,12 @@ version = "2.26.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
 ]
 wheels = [
@@ -3719,7 +3971,8 @@ version = "12.4.127"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3734,7 +3987,8 @@ version = "12.6.85"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3749,7 +4003,8 @@ version = "12.8.61"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 wheels = [
@@ -3783,7 +4038,8 @@ version = "12.4.127"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3798,7 +4054,8 @@ version = "12.6.77"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -3815,7 +4072,8 @@ version = "12.8.55"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 wheels = [
@@ -3911,6 +4169,74 @@ wheels = [
 ]
 
 [[package]]
+name = "orjson"
+version = "3.11.9"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/0c/964746fcafbd16f8ff53219ad9f6b412b34f345c75f384ad434ceaadb538/orjson-3.11.9.tar.gz", hash = "sha256:4fef17e1f8722c11587a6ef18e35902450221da0028e65dbaaa543619e68e48f", size = 5599163, upload-time = "2026-05-06T15:11:08.309Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/51/3fb9e65ae76ee97bd611869a503fa3fc0a6e81dd8b737cf3003f682df7ff/orjson-3.11.9-cp311-cp311-macosx_10_15_x86_64.macosx_11_0_arm64.macosx_10_15_universal2.whl", hash = "sha256:f01c4818b3fc9b0da8e096722a84318071eaa118df35f6ed2344da0e73a5444f", size = 228522, upload-time = "2026-05-06T15:09:35.362Z" },
+    { url = "https://files.pythonhosted.org/packages/16/fa/9d54b07cb3f3b0bfd57841478e42d7a0ece4a9f49f9907eecf5a45461687/orjson-3.11.9-cp311-cp311-macosx_15_0_arm64.whl", hash = "sha256:3ebca4179031ee716ed076ffadc29428e900512f6fccee8614c9983157fcf19c", size = 128463, upload-time = "2026-05-06T15:09:37.063Z" },
+    { url = "https://files.pythonhosted.org/packages/88/b1/6ceafc2eefd0a553e3be77ce6c49d107e772485d9568629376171c50e634/orjson-3.11.9-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:48ee05097750de0ff69ed5b7bbcf0732182fd57a24043dcc2a1da780a5ead3a5", size = 132306, upload-time = "2026-05-06T15:09:38.299Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/76/f11311285324a40aab1e3031385c50b635a7cd0734fdaf60c7e89a696f60/orjson-3.11.9-cp311-cp311-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:a6082706765a95a6680d812e1daf1c0cfe8adec7831b3ff3b625693f3b461b1c", size = 127988, upload-time = "2026-05-06T15:09:39.597Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/85/0ef63bcf1337f44031ce9b91b1919563f62a37527b3ea4368bb15a22e5d7/orjson-3.11.9-cp311-cp311-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:277fefe9d76ee17eb14debf399e3533d4d63b5f677a4d3719eb763536af1f4bd", size = 135188, upload-time = "2026-05-06T15:09:40.957Z" },
+    { url = "https://files.pythonhosted.org/packages/05/94/b0d27090ea8a2095db3c2bd1b1c96f96f19bbb494d7fef33130e846e613d/orjson-3.11.9-cp311-cp311-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:03db380e3780fa0015ed776a90f20e8e20bb11dde13b216ce19e5718e3dfba62", size = 145937, upload-time = "2026-05-06T15:09:42.249Z" },
+    { url = "https://files.pythonhosted.org/packages/09/eb/75d50c29c05b8054013e221e598820a365c8e64065312e75e202ed880709/orjson-3.11.9-cp311-cp311-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:33d7d766701847dc6729846362dc27895d2f2d2251264f9d10e7cb9878194877", size = 132758, upload-time = "2026-05-06T15:09:43.945Z" },
+    { url = "https://files.pythonhosted.org/packages/49/bd/360686f39348aa88827cb6fbf7dc606fd41c831a35235e1abf1db8e3a9e6/orjson-3.11.9-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:147302878da387104b66bb4a8b0227d1d487e976ce41a8501916161072ed87b1", size = 133971, upload-time = "2026-05-06T15:09:45.239Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/30/3178eb16f3221aeef068b6f1f1ebe05f656ea5c6dffe9f6c917329fe17a3/orjson-3.11.9-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:3513550321f8c8c811a7c3297b8a630e82dc08e4c10216d07703c997776236cd", size = 141685, upload-time = "2026-05-06T15:09:46.858Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/f1/ff2f19ed0225f9680fafa42febca3570dd59444ebf190980738d376214c2/orjson-3.11.9-cp311-cp311-musllinux_1_2_armv7l.whl", hash = "sha256:c5d001196b89fa9cf0a4ab79766cd835b991a166e4b621ba95089edc50c429ff", size = 415167, upload-time = "2026-05-06T15:09:48.312Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/61/863bddf0da6e9e586765414debd54b4e58db05f560902b6d00658cb88636/orjson-3.11.9-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:16969c9d369c98eb084889c6e4d2d39b77c7eb38ceccf8da2a9fff62ae908980", size = 147913, upload-time = "2026-05-06T15:09:49.733Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/8a/4081492586d75b073d60c5271a8d0f05a0955cabf1e34c8473f6fcd84235/orjson-3.11.9-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:63e0efbc991250c0b3143488fa57d95affcabbfc63c99c48d625dd37779aafe2", size = 136959, upload-time = "2026-05-06T15:09:51.311Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/bd/70b6ab193594d7abb875320c0a7c8335e846f28968c432c31042409c3c8d/orjson-3.11.9-cp311-cp311-win32.whl", hash = "sha256:14ed654580c1ed2bc217352ec82f91b047aef82951aa71c7f64e0dcb03c0e180", size = 131533, upload-time = "2026-05-06T15:09:52.637Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/17/1a1a228183d62d1b77e2c30d210f47dd4768b310ebe1607c63e3c0e3a71e/orjson-3.11.9-cp311-cp311-win_amd64.whl", hash = "sha256:57ea77fb70a448ce87d18fca050193202a3da5e54598f6501ca5476fb66cfe02", size = 127106, upload-time = "2026-05-06T15:09:54.204Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/95/285de5fa296d09681ee9c546cd4a8aeb773b701cf343dc125994f4d52953/orjson-3.11.9-cp311-cp311-win_arm64.whl", hash = "sha256:19b72ed11572a2ee51a67a903afbe5af504f84ed6f529c0fe44b0ab3fb5cc697", size = 126848, upload-time = "2026-05-06T15:09:55.551Z" },
+    { url = "https://files.pythonhosted.org/packages/16/6d/11867a3ffa3a3608d84a4de51ef4dd0896d6b5cc9132fbe1daf593e677bc/orjson-3.11.9-cp312-cp312-macosx_10_15_x86_64.macosx_11_0_arm64.macosx_10_15_universal2.whl", hash = "sha256:9ef6fe90aadef185c7b128859f40beb24720b4ecea95379fc9000931179c3a49", size = 228515, upload-time = "2026-05-06T15:09:57.265Z" },
+    { url = "https://files.pythonhosted.org/packages/24/75/05912954c8b288f34fcf5cd4b9b071cb4f6e77b9961e175e56ebb258089f/orjson-3.11.9-cp312-cp312-macosx_15_0_arm64.whl", hash = "sha256:e5c9b8f28e726e97d97696c826bc7bea5d71cecd63576dba92924a32c1961291", size = 128409, upload-time = "2026-05-06T15:09:59.063Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/86/1c3a47df3bc8191ea9ac51603bbb872a95167a364320c269f2557911f406/orjson-3.11.9-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:26a473dbb4162108b27901492546f83c76fdcea3d0eadff00ae7a07e18dcce09", size = 132106, upload-time = "2026-05-06T15:10:00.798Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/cf/b33b5f3e695ae7d63feef9d915c37cc3b8f465493dcd4f8e0b4c697a2366/orjson-3.11.9-cp312-cp312-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:011382e2a60fda9d46f1cdee31068cfc52ffe952b587d683ec0463002802a0f4", size = 127864, upload-time = "2026-05-06T15:10:02.15Z" },
+    { url = "https://files.pythonhosted.org/packages/31/6a/6cf69385a58208024fcb8c014e2141b8ce838aba6492b589f8acfff97fab/orjson-3.11.9-cp312-cp312-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:c2d3dc759490128c5c1711a53eeaa8ee1d437fd0038ffd2b6008abf46db3f882", size = 135213, upload-time = "2026-05-06T15:10:03.515Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/f8/0b1bd3e8f2efcdd376af5c8cfd79eaf13f018080c0089c80ebd724e3c7fb/orjson-3.11.9-cp312-cp312-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:d8ea516b3726d190e1b4297e6f4e7a8650347ae053868a18163b4dd3641d1fff", size = 145994, upload-time = "2026-05-06T15:10:05.083Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/59/dab79f61044c529d2c81aecdc589b1f833a1c8dec11ba3b1c2498a02ca7e/orjson-3.11.9-cp312-cp312-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:380cdce7ba24989af81d0a7013d0aaec5d0e2a21734c0e2681b1bc4f141957fe", size = 132744, upload-time = "2026-05-06T15:10:06.853Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/a4/82b7a2fe5d8a67a59ed831b24d59a3d46ea7d207b66e1602d376541d94a6/orjson-3.11.9-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:be4fa4f0af7fa18951f7ab3fc2148e223af211bf03f59e1c6034ec3f97f21d61", size = 134014, upload-time = "2026-05-06T15:10:08.213Z" },
+    { url = "https://files.pythonhosted.org/packages/50/c7/375e83a76851b73b2e39f3bcf0e5a19e2b89bad13e5bca97d0b293d27f24/orjson-3.11.9-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:a8f5f8bc7ce7d59f08d9f99fa510c06496164a24cb5f3d34537dbd9ca30132e2", size = 141509, upload-time = "2026-05-06T15:10:09.595Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/7c/49d5d82a3d3097f641f094f552131f1e2723b0b8cb0fa2874ab65ecfffa6/orjson-3.11.9-cp312-cp312-musllinux_1_2_armv7l.whl", hash = "sha256:4d7fde5501b944f83b3e665e1b31343ff6e154b15560a16b7130ea1e594a4206", size = 415127, upload-time = "2026-05-06T15:10:11.049Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/dc/7446c538590d55f455647e5f3c61fc33f7108714e7afcffa6a2a033f8350/orjson-3.11.9-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:cde1a448023ba7d5bb4c01c5afb48894380b5e4956e0627266526587ef4e535f", size = 148025, upload-time = "2026-05-06T15:10:12.842Z" },
+    { url = "https://files.pythonhosted.org/packages/df/e5/4d2d8af06f788329b4f78f8cc3679bb395392fcaa1e4d8d3c33e85308fa4/orjson-3.11.9-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:71e63adb0e1f1ed5d9e168f50a91ceb93ae6420731d222dc7da5c69409aa47aa", size = 136943, upload-time = "2026-05-06T15:10:14.405Z" },
+    { url = "https://files.pythonhosted.org/packages/06/69/850264ccf6d80f6b174620d30a87f65c9b1490aba33fe6b62798e618cad3/orjson-3.11.9-cp312-cp312-win32.whl", hash = "sha256:2d057a602cdd19a0ad680417527c45b6961a095081c0f46fe0e03e304aac6470", size = 131606, upload-time = "2026-05-06T15:10:15.791Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/d5/973a43fc9c55e20f2051e9830997649f669be0cb3ca52192087c0143f118/orjson-3.11.9-cp312-cp312-win_amd64.whl", hash = "sha256:59e403b1cc5a676da8eaf31f6254801b7341b3e29efa85f92b48d272637e77be", size = 127101, upload-time = "2026-05-06T15:10:17.129Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/ae/495470f0e4a18f73fa10b7f6b84b464ec4cc5291c4e0c7c2a6c400bef006/orjson-3.11.9-cp312-cp312-win_arm64.whl", hash = "sha256:9af678d6488357948f1f84c6cd1c1d397c014e1ae2f98ae082a44eb48f602624", size = 126736, upload-time = "2026-05-06T15:10:18.645Z" },
+    { url = "https://files.pythonhosted.org/packages/32/33/93fcc25907235c344ae73122f8a4e01d2d393ef062b4af7d2e2487a32c37/orjson-3.11.9-cp313-cp313-macosx_10_15_x86_64.macosx_11_0_arm64.macosx_10_15_universal2.whl", hash = "sha256:4bab1b2d6141fe7b32ae71dac905666ece4f94936efbfb13d55bb7739a3a6021", size = 228458, upload-time = "2026-05-06T15:10:20.079Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/27/b1e6dadb3c080313c03fdd8067b85e6a0460c7d8d6a1c3984ef77b904e4d/orjson-3.11.9-cp313-cp313-macosx_15_0_arm64.whl", hash = "sha256:844417969855fc7a41be124aafe83dc424592a7f77cd4501900c67307122b92c", size = 128368, upload-time = "2026-05-06T15:10:21.549Z" },
+    { url = "https://files.pythonhosted.org/packages/21/0f/c9ede0bf052f6b4051e64a7d4fa91b725cccf8321a6a786e86eb03519f00/orjson-3.11.9-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ffe02797b5e9f3a9d8292ddcd289b474ad13e81ad83cd1891a240811f1d2cb81", size = 132070, upload-time = "2026-05-06T15:10:23.371Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/26/d398e28048dc18205bbe812f2c88cb9b40313db2470778e25964796458fe/orjson-3.11.9-cp313-cp313-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:0e4eed3b200023042814d2fc8a5d2e880f13b52e1ed2485e83da4f3962f7dc1a", size = 127892, upload-time = "2026-05-06T15:10:24.714Z" },
+    { url = "https://files.pythonhosted.org/packages/66/60/52b0054c4c700d5aa7fc5b7ca96917400d8f061307778578e67a10e25852/orjson-3.11.9-cp313-cp313-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:8aff7da9952a5ad1cef8e68017724d96c7b9a66e99e91d6252e1b133d67a7b10", size = 135217, upload-time = "2026-05-06T15:10:26.084Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/97/1e3dc2b2a28b7b2528f403d2fc1d79ec5f39af3bc143ab65d3ec26426385/orjson-3.11.9-cp313-cp313-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:4d4e98d6f3b8afed8bc8cd9718ec0cdf46661826beefb53fe8eafb37f2bf0362", size = 145980, upload-time = "2026-05-06T15:10:28.062Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/39/31fbfe7850f2de32dee7e7e5c09f26d403ab01e440ac96001c6b01ad3c99/orjson-3.11.9-cp313-cp313-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:3a81d52442a7c99b3662333235b3adf96a1715864658b35bb797212be7bddb97", size = 132738, upload-time = "2026-05-06T15:10:29.727Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/08/dca0082dd2a194acb93e5457e73455388e2e2ca464a2672449a9ddbb679d/orjson-3.11.9-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4e39364e726a8fff737309aff059ff67d8a8c8d5b677be7bb49a8b3e84b7e218", size = 134033, upload-time = "2026-05-06T15:10:31.152Z" },
+    { url = "https://files.pythonhosted.org/packages/11/d4/5bdb0626801230139987385554c5d4c42255218ac906525bf4347f22cd95/orjson-3.11.9-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:4fd66214623f1b17501df9f0543bef0b833979ab5b6ded1e1d123222866aa8c9", size = 141492, upload-time = "2026-05-06T15:10:32.641Z" },
+    { url = "https://files.pythonhosted.org/packages/fa/88/a21fb53b3ede6703aede6dce4710ed4111e5b201cfa6bbff5e544f9d47d7/orjson-3.11.9-cp313-cp313-musllinux_1_2_armv7l.whl", hash = "sha256:8ecc30f10465fa1e0ce13fd01d9e22c316e5053a719a8d915d4545a09a5ff677", size = 415087, upload-time = "2026-05-06T15:10:34.438Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/57/1b30daf70f0d8180e9a73cefbfbdd99e4bf19eb020466502b01fba7e0e50/orjson-3.11.9-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:97db4c94a7db398a5bd636273324f0b3fd58b350bbbac8bb380ceb825a9b40f4", size = 148031, upload-time = "2026-05-06T15:10:36.358Z" },
+    { url = "https://files.pythonhosted.org/packages/04/83/45fbb6d962e260807f99441db9613cee868ceda4baceda59b3720a563f97/orjson-3.11.9-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:9f78cf8fec5bd627f4082b8dfeac7871b43d7f3274904492a43dab39f18a19a0", size = 136915, upload-time = "2026-05-06T15:10:38.013Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/cc/2d10025f9056d376e4127ec05a5808b218d46f035fdc08178a5411b34250/orjson-3.11.9-cp313-cp313-win32.whl", hash = "sha256:d4087e5c0209a0a8efe4de3303c234b9c44d1174161dcd851e8eea07c7560b32", size = 131613, upload-time = "2026-05-06T15:10:39.569Z" },
+    { url = "https://files.pythonhosted.org/packages/67/bd/2775ff28bfe883b9aa1ff348300542eb2ef1ee18d8ae0e3a49846817a865/orjson-3.11.9-cp313-cp313-win_amd64.whl", hash = "sha256:051b102c93b4f634e89f3866b07b9a9a98915ada541f4ec30f177067b2694979", size = 127086, upload-time = "2026-05-06T15:10:41.262Z" },
+    { url = "https://files.pythonhosted.org/packages/91/2b/d26799e580939e32a7da9a39531bc9e58e15ca32ffaa6a8cb3e9bb0d22cd/orjson-3.11.9-cp313-cp313-win_arm64.whl", hash = "sha256:cce9127885941bd28f080cecf1f1d288336b7e0d812c345b08be88b572796254", size = 126696, upload-time = "2026-05-06T15:10:42.651Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/eb/5da01e356015aee6ecfa1187ced87aef51364e306f5e695dd52719bf0e78/orjson-3.11.9-cp314-cp314-macosx_10_15_x86_64.macosx_11_0_arm64.macosx_10_15_universal2.whl", hash = "sha256:b6ef1979adc4bc243523f1a2ba91418030a8e29b0a99cbe7e0e2d6807d4dce6e", size = 228465, upload-time = "2026-05-06T15:10:44.097Z" },
+    { url = "https://files.pythonhosted.org/packages/64/62/3e0e0c14c957133bcd855395c62b55ed4e3b0af23ffea11b032cb1dcbdb1/orjson-3.11.9-cp314-cp314-macosx_15_0_arm64.whl", hash = "sha256:f36b7f32c7c0db4a719f1fc5824db4a9c6f8bd1a354debb91faf26ebf3a4c71e", size = 128364, upload-time = "2026-05-06T15:10:45.839Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/5a/07d8aa117211a8ed7630bda80c8c0b14d04e0f8dcf99bcf49656e4a710eb/orjson-3.11.9-cp314-cp314-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:08f4d8ebb44925c794e535b2bebc507cebf32209df81de22ae285fb0d8d66de0", size = 132063, upload-time = "2026-05-06T15:10:47.267Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/ec/4acaf21483e18aa945be74a474c74b434f284b549f275a0a39b9f98956e9/orjson-3.11.9-cp314-cp314-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:6cc7923789694fd58f001cbcac7e47abc13af4d560ebbfcf3b41a8b1a0748124", size = 122356, upload-time = "2026-05-06T15:10:48.765Z" },
+    { url = "https://files.pythonhosted.org/packages/13/d8/5f0555e7638801323b7a75850f92e7dfa891bc84fe27a1ba4449170d1200/orjson-3.11.9-cp314-cp314-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:ea5c46eb2d3af39e806b986f4b09d5c2706a1f5afde3cbf7544ce6616127173c", size = 129592, upload-time = "2026-05-06T15:10:50.13Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/30/ed9860412a3603ceb3c5955bfd72d28b9d0e7ba6ed81add14f83d7114236/orjson-3.11.9-cp314-cp314-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:f5d89a2ed90731df3be64bab0aa44f78bff39fdc9d71c291f4a8023aa46425b7", size = 140491, upload-time = "2026-05-06T15:10:51.582Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/17/adc514dea7ac7c505527febf884934b815d34f0c7b8693c1a8b39c5c4a57/orjson-3.11.9-cp314-cp314-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:25e4aed0312d292c09f61af25bba34e0b2c88546041472b09088c39a4d828af1", size = 127309, upload-time = "2026-05-06T15:10:53.329Z" },
+    { url = "https://files.pythonhosted.org/packages/76/3e/c0b690253f0b82d86e99949af13533363acfb5432ecb5d53dd5b3bce9c34/orjson-3.11.9-cp314-cp314-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:aaea64f3f467d22e70eeed68bdccb3bc4f83f650446c4a03c59f2cba28a108db", size = 134030, upload-time = "2026-05-06T15:10:54.988Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/7a/bc82a0bb25e9faaf92dc4d9ef002732efc09737706af83e346788641d4a7/orjson-3.11.9-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:a028425d1b440c5d92a6be1e1a020739dfe67ea87d96c6dbe828c1b30041728b", size = 141482, upload-time = "2026-05-06T15:10:56.663Z" },
+    { url = "https://files.pythonhosted.org/packages/01/55/e69188b939f77d5d32a9833745ace31ea5ccae3ab613a1ec185d3cd2c4fb/orjson-3.11.9-cp314-cp314-musllinux_1_2_armv7l.whl", hash = "sha256:5b192c6cf397e4455b11523c5cf2b18ed084c1bbd61b6c0926344d2129481972", size = 415178, upload-time = "2026-05-06T15:10:58.446Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/1a/b8a5a7ac527e80b9cb11d51e3f6689b709279183264b9ec5c7bc680bb8b5/orjson-3.11.9-cp314-cp314-musllinux_1_2_i686.whl", hash = "sha256:ea407d4ccf5891d667d045fecae97a7a1e5e87b3b97f97ae1803c2e741130be0", size = 148089, upload-time = "2026-05-06T15:11:00.441Z" },
+    { url = "https://files.pythonhosted.org/packages/97/4e/00503f64204bf859b37213a63927028f30fb6268cd8677fb0a5ad48155e1/orjson-3.11.9-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:5f63aaf97afd9f6dec5b1a68e1b8da12bfccb4cb9a9a65c3e0b6c847849e7586", size = 136921, upload-time = "2026-05-06T15:11:02.176Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/ba/a23b82a0a8d0ed7bed4e5f5035aae751cad4ff6a1e8d2ecd14d8860f5929/orjson-3.11.9-cp314-cp314-win32.whl", hash = "sha256:e30ab17845bb9fa54ccf67fa4f9f5282652d54faa6d17452f47d0f369d038673", size = 131638, upload-time = "2026-05-06T15:11:03.696Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/c3/0c6798456bade745c75c452342dabacce5798196483e77e643be1f53877d/orjson-3.11.9-cp314-cp314-win_amd64.whl", hash = "sha256:32ef5f4283a3be81913947d19608eacb7c6608026851123790cd9cc8982af34b", size = 127078, upload-time = "2026-05-06T15:11:05.123Z" },
+    { url = "https://files.pythonhosted.org/packages/16/21/5a3f1e8913103b703a436a5664238e5b965ec392b555fe68943ea3691e6b/orjson-3.11.9-cp314-cp314-win_arm64.whl", hash = "sha256:eebdbdeef0094e4f5aefa20dcd4eb2368ab5e7a3b4edea27f1e7b2892e009cf9", size = 126687, upload-time = "2026-05-06T15:11:06.602Z" },
+]
+
+[[package]]
 name = "overrides"
 version = "7.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3926,6 +4252,66 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d7/f1/e7a6dd94a8d4a5626c03e4e99c87f241ba9e350cd9e6d75123f992427270/packaging-26.2.tar.gz", hash = "sha256:ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661", size = 228134, upload-time = "2026-04-24T20:15:23.917Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/df/b2/87e62e8c3e2f4b32e5fe99e0b86d576da1312593b39f47d8ceef365e95ed/packaging-26.2-py3-none-any.whl", hash = "sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e", size = 100195, upload-time = "2026-04-24T20:15:22.081Z" },
+]
+
+[[package]]
+name = "pandas"
+version = "3.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "python-dateutil" },
+    { name = "tzdata", marker = "sys_platform == 'emscripten' or sys_platform == 'win32' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f8/87/4341c6252d1c47b08768c3d25ac487362bf403f0313ddae4a2a26c9b1b4c/pandas-3.0.3.tar.gz", hash = "sha256:696a4a00a2a2a35d4e5deb3fc946641b96c944f02230e4f76137fe35d806c4fc", size = 4651414, upload-time = "2026-05-11T18:54:29.21Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/42/16/b5c76b838fd9bf6ce84d3a53346b8874ec05c5f0040d75ef2c320100cd2a/pandas-3.0.3-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:455f6f8139d4282188f526868dbc3c828470e88a3d9d59a891bd46a455f21b98", size = 10338495, upload-time = "2026-05-11T18:52:11.558Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/b0/a4ffc4ae74d2d822200dcc46898987d8eb6032d1e2b219cae39da6f5cbcc/pandas-3.0.3-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:4e15135e2ee5df1063313e2425ceef8ac0f4ae775893815b0923651b806a5639", size = 9938250, upload-time = "2026-05-11T18:52:17.005Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/b2/3323601a52caee42c019e370090ca4544b241437240ca04f786cce82b0cf/pandas-3.0.3-cp311-cp311-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:05f1f1752b8533ea03f7f39a9c15b1a058d067bb48f4748948e7a8691e0510f2", size = 10770558, upload-time = "2026-05-11T18:52:19.865Z" },
+    { url = "https://files.pythonhosted.org/packages/32/f1/bbecd2f867b97abebe0f9b53d750f862251b40337e061b36676ded3d920f/pandas-3.0.3-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8a1e45c80cceb3b4a21bc5939d52e8cbd8d9b7305309219d59e9754d9ce09e27", size = 11274611, upload-time = "2026-05-11T18:52:22.622Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/4f/eafabf2d5fae5adf143b4d18d3706c5efdc368a7c4eb1ee8a3eddabbd0f6/pandas-3.0.3-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:14da8316da4d0c5a77618425996bfb1248ca87fc2c1486e6fde4652bd18b5824", size = 11784670, upload-time = "2026-05-11T18:52:25.4Z" },
+    { url = "https://files.pythonhosted.org/packages/49/44/1eb20389301b57b19cc099a1c2f662501f72f08a65f912d05822613c1532/pandas-3.0.3-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:a55066a0505dae0ba2b50a46637db34b46f9094c65c5d4800794ef6335010938", size = 12353708, upload-time = "2026-05-11T18:52:28.139Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/62/c321f13b5ba1819fc8dca456c7fce578da2dcfecff1abbf0eaddf8406c0f/pandas-3.0.3-cp311-cp311-win_amd64.whl", hash = "sha256:6674ab18ad8c57802867264b00e15e7bb904700cdd9046e3b2fa1fce237439ea", size = 9907609, upload-time = "2026-05-11T18:52:30.982Z" },
+    { url = "https://files.pythonhosted.org/packages/53/85/1b7f563ebc6357c27233a02a96b589bcce1fa9c6eb89fb4f0e56421d277e/pandas-3.0.3-cp311-cp311-win_arm64.whl", hash = "sha256:5cc09a68b3120e0f54870dede8287a7bb1fa463907e4fcec1ea77cab6179bf7a", size = 9165596, upload-time = "2026-05-11T18:52:33.334Z" },
+    { url = "https://files.pythonhosted.org/packages/24/f1/392f8c5bfc16f66a0d2d41561c01627c228fe7ed2a0d056ef11315042570/pandas-3.0.3-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:fed2ff7fd9779120e388e285fc029bd5cf9490cdd2e4166a9ee22c0e49a9ab09", size = 10357846, upload-time = "2026-05-11T18:52:36.143Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/3d/b16412745651e855f357e5e66930248688378853a6e2698a214e331fba1f/pandas-3.0.3-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:b168fc218fd80a6cbdbdbc1a97ddc7889ed057d7eb45f50d866ceab5f39904c4", size = 9899550, upload-time = "2026-05-11T18:52:38.976Z" },
+    { url = "https://files.pythonhosted.org/packages/31/a8/fa2535168fffcedf67f4f6de28d2dd903a747ca7c8ea6989451aaeb3a92f/pandas-3.0.3-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0383c72c75cdcca61a9e116e611143902dbfd08bff356829c2f6d1cf40a9ca8c", size = 10412965, upload-time = "2026-05-11T18:52:41.915Z" },
+    { url = "https://files.pythonhosted.org/packages/65/b6/09b01cdbc15224e2850365192d17b7bdebb8bdbd8780ed221fcdf0d9a515/pandas-3.0.3-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6dc0b3fd2169c9157deed50b4d519553a3655c8c6a96027136d654592be973a9", size = 10894600, upload-time = "2026-05-11T18:52:45.02Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/a4/2eb28f2fccb4ced4a2c79ab2a5dee9ade1ebf44922ebad6fea158c9f95d4/pandas-3.0.3-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:7e65d5407dc0b394f509699650e4a2ec01c0514f21850f453fa60f3be79a5dbf", size = 11422824, upload-time = "2026-05-11T18:52:48.058Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/45/830bb57f533a4604b355e07edcb8ea18cf88b5f94e5fca92f27052d7c597/pandas-3.0.3-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:f8894dc474d648fe7b6ff0ca9b0bd73950d19952bc1a6534540762c5d79d305c", size = 11950889, upload-time = "2026-05-11T18:52:50.905Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/c5/fc1b368f303087d20e8c9bf3d6ceb186263cfac0ade735cd938538bea839/pandas-3.0.3-cp312-cp312-win_amd64.whl", hash = "sha256:c7be265b62cef88e253a941e4698604973736dcfe242fdb5198f0f7bc473cdcc", size = 9755463, upload-time = "2026-05-11T18:52:53.386Z" },
+    { url = "https://files.pythonhosted.org/packages/86/bd/fda8f9705b1b09c6ebe14bfc0fa0e4ec8584d54ea673628f157ff55131af/pandas-3.0.3-cp312-cp312-win_arm64.whl", hash = "sha256:557409bc4178e70ee8d9ddb494798e51ebf6ea59330f6be22c51bab2a7db6c49", size = 9066158, upload-time = "2026-05-11T18:52:56.038Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/90/62d8302883c44308c477e222c3daf7c813a34c8e96985882fbd53d964352/pandas-3.0.3-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:67b3b64c11910cfa29f4e94a14d3bff9ee693b6fc76055e7cad549cee0aec5fa", size = 10331071, upload-time = "2026-05-11T18:52:58.838Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/ae/6a6493c783a101f165e4356953ba3c74d6f77f0042fa7d753da9dfbb640c/pandas-3.0.3-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:39436b377d56d2a2e52d0395bdbee171f01068e99af5250509aceeb929f765c7", size = 9875690, upload-time = "2026-05-11T18:53:01.431Z" },
+    { url = "https://files.pythonhosted.org/packages/62/7c/5df8e9f56c69a2769fbe9382a5ef8f2658c007e376434e1e2cbb57ad895f/pandas-3.0.3-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d4be06d68f9ddcfc645b87534911da79a8fbffc7573c80e0edcf42a5020624d8", size = 10381634, upload-time = "2026-05-11T18:53:04.393Z" },
+    { url = "https://files.pythonhosted.org/packages/99/68/1237369725aa617bb358263d535803e3053fdbc593513ec5ed9c9896b5b6/pandas-3.0.3-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a4eeb6830daf35a71cc09649bd823e2b542dac246cdee9614c6e4bd65028cd6a", size = 10891243, upload-time = "2026-05-11T18:53:07.643Z" },
+    { url = "https://files.pythonhosted.org/packages/25/93/77d108e8af7222b4a503ebde0e30215b1c2e4f8e53a526431890f22d5586/pandas-3.0.3-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:1928e07221f82db493cd4af1e23c1bfca524a19a4699887975bff68f49a72bfb", size = 11388659, upload-time = "2026-05-11T18:53:10.634Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/bd/eff5b4399f332ac386c853f6cd2bd3fa2ca0061b9f36ecd9c4d7c4265649/pandas-3.0.3-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:51b1fe551acb77dac643c6fda86084d8d446c10fe64b06a9cc29c4cc8540e7f2", size = 11942880, upload-time = "2026-05-11T18:53:13.536Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/20/559ace4200982c3887d0b86bfd0d856a2143ef8ddab63cc07934951a964c/pandas-3.0.3-cp313-cp313-win_amd64.whl", hash = "sha256:a82d532a3351d435432cd913edbccaf8b8e01d4dd0e5ced5a8d2e8ecd94c7e44", size = 9757091, upload-time = "2026-05-11T18:53:16.306Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/66/69055a09fe200f29f922a3eeec4804611900b95f52d932ece3393c3c0c19/pandas-3.0.3-cp313-cp313-win_arm64.whl", hash = "sha256:275c14e0fce14a2ec20eee474aecd305478ea3c1e6f6a9d8fe219a165542717e", size = 9057282, upload-time = "2026-05-11T18:53:18.768Z" },
+    { url = "https://files.pythonhosted.org/packages/57/0e/efe801b0e6811e8e650cd21b7f2608e30f08a7067e2bf6e8752b0d56ee3c/pandas-3.0.3-cp313-cp313t-macosx_10_13_x86_64.whl", hash = "sha256:46997386d528eb40376ecd6b033cf4a8a1e5282580f68f43de875b78cba2199d", size = 10767016, upload-time = "2026-05-11T18:53:21.227Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/dc/eb55135a1d5f0f0519f28da1f609a206d2cad1f9c35c32d51e38dd7261ae/pandas-3.0.3-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:261e308dfb22448384b7580cf719d2f998fe2966c92893c3e77d14008af1f066", size = 10420210, upload-time = "2026-05-11T18:53:23.982Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/3e/b1d5d955ce33ffecb407465a60bc32769d74fcf68224b7ae67ae11d4dea4/pandas-3.0.3-cp313-cp313t-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:dd1a5d1def6a46002e964510bdc67c368aa0951df5d1d9f8365336f5a1f490cd", size = 10336126, upload-time = "2026-05-11T18:53:26.731Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/76/a01261711ab60a22d71b862f0de20e4c504bf80457270ad8cb42110f6abc/pandas-3.0.3-cp313-cp313t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d72828c20c6d6e83e1e22a6a3b47b326b71664112fa9705dcbccfd7a39b62085", size = 10728051, upload-time = "2026-05-11T18:53:29.125Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/21/ea191195e587b18cf682e97f433f81b2d0fbe341380e80a3e0d6e4403c8e/pandas-3.0.3-cp313-cp313t-musllinux_1_2_aarch64.whl", hash = "sha256:d26cbe1fcfc12e8fd900e2454163e466b2d3af84f7c75481df7683ffc073d870", size = 11350796, upload-time = "2026-05-11T18:53:32.056Z" },
+    { url = "https://files.pythonhosted.org/packages/64/69/f0eaaf54939f0e8c6768fd06be9af2cef9b36048b96dfb9e1b2c685a807e/pandas-3.0.3-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:3e91cec1879ada0624fc3dc9953c5cbd60208e59c0db28f540c5d6d47502422f", size = 11799741, upload-time = "2026-05-11T18:53:34.985Z" },
+    { url = "https://files.pythonhosted.org/packages/45/a4/865e0e510cae5fc2194de4db28be638952de942571ba9125934fd9c01d47/pandas-3.0.3-cp313-cp313t-win_amd64.whl", hash = "sha256:08d789b41f87e0905880e293cedf6197ce71fe67cc081358b1e148a491b9bd13", size = 10499958, upload-time = "2026-05-11T18:53:37.857Z" },
+    { url = "https://files.pythonhosted.org/packages/86/54/effdcc3c0ff7a08037889200e148ebe94c16c4f653be078c7b3675955df1/pandas-3.0.3-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:3650109c0f22879df8bd6179ab9ee3d7f1d1d4e7e0094a3f0032d9f51e2e64ac", size = 10336065, upload-time = "2026-05-11T18:53:41.099Z" },
+    { url = "https://files.pythonhosted.org/packages/68/10/bf2d6738d72748b961a3751ab89522d58c54efc36a8e1a12161216cd45cf/pandas-3.0.3-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:bab900348131a7db1f69a7309ef141fd5680f1487094193bcbbb61791573bf8f", size = 9926101, upload-time = "2026-05-11T18:53:43.515Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/e9/e35cf11c8a136e757b956f5f0efdcaa50aecde85ea055f1898dfc68262f3/pandas-3.0.3-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ba7e08b9ac1d54569cd1e256e3668975ed624d6826f7b68df0342b012007bddb", size = 10457553, upload-time = "2026-05-11T18:53:46.394Z" },
+    { url = "https://files.pythonhosted.org/packages/58/3b/1cdec6772bdbaf7b25dab360c59f03cadf05492dd724c6540af905389b07/pandas-3.0.3-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9d71c63ae4ebdbf70209742096f1fc46a83a0613c99d4b23766cced9ff8cd62a", size = 10914065, upload-time = "2026-05-11T18:53:49.134Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/c2/1ef644445fcd72e3627bceec77e3560636f87ddce4ed841afe76b83b5bf9/pandas-3.0.3-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:e3a2ec42c98ffa2565a67e08e218d06d72576d758d90facb7c00805194d8f360", size = 11459188, upload-time = "2026-05-11T18:53:52.527Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/49/4d8d4f42cbc9c4adc7a1870f269c02cbd6cd40d059622c06fb298addcbad/pandas-3.0.3-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:335f62418ed562cfc3c49e9e196375c28b729dcef8543abf4f9438e381bf3c76", size = 11982966, upload-time = "2026-05-11T18:53:55.043Z" },
+    { url = "https://files.pythonhosted.org/packages/38/55/792619469bab9882d8bbd5865d45a72f6478762d04a9af4bf0d08c503e95/pandas-3.0.3-cp314-cp314-win_amd64.whl", hash = "sha256:3c20a521bbb85902f79f7270c80a59e1b5452d96d170c034f207181870f97ac5", size = 9876755, upload-time = "2026-05-11T18:53:58.067Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/af/33c469653b0ba03b50c3a98192d4c07f0c75c66b263ceb097fce0ee97d31/pandas-3.0.3-cp314-cp314-win_arm64.whl", hash = "sha256:a2d2dff8a04f3917b55ab3910c32990f8ddf7eceba114947838cefa976a68977", size = 9198658, upload-time = "2026-05-11T18:54:00.733Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/fa/b8c257bd76b8bd060c3a9151c1fca05e9b9c5e3af5d0f549c0356f6d143d/pandas-3.0.3-cp314-cp314t-macosx_10_15_x86_64.whl", hash = "sha256:0d589105b3c14645af1738ff279b2995102d8f7a03b0a66dc8d95550eb513e04", size = 10787242, upload-time = "2026-05-11T18:54:03.564Z" },
+    { url = "https://files.pythonhosted.org/packages/54/eb/f19206ffb0bf1919002969aa448b4702c6594845156a6f8050674855aac3/pandas-3.0.3-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:13fc1e853d9e04743d11ba75a985ccbc2a317fe07d8af61e445a6fd24dacd6a6", size = 10436369, upload-time = "2026-05-11T18:54:06.311Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/24/c7c39fb4fe22b71a0c2d78bf0c585c600092d85f94f086d2b3b2f6ca27e2/pandas-3.0.3-cp314-cp314t-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:819959dab7bbd0049c15623fbac4e29a191b9528160a61fb1032242d8ced2d9c", size = 10358306, upload-time = "2026-05-11T18:54:09.085Z" },
+    { url = "https://files.pythonhosted.org/packages/16/ec/dd2a9eb7fa1204df88c0864164e35b228ac581062ac612ba0a67fd812e4c/pandas-3.0.3-cp314-cp314t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:60ae316d3fd75d1858d450d0db0103ea2be3e7d4a95ec2f064f7e2ae63f7b028", size = 10758394, upload-time = "2026-05-11T18:54:11.956Z" },
+    { url = "https://files.pythonhosted.org/packages/95/6e/00c61ea8e85b4f6d8d35e11852a1a4998fc7fafc91c6a602d1cc9c972d64/pandas-3.0.3-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:bd3a518890b400d32f9023722dc9a9a5c969f00b415419a3c06c043f09bb5d7d", size = 11375717, upload-time = "2026-05-11T18:54:14.539Z" },
+    { url = "https://files.pythonhosted.org/packages/31/89/8fc1c268969fac43688d65fd92e67df24bd128d53cb4d2eee534cd307399/pandas-3.0.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:9c39be2d709d01fa972a0cabc522389fceca4f3969332ba25a7d6c5802cf976a", size = 11828897, upload-time = "2026-05-11T18:54:17.146Z" },
+    { url = "https://files.pythonhosted.org/packages/56/3b/e7d20dea247a3e6dc0bd8a6953854afbedc03951def4e7371e05e7263e25/pandas-3.0.3-cp314-cp314t-win_amd64.whl", hash = "sha256:4db8c527972a821cf5286b40ccc57642a39bc62e62022b42f99f8a67fca8c3a1", size = 10900855, upload-time = "2026-05-11T18:54:19.72Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/54/68a0978d1ef8502b8492099beaa6e7a0c1b32e3b5d4f677f5810cb08711c/pandas-3.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:b2c95f8bfc1ee412bf482605d7bfd30c12d1d26bd59fdd91efeef1d4718decb1", size = 9466464, upload-time = "2026-05-11T18:54:22.754Z" },
 ]
 
 [[package]]
@@ -4473,6 +4859,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pydub"
+version = "0.25.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/9a/e6bca0eed82db26562c73b5076539a4a08d3cffd19c3cc5913a3e61145fd/pydub-0.25.1.tar.gz", hash = "sha256:980a33ce9949cab2a569606b65674d748ecbca4f0796887fd6f46173a7b0d30f", size = 38326, upload-time = "2021-03-10T02:09:54.659Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a6/53/d78dc063216e62fc55f6b2eebb447f6a4b0a59f55c8406376f76bf959b08/pydub-0.25.1-py2.py3-none-any.whl", hash = "sha256:65617e33033874b59d87db603aa1ed450633288aefead953b30bded59cb599a6", size = 32327, upload-time = "2021-03-10T02:09:53.503Z" },
+]
+
+[[package]]
 name = "pygments"
 version = "2.20.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4586,6 +4981,15 @@ wheels = [
 ]
 
 [[package]]
+name = "python-multipart"
+version = "0.0.32"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/42/55c32bb9b12693c092ad250a0e82edb5b31ddeda6eb772de5f308b3804ad/python_multipart-0.0.32.tar.gz", hash = "sha256:be54b7f3fa167bb83e4fcd936b887b708f4e57fe75911c02aebf53efaf8d938e", size = 46881, upload-time = "2026-06-04T16:18:58.647Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/04/e8135ebd1ad02c56ec633277529b2602ff99ff634be76cdba5744cf554fd/python_multipart-0.0.32-py3-none-any.whl", hash = "sha256:ff6d3f776f16878c894e52e107296ffc890e913c611b1a4ec6c44e2821fe2e23", size = 30042, upload-time = "2026-06-04T16:18:57.319Z" },
+]
+
+[[package]]
 name = "pytorch-lightning"
 version = "2.6.5"
 source = { registry = "https://pypi.org/simple" }
@@ -4615,6 +5019,15 @@ version = "0.7.9"
 source = { git = "https://github.com/facebookresearch/pytorch3d.git#c8fcd83ff96fa0a5893c0b994f9285d7aa772540" }
 dependencies = [
     { name = "iopath" },
+]
+
+[[package]]
+name = "pytz"
+version = "2026.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ff/46/dd499ec9038423421951e4fad73051febaa13d2df82b4064f87af8b8c0c3/pytz-2026.2.tar.gz", hash = "sha256:0e60b47b29f21574376f218fe21abc009894a2321ea16c6754f3cad6eb7cdd6a", size = 320861, upload-time = "2026-05-04T01:35:29.667Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/dd/96da98f892250475bdf2328112d7468abdd4acc7b902b6af23f4ed958ea0/pytz-2026.2-py2.py3-none-any.whl", hash = "sha256:04156e608bee23d3792fd45c94ae47fae1036688e75032eea2e3bf0323d1f126", size = 510141, upload-time = "2026-05-04T01:35:27.408Z" },
 ]
 
 [[package]]
@@ -5026,6 +5439,18 @@ wheels = [
 ]
 
 [[package]]
+name = "safehttpx"
+version = "0.1.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/89/d1/4282284d9cf1ee873607a46442da977fc3c985059315ab23610be31d5885/safehttpx-0.1.7.tar.gz", hash = "sha256:db201c0978c41eddb8bb480f3eee59dd67304fdd91646035e9d9a720049a9d23", size = 10385, upload-time = "2025-10-24T18:30:09.783Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2e/a3/0f0b7d78e2f1eb9e8e1afbff1d2bff8d60144aee17aca51c065b516743dd/safehttpx-0.1.7-py3-none-any.whl", hash = "sha256:c4f4a162db6993464d7ca3d7cc4af0ffc6515a606dfd220b9f82c6945d869cde", size = 8959, upload-time = "2025-10-24T18:30:08.733Z" },
+]
+
+[[package]]
 name = "safetensors"
 version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -5208,28 +5633,40 @@ version = "1.18.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
 ]
 dependencies = [
     { name = "numpy", marker = "python_full_version >= '3.12' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
@@ -5276,6 +5713,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/f7/86/5185061a1fcc41d18c5dc2463969b3a3964b31d9ac67b2fb05d4c7ff7670/scipy-1.18.0-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:9aac6192fac56bf2ca534389d24623f07b39ff83317d58287285e7fbd622ff76", size = 37472480, upload-time = "2026-06-19T15:01:35.136Z" },
     { url = "https://files.pythonhosted.org/packages/31/8e/f04c68e39919a010d34f2ee1367fd705b0a25a02f609d755f0bfbc0a15fc/scipy-1.18.0-cp314-cp314t-win_amd64.whl", hash = "sha256:e40baea28ae7f5475c779741e2d90b1247c78531207b49c7030e698ff81cee3f", size = 37365390, upload-time = "2026-06-19T15:01:38.091Z" },
     { url = "https://files.pythonhosted.org/packages/d5/19/969dc072906c84dd0a3b05dcf57ea750936087d7873549e408b35cfc3f97/scipy-1.18.0-cp314-cp314t-win_arm64.whl", hash = "sha256:368e0a705903c466aa5f08eefb39e6b1b6b2d659e7352a31fd9e2438365be0f8", size = 25279661, upload-time = "2026-06-19T15:01:40.817Z" },
+]
+
+[[package]]
+name = "semantic-version"
+version = "2.10.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/31/f2289ce78b9b473d582568c234e104d2a342fd658cc288a7553d83bb8595/semantic_version-2.10.0.tar.gz", hash = "sha256:bdabb6d336998cbb378d4b9db3a4b56a1e3235701dc05ea2690d9a997ed5041c", size = 52289, upload-time = "2022-05-26T13:35:23.454Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl", hash = "sha256:de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177", size = 15552, upload-time = "2022-05-26T13:35:21.206Z" },
 ]
 
 [[package]]
@@ -5378,14 +5824,29 @@ wheels = [
 ]
 
 [[package]]
+name = "starlette"
+version = "1.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/eb/e3/7c1dc7381d9f8ab7d854328ebfa884e62cb3f3d8549ddfd37c7814f42afa/starlette-1.3.1.tar.gz", hash = "sha256:05d0213193f2fbaae60e2ecb593b4add4262ad4e46536b54abe36f11a71724e0", size = 2703240, upload-time = "2026-06-12T09:23:11.602Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/bb/2799cc2ede3ed41131f8975621e7213dfc7ef4acbbaadfa440f32500c370/starlette-1.3.1-py3-none-any.whl", hash = "sha256:c7372aae11c3c3f26a42df7bd626cec2f47d03483d261d369516a615a53714c6", size = 73632, upload-time = "2026-06-12T09:23:10.017Z" },
+]
+
+[[package]]
 name = "sympy"
 version = "1.13.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
@@ -5403,32 +5864,42 @@ version = "1.14.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
     "python_full_version < '3.12' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
 ]
@@ -5541,28 +6012,40 @@ version = "2026.6.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'darwin' and extra == 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
 ]
 dependencies = [
     { name = "numpy", marker = "python_full_version >= '3.12' or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu124') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cpu' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126') or (extra == 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu128') or (extra == 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')" },
@@ -5666,14 +6149,25 @@ wheels = [
 ]
 
 [[package]]
+name = "tomlkit"
+version = "0.14.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/af/14b24e41977adb296d6bd1fb59402cf7d60ce364f90c890bd2ec65c43b5a/tomlkit-0.14.0.tar.gz", hash = "sha256:cf00efca415dbd57575befb1f6634c4f42d2d87dbba376128adb42c121b87064", size = 187167, upload-time = "2026-01-13T01:14:53.304Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b5/11/87d6d29fb5d237229d67973a6c9e06e048f01cf4994dee194ab0ea841814/tomlkit-0.14.0-py3-none-any.whl", hash = "sha256:592064ed85b40fa213469f81ac584f67a4f2992509a7c3ea2d632208623a3680", size = 39310, upload-time = "2026-01-13T01:14:51.965Z" },
+]
+
+[[package]]
 name = "torch"
 version = "2.6.0+cu124"
 source = { registry = "https://download.pytorch.org/whl/cu124" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
@@ -5716,9 +6210,11 @@ version = "2.7.1+cu126"
 source = { registry = "https://download.pytorch.org/whl/cu126" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
@@ -5763,10 +6259,13 @@ version = "2.7.1+cu128"
 source = { registry = "https://download.pytorch.org/whl/cu128" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
+    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
     "python_full_version < '3.12' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
@@ -5816,7 +6315,8 @@ version = "2.12.1"
 source = { registry = "https://download.pytorch.org/whl/cpu" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'darwin'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin'",
+    "python_full_version == '3.13.*' and sys_platform == 'darwin'",
+    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
     "python_full_version < '3.12' and sys_platform == 'darwin'",
 ]
 dependencies = [
@@ -5842,9 +6342,11 @@ version = "2.12.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
@@ -5894,9 +6396,11 @@ version = "2.12.1+cpu"
 source = { registry = "https://download.pytorch.org/whl/cpu" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'darwin' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'darwin' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'win32'",
 ]
@@ -5959,9 +6463,11 @@ version = "0.21.0+cu124"
 source = { registry = "https://download.pytorch.org/whl/cu124" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
@@ -5984,7 +6490,8 @@ name = "torchvision"
 version = "0.22.1"
 source = { registry = "https://download.pytorch.org/whl/cu128" }
 resolution-markers = [
-    "python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
+    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
+    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
     "python_full_version < '3.12' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
 ]
 dependencies = [
@@ -6005,9 +6512,11 @@ version = "0.22.1+cu126"
 source = { registry = "https://download.pytorch.org/whl/cu126" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
@@ -6033,9 +6542,11 @@ version = "0.22.1+cu128"
 source = { registry = "https://download.pytorch.org/whl/cu128" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
@@ -6061,7 +6572,8 @@ version = "0.27.1"
 source = { registry = "https://download.pytorch.org/whl/cpu" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'darwin'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin'",
+    "python_full_version == '3.13.*' and sys_platform == 'darwin'",
+    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
     "python_full_version < '3.12' and sys_platform == 'darwin'",
 ]
 dependencies = [
@@ -6083,9 +6595,11 @@ version = "0.27.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
@@ -6123,9 +6637,11 @@ version = "0.27.1+cpu"
 source = { registry = "https://download.pytorch.org/whl/cpu" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'darwin' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'darwin' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'win32'",
 ]
@@ -6220,7 +6736,8 @@ version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -6235,12 +6752,15 @@ version = "3.3.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
+    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.12' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128') or (python_full_version < '3.12' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128')",
     "python_full_version < '3.12' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra != 'extra-5-gvhmr-cu126' and extra == 'extra-5-gvhmr-cu128'",
     "python_full_version >= '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
     "python_full_version < '3.12' and sys_platform != 'win32' and extra != 'extra-5-gvhmr-cpu' and extra != 'extra-5-gvhmr-cu124' and extra == 'extra-5-gvhmr-cu126' and extra != 'extra-5-gvhmr-cu128'",
 ]
 dependencies = [
@@ -6259,7 +6779,8 @@ version = "3.7.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 wheels = [
@@ -6402,6 +6923,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
+]
+
+[[package]]
+name = "uvicorn"
+version = "0.50.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "h11" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9f/f6/cc9aadc0e481344a42095d222bfa764122fb8cfba708d1922917bd8bfb01/uvicorn-0.50.2.tar.gz", hash = "sha256:b92bf03509b82bcb9d49e7335b4fd364518ad021c2dc18b4e6a2fec8c955a0bb", size = 93716, upload-time = "2026-07-06T10:38:31.984Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/aa/f0/7c228ee10c7ab8fd3a21d06579a6f7c6075c6ce72594a20fb5d2f206ff24/uvicorn-0.50.2-py3-none-any.whl", hash = "sha256:4ae72a385630bcc17a0adb8290f26c993865e0b43a2114c2aab96420172c056a", size = 72846, upload-time = "2026-07-06T10:38:30.543Z" },
 ]
 
 [[package]]

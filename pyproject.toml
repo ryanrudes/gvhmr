@@ -27,6 +27,8 @@ classifiers = [
 dependencies = [
     "torch>=2.4",
     "torchvision>=0.19",
+    "huggingface_hub>=0.23",  # from_pretrained / push_to_hub + checkpoint downloads (gvhmr.inference.hub)
+    "requests>=2.28",  # credentialed body-model fetch from the MPI portal (gvhmr.utils.mpi_download)
     "numpy>=1.26",
     "scipy>=1.11",
     "einops>=0.8",
@@ -61,6 +63,10 @@ preproc = ["ultralytics>=8.2", "cython_bbox", "lapx", "pycolmap>=0.6", "yacs"]
 # Alternative 2D-pose backend: RTMPose via rtmlib on ONNXRuntime (ungated, no mmcv). `--pose2d rtmpose`.
 # CPU/Apple-Silicon by default; on a CUDA box swap `onnxruntime` → `onnxruntime-gpu` for the GPU EP.
 rtmpose = ["rtmlib", "onnxruntime"]
+
+# Gradio demo app — `gvhmr.pipeline` behind a browser UI (upload a video → overlay + npz). Same code as
+# the HuggingFace Space under space/. `pip install gvhmr[app,preproc]` then `python space/app.py`.
+app = ["gradio>=4"]
 
 # Interactive 3D visualization / research debugging.
 vis = ["wis3d", "viser"]
@@ -195,7 +201,7 @@ pytorch3d = { git = "https://github.com/facebookresearch/pytorch3d.git" }
 packages = ["gvhmr"]
 
 [tool.hatch.build.targets.sdist]
-include = ["gvhmr", "tools", "docs", "tests", "README.md", "LICENSE"]
+include = ["gvhmr", "tools", "docs", "tests", "space", "README.md", "LICENSE"]
 
 # ---------------------------------------------------------------------------
 # Tooling

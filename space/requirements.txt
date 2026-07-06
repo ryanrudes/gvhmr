@@ -1,0 +1,4 @@
+# Until the PyPI release is live, swap the line below for:
+#   git+https://github.com/ryanrudes/gvhmr.git#egg=gvhmr[preproc]
+gvhmr[preproc]
+gradio>=4
