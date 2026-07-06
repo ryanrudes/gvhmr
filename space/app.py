@@ -28,9 +28,6 @@ import gradio as gr
 REPO_URL = "https://github.com/ryanrudes/gvhmr"
 
 DEFAULT_HUB_REPO = os.getenv("GVHMR_HUB_REPO", "ryanrudes/gvhmr")
-# ZeroGPU runtime torch — keep in sync with space/requirements.txt (do not pull PyPI torch 2.12+).
-ZEROGPU_TORCH = "torch==2.11.0"
-ZEROGPU_TORCHVISION = "torchvision==0.22.0"
 
 # Camera backends shown in the UI. DPVO is CUDA-only and intentionally omitted.
 CAMERA_BACKENDS = ["simplevo", "dust3r", "vggt"]
@@ -110,8 +107,7 @@ def _bootstrap_deps() -> None:
     try:
         import gvhmr  # noqa: F401
     except ImportError:
-        # Runtime fallback — pin ZeroGPU-compatible torch BEFORE gvhmr (PyPI torch 2.12+ breaks dynamo).
-        _pip_install(ZEROGPU_TORCH, ZEROGPU_TORCHVISION)
+        # Runtime fallback — ZeroGPU already ships torch 2.11; do not pull PyPI torch 2.12+.
         _pip_install("gvhmr[preproc]>=1.0.3")
 
     from gvhmr.utils._smpl_compat import apply

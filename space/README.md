@@ -30,8 +30,9 @@ a fixed viewpoint.
 > Each `@spaces.GPU` call gets **60 seconds of GPU time by default** on the free tier; optional Secret
 > `ZERO_GPU_DURATION=600` (seconds) raises the per-call cap for longer clips on PRO.
 >
-> **Torch:** `requirements.txt` pins `torch==2.11.0` (ZeroGPU-supported). Do not let `gvhmr` pull
-> PyPI torch 2.12+ at runtime — it breaks `torch._dynamo` on the Space builder.
+> **Torch:** ZeroGPU preinstalls `torch==2.11.0` (builder adds `torch<=2.11.0`). Do **not** pin
+> torch/torchvision in `requirements.txt` — PyPI torchvision 0.22.x requires torch 2.7 and breaks the
+> build. `gvhmr[preproc]` only needs `torch>=2.4`, which the runtime wheel satisfies.
 >
 > **Body models** are registration-gated and never bundled. **Recommended — private mirror:** on your
 > laptop, register at [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de) +
