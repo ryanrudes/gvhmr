@@ -212,8 +212,13 @@ def push_to_hub(model, repo_id: str, *, token=None, private: bool = False) -> st
     return f"https://huggingface.co/{repo_id}"
 
 
-def publish_space(space_id: str, space_dir: str | Path, *, token=None, sdk: str = "gradio") -> str:
-    """Create/update a HuggingFace **Space** from a local app folder. Returns the Space URL."""
+def publish_space(space_id: str, space_dir: str | Path, *, token=None, sdk: str = "docker") -> str:
+    """Create/update a HuggingFace **Space** from a local app folder. Returns the Space URL.
+
+    ``sdk`` sets the Space runtime on *first* creation; for an existing Space the folder's
+    ``README.md`` front-matter (``sdk: docker``) is authoritative. GVHMR's Space is a Docker Space
+    (its ``Dockerfile`` pre-installs ``chumpy`` with build isolation disabled).
+    """
     api = _api(token)
     api.create_repo(space_id, repo_type="space", space_sdk=sdk, exist_ok=True)
     api.upload_folder(folder_path=str(space_dir), repo_id=space_id, repo_type="space")
