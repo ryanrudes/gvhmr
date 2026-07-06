@@ -151,8 +151,11 @@ conflicts = [[
 
 # chumpy's legacy setup.py imports `pip` at build time but doesn't declare it as a build dependency,
 # so its isolated build env needs pip added explicitly (otherwise `uv sync` fails on clean CI runners).
+# pytorch3d's legacy setup.py likewise needs setuptools when uv refreshes the git source (e.g. after a
+# version bump desyncs uv.lock from pyproject.toml and triggers a re-lock on CI).
 [tool.uv.extra-build-dependencies]
 chumpy = ["pip"]
+pytorch3d = ["setuptools"]
 
 # PyTorch wheel indexes, one per backend; `explicit = true` means a package only resolves here when a
 # source below points to it (so non-torch packages still come from PyPI). Selected via the cuXXX/cpu
@@ -189,7 +192,7 @@ torchvision = [
     { index = "pytorch-cu128", extra = "cu128" },
 ]
 # No PyPI wheel for recent torch — build from git. uv pins the resolved commit in uv.lock.
-pytorch3d = { git = "https://github.com/facebookresearch/pytorch3d.git" }
+pytorch3d = { git = "https://github.com/facebookresearch/pytorch3d.git", rev = "c8fcd83ff96fa0a5893c0b994f9285d7aa772540" }
 # (DPVO is not declared here — it's CUDA-only and installed out-of-band by scripts/setup_dpvo.sh.)
 
 # ---------------------------------------------------------------------------

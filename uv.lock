@@ -1554,7 +1554,7 @@ wheels = [
 
 [[package]]
 name = "gvhmr"
-version = "1.0.0"
+version = "1.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "av" },
@@ -1696,7 +1696,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pytorch-lightning", specifier = ">=2.3" },
-    { name = "pytorch3d", marker = "extra == 'render'", git = "https://github.com/facebookresearch/pytorch3d.git" },
+    { name = "pytorch3d", marker = "extra == 'render'", git = "https://github.com/facebookresearch/pytorch3d.git?rev=c8fcd83ff96fa0a5893c0b994f9285d7aa772540" },
     { name = "requests", specifier = ">=2.28" },
     { name = "rich", specifier = ">=13" },
     { name = "rtmlib", marker = "extra == 'rtmpose'" },
@@ -5016,7 +5016,7 @@ wheels = [
 [[package]]
 name = "pytorch3d"
 version = "0.7.9"
-source = { git = "https://github.com/facebookresearch/pytorch3d.git#c8fcd83ff96fa0a5893c0b994f9285d7aa772540" }
+source = { git = "https://github.com/facebookresearch/pytorch3d.git?rev=c8fcd83ff96fa0a5893c0b994f9285d7aa772540#c8fcd83ff96fa0a5893c0b994f9285d7aa772540" }
 dependencies = [
     { name = "iopath" },
 ]
