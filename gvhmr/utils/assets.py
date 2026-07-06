@@ -121,20 +121,87 @@ def missing(group: str | None = None) -> list[str]:
     return [n for n, a in select(group).items() if not is_present(a)]
 
 
-def fetch(assets: dict[str, Asset], force: bool = False) -> list[Path]:
-    """Download the given assets from HF into CHECKPOINT_ROOT (skips present ones unless ``force``)."""
+def fetch(assets: dict[str, Asset], force: bool = False, repo: str | None = None) -> list[Path]:
+    """Download the given assets into CHECKPOINT_ROOT (skips present ones unless ``force``).
+
+    ``repo`` overrides the source HF repo (default :data:`HF_REPO`); a file missing there falls back to the
+    community mirror :data:`HF_REPO`, so ``from_pretrained("your/repo")`` works before every file is mirrored.
+    """
     from huggingface_hub import hf_hub_download
+    from huggingface_hub.utils import EntryNotFoundError, RepositoryNotFoundError
 
     from gvhmr.utils.net import ensure_ca_bundle
 
     ensure_ca_bundle()  # repair misconfigured TLS cert env (common on HPC) before any HTTPS
+    source = repo or HF_REPO
     out = []
     for a in assets.values():
         if is_present(a) and not force:
             continue
-        hf_hub_download(HF_REPO, a.hf_path, local_dir=str(CHECKPOINT_ROOT))
+        try:
+            hf_hub_download(source, a.hf_path, local_dir=str(CHECKPOINT_ROOT))
+        except (RepositoryNotFoundError, EntryNotFoundError):
+            if source == HF_REPO:
+                raise
+            hf_hub_download(HF_REPO, a.hf_path, local_dir=str(CHECKPOINT_ROOT))
         out.append(a.path)
     return out
+
+
+# --- Registration-gated body models — fetched per-user from the official MPI source, never re-hosted ----
+def body_models_present(smpl: bool = False) -> bool:
+    """True when the SMPL-X body model is present (and, if ``smpl``, the SMPL model for rendering)."""
+    ok = (BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
+    if smpl:
+        ok = ok and (BODY_MODEL_ROOT / "smpl/SMPL_NEUTRAL.pkl").exists()
+    return ok
+
+
+def _gated_error() -> FileNotFoundError:
+    return FileNotFoundError(
+        f"SMPL-X body model not found under {BODY_MODEL_ROOT}. These are registration-gated: run "
+        f"`gvhmr auth smpl` (one-time MPI login → auto-fetch), or sign up at "
+        f"https://smpl-x.is.tue.mpg.de/ + https://smpl.is.tue.mpg.de/ and place them there "
+        f"(or set $GVHMR_BODY_MODELS). `gvhmr download` prints the exact layout."
+    )
+
+
+def ensure_body_models(smpl: bool = False, auto: bool = True) -> None:
+    """Ensure the gated body models are present, auto-fetching from MPI when credentials are available.
+
+    Fetches only what's missing. If SMPL-X is still absent afterwards, raises the actionable gated error
+    (identical to the manual instructions). A missing SMPL model when ``smpl`` is requested only warns —
+    motion recovery proceeds; overlay rendering is what needs it.
+    """
+    from gvhmr.utils.pylogger import Log
+
+    have_smplx = (BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
+    have_smpl = (BODY_MODEL_ROOT / "smpl/SMPL_NEUTRAL.pkl").exists()
+    if have_smplx and (have_smpl or not smpl):
+        return
+
+    if auto:
+        from gvhmr.utils import mpi_download
+
+        if mpi_download.credentials() is not None:
+            try:
+                placed = mpi_download.fetch_body_models(
+                    BODY_MODEL_ROOT, smplx=not have_smplx, smpl=(smpl and not have_smpl)
+                )
+                Log.info(f"[ok]Body models fetched[/] from MPI ({len(placed)} file(s)) → [muted]{BODY_MODEL_ROOT}[/]")
+                have_smplx = (BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
+                have_smpl = (BODY_MODEL_ROOT / "smpl/SMPL_NEUTRAL.pkl").exists()
+            except (OSError, PermissionError, FileNotFoundError, ImportError) as e:
+                Log.warning(f"[warn]Automatic body-model fetch failed[/] ([muted]{e}[/]) — falling back to manual.")
+
+    if not have_smplx:
+        raise _gated_error()
+    if smpl and not have_smpl:
+        Log.warning(
+            f"[warn]smpl/SMPL_NEUTRAL.pkl not found[/] under [muted]{BODY_MODEL_ROOT}[/] — motion will be "
+            f"recovered, but overlay videos will be skipped. `gvhmr auth smpl` (or sign up at "
+            f"https://smpl.is.tue.mpg.de/) to enable rendering."
+        )
 
 
 def fetch_data_pack(name: str, force: bool = False) -> Path:

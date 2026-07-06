@@ -152,8 +152,13 @@ def ensure_deps(cfg) -> None:
         raise SystemExit(1)
 
 
-def ensure_assets(camera: str, want_render: bool = True) -> None:
-    """Auto-fetch the checkpoints this run needs (so `gvhmr demo` just works); body models are gated."""
+def ensure_assets(camera: str, want_render: bool = True, repo: str | None = None) -> None:
+    """Auto-fetch the checkpoints this run needs (so `gvhmr demo` just works).
+
+    Body models are registration-gated: :func:`assets.ensure_body_models` credential-fetches them from the
+    official MPI source when a login is available (``gvhmr auth smpl`` / ``$SMPLX_USER``/``$SMPLX_PW``),
+    otherwise raises the actionable sign-up instructions.
+    """
     from gvhmr.utils import assets
 
     need = ["gvhmr", "hmr2", "vitpose", "yolo"] + (["dpvo"] if camera == "dpvo" else [])
@@ -161,22 +166,10 @@ def ensure_assets(camera: str, want_render: bool = True) -> None:
     if todo:
         sz = sum(a.size for a in todo.values()) / 1e9
         with status(f"Fetching {len(todo)} missing checkpoint(s) [{', '.join(todo)}] ({sz:.1f}GB)"):
-            assets.fetch(todo)
+            assets.fetch(todo, repo=repo)
         Log.info(f"[ok]Checkpoints ready[/] [muted]({assets.CHECKPOINT_ROOT})[/]")
-    if not (assets.BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists():
-        raise FileNotFoundError(
-            f"SMPL-X body model not found under {assets.BODY_MODEL_ROOT}. These are registration-gated: "
-            f"sign up at https://smpl-x.is.tue.mpg.de/ + https://smpl.is.tue.mpg.de/, then place them there "
-            f"(or set $GVHMR_BODY_MODELS). `gvhmr download` prints the exact layout."
-        )
-    # The overlay renderer additionally needs the SMPL model (mesh faces + the SMPL-X → SMPL vertex map).
-    # Warn now rather than after minutes of preprocessing; motion recovery itself only needs SMPL-X.
-    if want_render and not (assets.BODY_MODEL_ROOT / "smpl/SMPL_NEUTRAL.pkl").exists():
-        Log.warning(
-            f"[warn]smpl/SMPL_NEUTRAL.pkl not found[/] under [muted]{assets.BODY_MODEL_ROOT}[/] — motion "
-            f"will be recovered, but the overlay videos will be skipped. Sign up at https://smpl.is.tue.mpg.de/ "
-            f"and place it there to render."
-        )
+    # Motion recovery needs SMPL-X; overlay rendering additionally needs SMPL. Resolve now (fail/fetch early).
+    assets.ensure_body_models(smpl=want_render)
 
 
 def _ctor_kwargs(node) -> dict:
@@ -419,6 +412,38 @@ def load_data_dict(cfg, flip_test: bool = False) -> dict:
     return data
 
 
+@torch.no_grad()
+def recover_motion(
+    model: DemoPL,
+    data: dict,
+    *,
+    static_cam: bool,
+    flip_test_data: dict | None = None,
+    world_from_incam: bool = False,
+    cam_name: str | None = None,
+    slam_path=None,
+) -> dict:
+    """Run the model's ``predict`` + (for a moving scene-aware camera) the metric-camera world compose.
+
+    The single source of truth for turning a ``load_data_dict`` dict into the final ``pred`` — shared by
+    ``gvhmr demo`` and the :mod:`gvhmr.inference` library so the two can never drift. Returns the CPU
+    ``pred`` dict (``smpl_params_global`` / ``smpl_params_incam`` / ``K_fullimg`` / ``net_outputs``).
+    """
+    pred = detach_to_cpu(
+        model.predict(
+            data,
+            static_cam=static_cam,
+            flip_test_data=flip_test_data,
+            world_from_incam=world_from_incam,
+        )
+    )
+    # Moving + scene-aware: replace the world trajectory with the in-cam carry through the metric camera
+    # (captures traversal a following camera induces; the velocity prior misses it).
+    if cam_name in ("dust3r", "vggt") and not static_cam and slam_path is not None:
+        compose_world_from_dust3r(pred, torch.load(slam_path, weights_only=False))
+    return pred
+
+
 def render_incam(cfg, device, skeleton_overlay: bool = False, joint_indices=None) -> None:
     incam_video_path = Path(cfg.paths.incam_video)
     overlay_path = incam_video_path.with_stem(incam_video_path.stem + "_skeleton")
@@ -656,20 +681,18 @@ def run(
         world_from_incam = cfg.static_cam and incam_world_traj
         if world_from_incam:
             Log.info("Static camera: world trajectory from in-cam motion [muted](--no-incam-world-traj to disable)[/]")
-        with status("Recovering SMPL motion" + (" (flip-test)" if flip_test else "")):
-            pred = detach_to_cpu(
-                model.predict(
-                    data,
-                    static_cam=cfg.static_cam,
-                    flip_test_data=data.get("flip_test"),
-                    world_from_incam=world_from_incam,
-                )
-            )
-        # Moving + scene-aware: replace the world trajectory with the in-cam carry through the DUSt3R
-        # metric camera (captures traversal a following camera induces; the velocity prior misses it).
         if cam_name in ("dust3r", "vggt") and not cfg.static_cam:
             Log.info(f"Moving camera: world trajectory from the [ok]{cam_name} metric camera[/] (scene-aware)")
-            compose_world_from_dust3r(pred, torch.load(paths.slam, weights_only=False))
+        with status("Recovering SMPL motion" + (" (flip-test)" if flip_test else "")):
+            pred = recover_motion(
+                model,
+                data,
+                static_cam=cfg.static_cam,
+                flip_test_data=data.get("flip_test"),
+                world_from_incam=world_from_incam,
+                cam_name=cam_name,
+                slam_path=paths.slam,
+            )
         torch.save(pred, paths.hmr4d_results)
         Log.info(f"Recovered [ok]{data['length'] / 30:.1f}s[/] of motion in [ok]{Log.sync_time() - tic:.2f}s[/]")
     else:

@@ -13,6 +13,7 @@ import typer
 
 from gvhmr.cli.config import app as config_app
 from gvhmr.cli.envcmd import app as env_app
+from gvhmr.cli.hubcmd import auth_app, publish_hub, publish_space
 from gvhmr.cli.sweepcmd import app as sweep_app
 
 app = typer.Typer(
@@ -33,6 +34,11 @@ app.add_typer(config_app, name="config")
 app.add_typer(env_app, name="env")
 # `gvhmr sweep …` — W&B sweeps comparing benchmark evals across preproc combinations (wandb loads lazily).
 app.add_typer(sweep_app, name="sweep")
+# `gvhmr auth …` — store credentials for auto-fetching gated assets (the SMPL/SMPL-X body models).
+app.add_typer(auth_app, name="auth")
+# `gvhmr publish-hub` / `publish-space` — publish weights + the gradio demo to the HuggingFace Hub.
+app.command(name="publish-hub")(publish_hub)
+app.command(name="publish-space")(publish_space)
 
 
 @app.callback()
