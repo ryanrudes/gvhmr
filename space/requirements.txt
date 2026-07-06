@@ -1,4 +1,4 @@
 # Installed by the Dockerfile (Docker SDK Space). `chumpy` and CPU `torch` are pre-installed there
 # — chumpy's legacy build needs pip present, which PEP 517 build isolation hides.
-gvhmr[preproc]
+gvhmr[preproc]>=1.0.1
 gradio>=4,<6
