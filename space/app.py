@@ -45,36 +45,65 @@ Source & docs: [{REPO_URL}]({REPO_URL}).
 """
 
 
+def _apply_bootstrap_smpl_compat() -> None:
+    """Legacy shims before ``gvhmr`` is installed (mirrors ``gvhmr.utils._smpl_compat``)."""
+    import inspect
+
+    import numpy as np
+
+    if not hasattr(inspect, "getargspec"):
+        inspect.getargspec = inspect.getfullargspec  # type: ignore[attr-defined]
+    for name, target in {
+        "bool": np.bool_,
+        "int": np.int_,
+        "float": np.float64,
+        "complex": np.complex128,
+        "object": np.object_,
+        "str": np.str_,
+        "unicode": np.str_,
+    }.items():
+        if name not in np.__dict__:
+            setattr(np, name, target)
+
+
+def _pip_install(*packages: str) -> None:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", *packages])
+
+
 def _bootstrap_deps() -> None:
-    """Install gvhmr + chumpy (no-build-isolation) before the heavy imports."""
-    try:
-        import gvhmr  # noqa: F401
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "gvhmr[preproc]>=1.0.3"])
+    """Install chumpy (no-build-isolation) then gvhmr — order matters on HF Spaces.
 
-    # chumpy needs legacy shims on Python 3.11+ — install them before importing chumpy.
-    from gvhmr.utils._smpl_compat import apply
-
-    apply()
+    ``chumpy``'s legacy ``setup.py`` imports ``pip`` at build time; PEP 517 isolation (the default)
+    has no pip in the build env. ``gvhmr`` depends on ``chumpy``, so installing ``gvhmr`` first
+    always triggers that broken build. Install ``chumpy`` with ``--no-build-isolation`` first,
+    then ``gvhmr[preproc]`` reuses the already-built wheel.
+    """
+    _apply_bootstrap_smpl_compat()
 
     try:
         import chumpy  # noqa: F401
     except ImportError:
-        subprocess.check_call(
-            [
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "-q",
-                "--no-build-isolation",
-                "numpy>=1.26",
-                "chumpy==0.70",
-            ]
-        )
+        _pip_install("--no-build-isolation", "numpy>=1.26", "chumpy==0.70")
+
+    try:
+        import gvhmr  # noqa: F401
+    except ImportError:
+        _pip_install("gvhmr[preproc]>=1.0.3")
+
+    from gvhmr.utils._smpl_compat import apply
+
+    apply()
 
 
-_bootstrap_deps()
+_BOOTSTRAPPED = False
+
+
+def _ensure_bootstrapped() -> None:
+    global _BOOTSTRAPPED
+    if _BOOTSTRAPPED:
+        return
+    _bootstrap_deps()
+    _BOOTSTRAPPED = True
 
 # --------------------------------------------------------------------------------------
 # Pipeline: lazy load inside @spaces.GPU (avoids import-time failures on ZeroGPU builders).
@@ -91,6 +120,7 @@ def _get_pipeline():
     if _LOAD_ERROR is not None:
         raise RuntimeError(_LOAD_ERROR)
     try:
+        _ensure_bootstrapped()
         import gvhmr
 
         device = os.getenv("GVHMR_DEVICE", "cuda")

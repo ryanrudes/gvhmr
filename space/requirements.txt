@@ -1,5 +1,7 @@
 # Gradio SDK Space (ZeroGPU). HF pins gradio + spaces on the builder — do not constrain
-# gradio here (their image installs gradio==6.x). `chumpy` + `gvhmr` bootstrap in app.py.
+# gradio here (their image installs gradio==6.x). `chumpy` + `gvhmr` bootstrap in app.py
+# (chumpy must use --no-build-isolation — cannot be declared here).
 numpy>=1.26
+pip
 setuptools
 wheel
