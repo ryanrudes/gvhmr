@@ -1,7 +1,5 @@
-# Gradio SDK Space (ZeroGPU). `chumpy` + `gvhmr` are bootstrapped in app.py — chumpy's legacy
-# setup.py imports `pip` at build time, which PEP 517 isolation hides on the Gradio builder.
+# Gradio SDK Space (ZeroGPU). HF pins gradio + spaces on the builder — do not constrain
+# gradio here (their image installs gradio==6.x). `chumpy` + `gvhmr` bootstrap in app.py.
 numpy>=1.26
 setuptools
 wheel
-gradio>=4,<6
-spaces
