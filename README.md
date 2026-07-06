@@ -60,6 +60,37 @@ Prefer not to install? Try the upstream-hosted
 [Colab](https://colab.research.google.com/drive/1N9WSchizHv2bfQqkE9Wuiegw_OT7mtGj?usp=sharing) or
 [HuggingFace Space](https://huggingface.co/spaces/LittleFrog/GVHMR).
 
+## Python library
+
+GVHMR ships a HuggingFace-style Python API (in `gvhmr/inference/`) over the exact same pipeline as the
+CLI — same code paths, byte-identical results, but a clean object you can loop over videos with.
+
+```bash
+pip install "gvhmr[preproc]"    # base + preprocessing (add cu124/cu126/cu128 on Linux+CUDA; macOS = MPS)
+gvhmr auth smpl                 # one-time: your MPI login, to fetch the gated SMPL/SMPL-X body models
+```
+
+```python
+import gvhmr
+
+# one-liner (caches a default pipeline; a loop of videos loads weights once)
+result = gvhmr.recover("dance.mp4")
+
+# or load once, reuse across videos
+pipe = gvhmr.pipeline("human-motion-recovery", device="cuda")
+result = pipe("dance.mp4", static_camera=True, flip_test=True)
+
+result.smpl_params_world      # world-frame SMPL params (global_orient/body_pose/betas/transl)
+result.joints_world           # (L, 24, 3) world-frame joints
+result.render("overlay.mp4")  # in-cam ∥ world overlay video
+result.save_npz("dance.npz")  # portable SMPL params + intrinsics
+```
+
+Body models are registration-gated by MPI and **never redistributed** — `gvhmr auth smpl` (or
+`$SMPLX_USER`/`$SMPLX_PW`) fetches them from the official source with *your* account. There's also a
+tensor-level "power path" (`gvhmr.GVHMR.from_pretrained(...).predict(...)`) for your own preprocessing,
+and `save_pretrained` / `push_to_hub` for sharing. Full guide: [docs/LIBRARY.md](docs/LIBRARY.md).
+
 ## Usage
 
 The `gvhmr` command (Typer + Rich) is the main entry point — `gvhmr --help` for the full menu. (Below,

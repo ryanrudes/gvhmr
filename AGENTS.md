@@ -137,6 +137,25 @@ the packs (HF mirror `camenduru/GVHMR`) into those roots; `gvhmr demo` auto-fetc
 reads the config `[models]` defaults; `gvhmr info` / `gvhmr config show` show what's present + where. Body
 models are registration-gated (can't auto-download — the tooling prints the sign-up + target path).
 
+## Python library (`gvhmr/inference/`)
+
+A HuggingFace-style API over the demo pipeline, re-exported at the top level and **lazy-loaded** via
+`gvhmr/__init__.py::__getattr__` (so `import gvhmr` stays torch-free). It **reuses the exact `gvhmr demo`
+code paths** (`gvhmr/cli/demo.py`: `build_demo_cfg`/`run_preprocess`/`load_data_dict`/`recover_motion`/
+`_render`) — behaviour-preserving, so `tests/test_golden_inference.py` guards it. Surface:
+`gvhmr.pipeline(task, *, model, device)` (task aliases in `pipelines.TASKS`) → `GVHMRPipeline`;
+`gvhmr.recover(video, **call_kwargs)` one-liner (caches a pipeline per `(model, device)`);
+`gvhmr.GVHMR`/`GVHMRPipeline`/`MotionResult`. `GVHMRPipeline.__call__(video, *, static_camera, camera,
+detector/pose2d/backbone, f_mm, flip_test, world_from_incam, render, output_dir, recipe, set_overrides,
+progress, …)` returns a `MotionResult` (`result.py`) — `smpl_params_world`/`_camera`, `intrinsics`, and
+**lazy** `vertices_*`/`joints_*`/`faces` (need body models via `_smpl.py` → `smplx2smpl` map + J
+regressor, byte-identical to the renderer); `.save()`/`.save_npz()`/`.render(view=…)`. The "power path"
+`GVHMR.from_pretrained(...).predict(data, …)` is tensor-level (bring-your-own preproc). Hub I/O in
+`hub.py` (`DEFAULT_REPO=ryanrudes/gvhmr`, mirror fallback `camenduru/GVHMR`) — checkpoints only. **Body
+models are never re-hosted**: gated MPI SMPL/SMPL-X fetched per-user via `gvhmr auth smpl` / `$SMPLX_USER`
+/`$SMPLX_PW` (`utils/mpi_download.py`, `cli/hubcmd.py`). Publish: `gvhmr publish-hub`/`publish-space`.
+Full guide `docs/LIBRARY.md`.
+
 ## Device / MPS
 
 Never hard-code `.cuda()`. Use `gvhmr/utils/device.py`:
