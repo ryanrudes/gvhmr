@@ -21,11 +21,18 @@ the left, world on the right) plus an `.npz` file containing the recovered SMPL 
 camera backend (`simplevo`, `dust3r`, `vggt`) for moving cameras, or check *Static camera* for
 a fixed viewpoint.
 
-> **Space owners:** the body models are registration-gated and auto-fetched from MPI at run time.
-> **SMPL and SMPL-X are separate registrations**, each with its own login. Set the `SMPLX_USER` /
-> `SMPLX_PW` repo **Secrets** from your [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de) login
-> (required for motion recovery) and, to enable the mesh-overlay video, the `SMPL_USER` / `SMPL_PW`
-> Secrets from a *separate* [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de) login. A **GPU** is
-> strongly recommended — CPU inference on a short clip can take many minutes.
+> **Space owners:** the body models are registration-gated and **never bundled**. GVHMR auto-fetches
+> them on first run (mirror first, then MPI). **SMPL and SMPL-X are separate MPI registrations.**
+>
+> **Recommended — private mirror** (no MPI login in the Space runtime): on your laptop, register at
+> [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de) + [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de),
+> run `gvhmr auth smpl`, then `gvhmr body-models push you/gvhmr-body-models` to a **private** HF repo.
+> Set Space **Secrets**: `GVHMR_BODY_MODELS_MIRROR=you/gvhmr-body-models` and `HF_TOKEN` (read access).
+>
+> **Alternative — MPI at runtime:** set `SMPLX_USER` / `SMPLX_PW` (required) and, for mesh overlays,
+> `SMPL_USER` / `SMPL_PW` from separate [SMPL-X](https://smpl-x.is.tue.mpg.de) /
+> [SMPL](https://smpl.is.tue.mpg.de) logins.
+>
+> A **GPU** is strongly recommended — CPU inference on a short clip can take many minutes.
 
 Source, documentation, and the full CLI: <https://github.com/ryanrudes/gvhmr>.

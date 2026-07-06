@@ -190,17 +190,53 @@ gitignored: asset locations + default model versions + the managed env); `$GVHMR
 override it for CI/one-offs. See [docs/CONFIGURATION.md](CONFIGURATION.md). Source: the HuggingFace
 mirror [`camenduru/GVHMR`](https://huggingface.co/camenduru/GVHMR) (resumable, checksummed).
 
-**Body models are registration-gated** and can't be auto-fetched — sign up for
-[SMPL](https://smpl.is.tue.mpg.de/) (rendering) + [SMPL-X](https://smpl-x.is.tue.mpg.de/) (motion
-recovery), then place them under `$GVHMR_BODY_MODELS` (default `inputs/checkpoints/body_models/`):
+### Body models (registration-gated)
+
+SMPL/SMPL-X are **registration-gated by MPI** and **never bundled or re-hosted** — only the GVHMR
+checkpoints come from the Hub. **SMPL and SMPL-X are separate registrations** (separate logins; often
+different passwords). SMPL-X is required for motion recovery; SMPL is only needed for mesh-overlay
+rendering.
+
+Default location: `$GVHMR_BODY_MODELS` → `inputs/checkpoints/body_models/`:
 
 ```
 body_models/
-├── smplx/SMPLX_{GENDER}.npz
-└── smpl/SMPL_{GENDER}.pkl
+├── smplx/SMPLX_{GENDER}.npz    # motion recovery (SMPL-X registration)
+└── smpl/SMPL_{GENDER}.pkl      # mesh rendering (SMPL registration)
 ```
 
-`gvhmr download` prints these instructions (with the resolved target path) whenever they're missing.
+`gvhmr demo`, `gvhmr eval`, and the Python API call `ensure_body_models()` before loading the model.
+It tries sources in order — **private mirror → MPI login → error** — and fetches only what's missing.
+
+**First machine** — register, then fetch:
+
+```bash
+gvhmr auth smpl                 # prompts for each MPI account; saves creds (0600) + downloads now
+# or, for CI/containers:
+export SMPLX_USER=... SMPLX_PW=...    # SMPL-X (required)
+export SMPL_USER=...  SMPL_PW=...     # SMPL (rendering only; may differ)
+```
+
+**Later machines** — reuse your own copy via a **private** HF repo (not redistribution; the repo is
+yours, kept private, under your MPI license):
+
+```bash
+gvhmr body-models push you/gvhmr-body-models   # once: upload this machine's copy + record the repo
+gvhmr body-models pull                         # on another box: fast hf_hub_download, no MPI login
+# or set the mirror without pushing:
+gvhmr config set body_models_mirror you/gvhmr-body-models
+export GVHMR_BODY_MODELS_MIRROR=you/gvhmr-body-models   # env override (CI/Spaces)
+export HF_TOKEN=...                                      # read access to your private repo
+```
+
+Inference/demo also auto-pull from the mirror on first run when it's configured — `pull` is optional.
+If the mirror is missing a file, GVHMR falls back to MPI credentials automatically.
+
+**Manual placement** still works: sign up at the links above and copy the files into the tree, or point
+`$GVHMR_BODY_MODELS` at an existing install. `gvhmr info` shows what's present; `gvhmr download` prints
+the layout when files are missing.
+
+Pip/API details: [docs/LIBRARY.md](LIBRARY.md#body-models--gvhmr-auth-smpl).
 
 **Training/eval data packs** (the `hmr4d_support` bundles) are on the same mirror:
 
@@ -227,9 +263,11 @@ DPVO) you don't re-pass gets pruned. Run `gvhmr env sync` to restore the recorde
 have the `cu128` wheel, which dropped those GPU architectures — re-sync with `--extra cu126` (see the
 CUDA section).
 
-**Rendering skipped.** The overlay renderer needs the registration-gated **SMPL** body model
-(`smpl/SMPL_NEUTRAL.pkl`) and a working GL context; headless GPU nodes fall back to EGL automatically.
-`gvhmr info` shows exactly which piece is missing. pytorch3d is only the last-resort fallback.
+**Rendering skipped.** Motion recovery only needs **SMPL-X**; the overlay renderer also needs the
+registration-gated **SMPL** body model (`smpl/SMPL_NEUTRAL.pkl`). Run `gvhmr auth smpl` (or configure a
+private mirror — see [Body models](#body-models-registration-gated) above) and check `gvhmr info`. A
+working GL context is also required; headless GPU nodes fall back to EGL automatically. pytorch3d is only
+the last-resort fallback.
 
 **`CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate` on download (HPC/clusters).**
 Some login shells export a **misconfigured** `SSL_CERT_DIR` (or `SSL_CERT_FILE`) — e.g. `SSL_CERT_DIR`

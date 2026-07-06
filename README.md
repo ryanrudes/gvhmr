@@ -46,9 +46,13 @@ From then on you interact only with the `gvhmr` CLI (via `bin/gvhmr`, or `gvhmr`
 `bin/gvhmr env sync` re-applies the recorded environment if it ever drifts. Two notes, and everything
 else just works:
 
-- **Body models are registration-gated** (their license forbids redistribution): sign up at
-  [SMPL](https://smpl.is.tue.mpg.de/) and [SMPL-X](https://smpl-x.is.tue.mpg.de/), then
-  `bin/gvhmr download` prints exactly where to put the files.
+- **Body models are registration-gated** (their license forbids redistribution): register at
+  [SMPL-X](https://smpl-x.is.tue.mpg.de/) (required for motion recovery) and
+  [SMPL](https://smpl.is.tue.mpg.de/) (mesh rendering), then run `bin/gvhmr auth smpl` once — it
+  prompts for each MPI account separately and auto-fetches the files. On a second machine, push your
+  copy to a **private** HF repo (`gvhmr body-models push …`) and pull from there instead of re-logging
+  in — see [docs/INSTALL.md](docs/INSTALL.md#body-models-registration-gated) (CLI) or
+  [docs/LIBRARY.md](docs/LIBRARY.md#body-models--gvhmr-auth-smpl) (pip/API).
 - On **Linux + NVIDIA**, torch must match your CUDA driver — `scripts/install.sh` picks the right build
   for you; if you sync manually, see [docs/INSTALL.md](docs/INSTALL.md#cuda--gpu-linux). macOS needs
   nothing special.
@@ -86,12 +90,14 @@ result.render("overlay.mp4")  # in-cam ∥ world overlay video
 result.save_npz("dance.npz")  # portable SMPL params + intrinsics
 ```
 
-Body models are registration-gated by MPI and **never redistributed** — `gvhmr auth smpl` fetches them
-from the official source with *your own* account. SMPL and SMPL-X are **separate registrations**: SMPL-X
-(`$SMPLX_USER`/`$SMPLX_PW`) powers motion recovery, and SMPL (`$SMPL_USER`/`$SMPL_PW`, a distinct login)
-is needed only for mesh rendering. There's also a tensor-level "power path"
-(`gvhmr.GVHMR.from_pretrained(...).predict(...)`) for your own preprocessing, and `save_pretrained` /
-`push_to_hub` for sharing. Full guide: [docs/LIBRARY.md](docs/LIBRARY.md).
+Body models are registration-gated by MPI and **never redistributed**. On a **new machine**, register at
+[SMPL-X](https://smpl-x.is.tue.mpg.de/) + [SMPL](https://smpl.is.tue.mpg.de/) (separate accounts), then
+`gvhmr auth smpl` — or set `$SMPLX_USER`/`$SMPLX_PW` and optionally `$SMPL_USER`/`$SMPL_PW` for
+CI/containers. Inference auto-fetches on first use (mirror first, then MPI). Already set up elsewhere?
+`gvhmr body-models push you/repo` once, then `gvhmr body-models pull` (or `$GVHMR_BODY_MODELS_MIRROR` +
+`HF_TOKEN`) on every new box — no MPI login in the loop. Missing SMPL still runs motion recovery; only
+overlay rendering is skipped. Tensor-level API: `gvhmr.GVHMR.from_pretrained(...).predict(...)`.
+Full guide: [docs/LIBRARY.md](docs/LIBRARY.md).
 
 ## Usage
 
@@ -187,6 +193,7 @@ The test suite is a CPU/MPS characterization net — no GPU, checkpoints, or dat
 | Doc | What's in it |
 |---|---|
 | [docs/INSTALL.md](docs/INSTALL.md) | full install guide: CUDA matrix, extras, weights, troubleshooting |
+| [docs/LIBRARY.md](docs/LIBRARY.md) | Python API (`recover`, `MotionResult`), body-model setup (MPI + private mirror) |
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | the config file + swapping/configuring every pipeline stage |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | code map: data flow, packages, the 151-dim latent |
 | [docs/TRAINING.md](docs/TRAINING.md) | training/eval on any device, dataset packs, backbone retrains |
