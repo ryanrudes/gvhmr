@@ -8,9 +8,11 @@ uv run gvhmr bench                       # auto device
 GVHMR_DEVICE=cpu uv run gvhmr bench       # force CPU
 ```
 
-All optimizations below are **behavior-preserving** — guarded by
+The original optimizations (next section) are **behavior-preserving** — guarded by
 `tests/test_golden_inference.py` (golden output fingerprint from the released
-checkpoint + CPU determinism + CPU/MPS parity).
+checkpoint + CPU determinism + CPU/MPS parity). The later **2026-07 speedup pass**
+is **accuracy-first, not all byte-identical**: its accuracy-sensitive defaults (bf16)
+are `gvhmr eval`-certified, and the one real trade (flip-test off) is opt-in `--fast`.
 
 ## Optimizations applied
 
@@ -22,6 +24,29 @@ checkpoint + CPU determinism + CPU/MPS parity).
 
 Combined: **~205 → ~155 ms/call at L=256 on CPU (≈24% faster)**, with the model
 inference running **~50× realtime** on CPU (8.5 s of video in ~170 ms).
+
+## The 2026-07 speedup pass (measured on RTX 6000 Ada, min-of-N)
+
+Priority: **accuracy first, then maximum speed under that constraint.** Preproc (two ViT-Huge models)
+is ~85-95% of a run; the network `predict` is small. Everything ran fp32 with tensor cores idle. The
+accuracy-safe wins are **on by default**; the one real accuracy trade (ViTPose flip-test off) is opt-in
+via `--fast` / `--recipe fast`.
+
+| Change | Speedup | Numerics / accuracy |
+|---|---|---|
+| Network `predict` on **CPU** (`device.predict_device()`, `$GVHMR_PREDICT_DEVICE`) | ~7-9× on predict (launch-bound) | golden-byte-identical |
+| **TF32 + cudnn.benchmark** in `get_device()` (`$GVHMR_DISABLE_TF32`) | 2.7× on fp32 ViT matmul | negligible (≤~1e-3), CUDA-only |
+| **bf16 autocast** on ViTPose + HMR2 (`$GVHMR_PREPROC_FP32` to disable) | HMR2 254→64ms (4.0×), ViTPose 252→57ms (4.4×) | feature 1.6% rel, kp2d 0.02px; eval-certified |
+| **SDPA/Flash attention** in the two vendored ViTs | 1.1-1.3× (bf16) | fp32 max\|Δ\|≤2e-6 |
+| **skip-init + mmap** model loading | HMR2 4.9s→0.35s, ViTPose ~5s→0.42s (~13×) | every param bit-identical |
+| **Resident-model cache** (`preproc/base.py`, `$GVHMR_NO_MODEL_CACHE`) | −13s per extra clip (folder/library/Space) | identical |
+| **SimpleVO ⇄ GPU overlap** (`$GVHMR_NO_VO_OVERLAP`) | hides the CPU camera stage | identical |
+| **Staging re-encode skip** (~30fps upright → symlink), x264 veryfast, cached probe | −1 decode+encode | reads original pixels |
+| ViTPose **flip-test off** — OPT-IN `--fast` only | 2.2× on 2D-pose | real train/test trade — not a default |
+
+Net: **~3-4× end-to-end on a long clip** (YOLO, still fp32-CNN, becomes the bottleneck), more on short
+clips where the ~13× load win dominates. Retrain-gated levers (faster default detector, RTMPose, fused
+single-ViT, TensorRT) are opt-in / future work.
 
 ## Verified end-to-end on Apple Silicon
 
