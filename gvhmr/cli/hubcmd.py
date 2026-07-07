@@ -271,20 +271,18 @@ def publish_space(
         console.print(f"[err]Space folder not found:[/] {space_dir}")
         raise typer.Exit(1)
     url = hub.publish_space(space_id, space_dir, token=token)
-    # Belt-and-suspenders SSR-off: app.py already passes launch(ssr_mode=False) (the authoritative fix —
-    # its launch() runs on HF), and this env var is a fallback. Both stop the browser uploading inputs to
-    # the HF Xet CDN, which gradio then can't re-fetch server-side (403). Restart so the new app + var
-    # apply on the SAME container — otherwise the push-triggered rebuild can briefly run pre-variable.
+    # SSR-off fallback. The authoritative fix is app.py's launch(ssr_mode=False) (its launch() runs on
+    # HF); this env var is belt-and-suspenders. Both stop the browser uploading inputs to the HF Xet CDN,
+    # which gradio then can't re-fetch server-side (403). The file push above auto-triggers a rebuild +
+    # restart, so the new app + var take effect without an explicit restart_space (which needs a broader
+    # token scope than the cached login usually has).
     try:
         from huggingface_hub import HfApi
 
         from gvhmr.utils.hf_token import resolve_hf_token
 
-        api = HfApi(token=resolve_hf_token(token))
-        api.add_space_variable(space_id, "GRADIO_SSR_MODE", "false")
+        HfApi(token=resolve_hf_token(token)).add_space_variable(space_id, "GRADIO_SSR_MODE", "false")
         console.print("[ok]Space variable[/] GRADIO_SSR_MODE=false (fallback; app forces ssr_mode=False)")
-        api.restart_space(space_id)
-        console.print("[ok]Restarted Space[/] so the new app + settings take effect")
     except Exception as exc:  # noqa: BLE001
-        console.print(f"[warn]Could not set GRADIO_SSR_MODE / restart[/]: {exc}")
-    console.print(f"[ok]Space published[/] → [muted]{url}[/]")
+        console.print(f"[warn]Could not set GRADIO_SSR_MODE[/]: {exc}")
+    console.print(f"[ok]Space published[/] → [muted]{url}[/] [dim](auto-rebuilding)[/]")
