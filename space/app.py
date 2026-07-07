@@ -429,12 +429,11 @@ def run(
             "upload the clip again, and click Recover motion immediately — do not reuse a stale tab."
         )
 
+    # Each pipeline stage drives its own 0→1 bar under a clean label (see gvhmr.utils.console): the
+    # Gradio bar fills to 100% and relabels per stage, instead of one global bar stuck at fractional
+    # values with low-level model names.
     def _hook(frac: float, desc: str) -> None:
         progress(max(0.0, min(1.0, frac)), desc=desc)
-
-    def _inference_hook(frac: float, desc: str) -> None:
-        # Reserve 0–5% for model load; pipeline reports 0–1 over the remaining 88%.
-        _hook(0.05 + max(0.0, min(1.0, frac)) * 0.88, desc)
 
     try:
         progress(0.0, desc="Preparing environment…")
@@ -450,7 +449,7 @@ def run(
             backbone=backbone,
         )
         with progress_hook(_hook):
-            with progress_phase(0.0, 0.05, "Loading model"):
+            with progress_phase("Loading model"):
                 try:
                     pipe = _get_pipeline(
                         model_repo=hub_repo,
@@ -474,14 +473,14 @@ def run(
                 flip_test=flip_test,
                 render=False,
                 progress=False,
-                progress_callback=_inference_hook,
+                progress_callback=_hook,
                 output_dir=str(out_dir),
             )
 
-            with progress_phase(0.93, 0.98, "Rendering overlay"):
+            with progress_phase("Rendering overlay"):
                 overlay_path = result.render(out_dir / "overlay_both.mp4", view="both")
 
-            with progress_phase(0.98, 0.995, "Saving SMPL params"):
+            with progress_phase("Saving SMPL params"):
                 npz_path = result.save_npz(out_dir / "motion.npz")
 
             summary = {

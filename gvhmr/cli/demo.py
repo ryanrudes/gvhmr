@@ -272,7 +272,7 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
     verbose = cfg.verbose
 
     # 1) bbox tracking (pluggable detector; default YOLO). Config group cfg.detector — swap with --detector.
-    with progress_phase(0.10, 0.22, "Tracking person"):
+    with progress_phase("Tracking person"):
         if not Path(paths.bbx).exists():
             tracker = make_detector(cfg.detector.name, **_ctor_kwargs(cfg.detector))
             bbx_xyxy = tracker.get_one_track(video_path).float()  # (L, 4)
@@ -288,7 +288,7 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
             save_video(draw_bbx_xyxy_on_image_batch(bbx_xyxy, video), cfg.paths.bbx_xyxy_video_overlay)
 
     # 2) 2D keypoints (pluggable 2D-pose; default ViTPose → COCO-17). Config group cfg.pose2d — swap with --pose2d.
-    with progress_phase(0.22, 0.38, "2D pose estimation"):
+    with progress_phase("2D pose estimation"):
         if not Path(paths.vitpose).exists():
             vitpose_extractor = make_pose2d(cfg.pose2d.name, **_ctor_kwargs(cfg.pose2d))
             vitpose = vitpose_extractor.extract(video_path, bbx_xys)
@@ -303,7 +303,7 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
 
     # 3) image features (pluggable backbone; default HMR2 ViT). Swapping it needs a retrain — see
     #    docs/EXTENSIBILITY.md Tier B. Config group cfg.backbone — swap with --backbone.
-    with progress_phase(0.38, 0.58, "Image features"):
+    with progress_phase("Image features"):
         if not Path(paths.vit_features).exists():
             extractor = make_backbone(cfg.backbone.name, **_ctor_kwargs(cfg.backbone))
             vit_features = extractor.extract_video_features(video_path, bbx_xys)
@@ -314,7 +314,7 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
 
     # 3b) flip-test: re-extract image features on the horizontally-flipped video (TTA)
     if flip_test:
-        with progress_phase(0.58, 0.64, "Flip-test features"):
+        with progress_phase("Flip-test features"):
             if not flip_feat_path(cfg).exists():
                 import numpy as np
 
@@ -335,7 +335,7 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
 
     # 4) camera (SimpleVO / DPVO / DUSt3R-SLAM), unless static. Config group cfg.camera — swap with --camera.
     if not static_cam:
-        with progress_phase(0.64, 0.80, "Camera motion"):
+        with progress_phase("Camera motion"):
             if not Path(paths.slam).exists():
                 cam = cfg.camera
                 if cam.name == "dust3r":

@@ -43,29 +43,21 @@ THEME = Theme(
 
 console = Console(theme=THEME, highlight=False)
 
-# Optional hook for UIs (e.g. Gradio ``gr.Progress``): maps Rich ``track()`` advances to a global 0–1 fraction.
+# Optional hook for UIs (e.g. Gradio ``gr.Progress``). Each ``progress_phase`` is one self-contained
+# stage: its bar runs 0→1 under a single clean label, so every stage visibly completes at 100% (rather
+# than a single global bar whose label flips between low-level model names at fractional values).
 _progress_hook: ContextVar[Callable[[float, str], None] | None] = ContextVar("_progress_hook", default=None)
-_progress_phase: ContextVar[tuple[float, float, str] | None] = ContextVar("_progress_phase", default=None)
+_progress_phase: ContextVar[str | None] = ContextVar("_progress_phase", default=None)
 
 
 def _notify_progress(local_frac: float, desc: str) -> None:
     hook = _progress_hook.get()
     if hook is None:
         return
-    phase = _progress_phase.get()
-    if phase is not None:
-        start, end, phase_desc = phase
-        frac = start + max(0.0, min(1.0, local_frac)) * (end - start)
-        hook(frac, desc or phase_desc)
-    else:
-        hook(max(0.0, min(1.0, local_frac)), desc)
-
-
-def _phase_end() -> None:
-    phase = _progress_phase.get()
-    if phase is not None and _progress_hook.get() is not None:
-        _, _, phase_desc = phase
-        _notify_progress(1.0, phase_desc)
+    # The active stage's label wins over the caller's low-level ``track()`` desc (e.g. show "Tracking
+    # person", not "YoloV8 Tracking"); the fraction is this stage's own 0→1 progress.
+    label = _progress_phase.get() or desc
+    hook(max(0.0, min(1.0, local_frac)), label)
 
 
 @contextlib.contextmanager
@@ -79,16 +71,19 @@ def progress_hook(callback: Callable[[float, str], None] | None):
 
 
 @contextlib.contextmanager
-def progress_phase(start: float, end: float, desc: str = ""):
-    """Map nested ``track()`` progress into the global ``[start, end]`` range for the active hook."""
-    token = _progress_phase.set((start, end, desc))
+def progress_phase(desc: str):
+    """One named pipeline stage: its ``track()`` advances drive a fresh 0→1 bar labelled ``desc``.
+
+    On enter the stage's bar is reset to 0; on exit it is snapped to 1.0 (so a stage that does its work
+    in one shot, with no ``track()`` loop, still reads as complete). Nesting is not expected — each stage
+    is flat — but a nested phase simply relabels until it exits.
+    """
+    token = _progress_phase.set(desc)
     try:
-        if _progress_hook.get() is not None:
-            _notify_progress(0.0, desc)
+        _notify_progress(0.0, desc)
         yield
     finally:
-        if _progress_hook.get() is not None:
-            _phase_end()
+        _notify_progress(1.0, desc)
         _progress_phase.reset(token)
 
 

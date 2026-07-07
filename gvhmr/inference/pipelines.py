@@ -121,8 +121,8 @@ class GVHMRPipeline:
             render_scale: overlay resolution fraction (0.5 default).
             recipe / set_overrides: a bundled config recipe and/or raw Hydra overrides (advanced).
             progress: show the Rich progress display (set False for quiet library use).
-            progress_callback: optional ``(fraction, description)`` hook for UIs (e.g. Gradio); when
-                set, ``track()`` advances are mapped into a global 0–1 range via :func:`progress_phase`.
+            progress_callback: optional ``(fraction, description)`` hook for UIs (e.g. Gradio); called
+                as ``(0..1, stage_label)`` — each stage (:func:`progress_phase`) drives its own 0→1 bar.
         """
         from gvhmr.cli.demo import (
             build_demo_cfg,
@@ -160,7 +160,7 @@ class GVHMRPipeline:
         config_overrides += list(set_overrides or [])
 
         with _maybe_quiet(not progress), progress_hook(progress_callback):
-            with progress_phase(0.0, 0.06, "Preparing video"):
+            with progress_phase("Preparing video"):
                 cfg = build_demo_cfg(
                     video,
                     output_root=output_root,
@@ -174,17 +174,17 @@ class GVHMRPipeline:
             cam_name = cfg.camera.name
             resolved_flip = cfg.flip_test
 
-            with progress_phase(0.06, 0.10, "Fetching assets"):
+            with progress_phase("Fetching assets"):
                 ensure_deps(cfg)
                 ensure_assets(cam_name, want_render=render, repo=self.model.repo_id)
 
             run_preprocess(cfg, flip_test=resolved_flip)
 
-            with progress_phase(0.80, 0.82, "Loading motion data"):
+            with progress_phase("Loading motion data"):
                 data = load_data_dict(cfg, flip_test=resolved_flip)
 
             self.model.to(self.device).eval()
-            with progress_phase(0.82, 0.92, "Recovering motion"):
+            with progress_phase("Recovering motion"):
                 pred = recover_motion(
                     self.model.pl,
                     data,
@@ -210,7 +210,7 @@ class GVHMRPipeline:
                 _cfg=cfg,
             )
             if render:
-                with progress_phase(0.92, 1.0, "Rendering overlay"):
+                with progress_phase("Rendering overlay"):
                     result.render(render_scale=render_scale)
         return result
 

@@ -1,4 +1,5 @@
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -25,7 +26,10 @@ class Tracker:
 
     def __init__(self, ckpt=None, conf: float = 0.5) -> None:
         # https://docs.ultralytics.com/modes/predict/
-        self.yolo = YOLO(ckpt or DEFAULT_YOLO_CKPT)
+        ckpt = ckpt or DEFAULT_YOLO_CKPT
+        # Progress label from the actual checkpoint (e.g. "yolo11x") — don't hard-code a version.
+        self.name = Path(str(ckpt)).stem or "yolo"
+        self.yolo = YOLO(ckpt)
         self.conf = conf  # default 0.25, wham/gvhmr 0.5
         # ultralytics device convention: 0 for cuda:0, else the type string ("mps"/"cpu").
         device = get_device()
@@ -43,7 +47,7 @@ class Tracker:
         results = self.yolo.track(video_path, **cfg)
         # frame-by-frame tracking
         track_history = []
-        for result in track(results, total=get_video_lwh(video_path)[0], desc="YoloV8 Tracking"):
+        for result in track(results, total=get_video_lwh(video_path)[0], desc=f"Tracking ({self.name})"):
             if result.boxes.id is not None:
                 track_ids = result.boxes.id.int().cpu().tolist()  # (N)
                 bbx_xyxy = result.boxes.xyxy.cpu().numpy()  # (N, 4)
