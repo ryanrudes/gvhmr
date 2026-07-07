@@ -78,10 +78,10 @@ overlay video and an `.npz` of the SMPL parameters.
 *World-Grounded Human Motion Recovery via Gravity-View Coordinates* (SIGGRAPH Asia 2024).
 Source & docs: [{REPO_URL}]({REPO_URL}).
 
-> Runs on **ZeroGPU** when the Space owner has selected that hardware — much faster than CPU.
-> **Each inference call gets 60 seconds of GPU time on the free tier** (HF default for
-> `@spaces.GPU`); use short clips (~10–15 s), *Static camera*, and skip flip-test when possible.
-> Space owners on PRO can raise the cap with a `ZERO_GPU_DURATION` Secret (seconds).
+> **ZeroGPU** (Space owner selects that hardware) is much faster; **CPU basic** also works but
+> is slow — keep clips short (~10–15 s), use *Static camera*, and skip flip-test when possible.
+> On ZeroGPU, each inference call gets **60 seconds of GPU time** on the free tier (HF default for
+> `@spaces.GPU`); PRO owners can raise the cap with a `ZERO_GPU_DURATION` Secret (seconds).
 """
 
 
@@ -155,6 +155,22 @@ _PIPES: dict[tuple, Any] = {}
 _PIPE_ERRORS: dict[tuple, str] = {}
 
 
+def _resolve_device() -> str:
+    """Honour ``GVHMR_DEVICE``; otherwise cuda → mps → cpu (never hard-code cuda).
+
+    Called inside ``@spaces.GPU`` after allocation on ZeroGPU, or on CPU-only hardware when
+    no NVIDIA driver is present."""
+    if env := os.getenv("GVHMR_DEVICE", "").strip():
+        return env
+    import torch
+
+    if torch.cuda.is_available():
+        return "cuda"
+    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def _pipeline_key(
     model_repo: str,
     revision: str,
@@ -162,9 +178,8 @@ def _pipeline_key(
     pose2d: str,
     backbone: str,
 ) -> tuple:
-    device = os.getenv("GVHMR_DEVICE", "cuda")
     rev = (revision or "").strip()
-    return (model_repo.strip(), rev, detector, pose2d, backbone, device)
+    return (model_repo.strip(), rev, detector, pose2d, backbone, _resolve_device())
 
 
 def _get_pipeline(
@@ -198,8 +213,9 @@ def _get_pipeline(
         _PIPES[key] = pipe
         return pipe
     except Exception as exc:  # noqa: BLE001 — surface any failure to the UI, keep it up
-        msg = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+        msg = f"{type(exc).__name__}: {exc}"
         _PIPE_ERRORS[key] = msg
+        traceback.print_exc()
         raise RuntimeError(msg) from exc
 
 
@@ -293,62 +309,70 @@ def run(
     detector: str,
     pose2d: str,
     backbone: str,
-    progress: gr.Progress = gr.Progress(),  # noqa: B008 — gradio's documented DI pattern
+    progress: gr.Progress = gr.Progress(track_tqdm=True),  # noqa: B008
 ) -> tuple[str, str, dict]:
     """Run GVHMR on the uploaded video and return (overlay_mp4, npz_path, summary)."""
+    from gvhmr.utils.console import progress_hook, progress_phase
+
     video_path = _video_path(video_path)
     if not video_path:
         raise gr.Error("Please upload a video first.")
 
-    try:
-        pipe = _get_pipeline(
-            model_repo=hub_repo,
-            revision=hub_revision,
-            detector=detector,
-            pose2d=pose2d,
-            backbone=backbone,
-        )
-    except RuntimeError as exc:
-        raise gr.Error(
-            f"The GVHMR pipeline failed to load, so inference is unavailable. Details: {exc}"
-        ) from exc
-
-    camera = None if static_camera else camera_backend
-    out_dir = Path(tempfile.mkdtemp(prefix="gvhmr_"))
-
     def _hook(frac: float, desc: str) -> None:
         progress(max(0.0, min(1.0, frac)), desc=desc)
 
+    def _inference_hook(frac: float, desc: str) -> None:
+        # Reserve 0–5% for model load; pipeline reports 0–1 over the remaining 88%.
+        _hook(0.05 + max(0.0, min(1.0, frac)) * 0.88, desc)
+
     try:
         progress(0.0, desc="Starting…")
-        result = pipe(
-            video_path,
-            static_camera=static_camera,
-            camera=camera,
-            flip_test=flip_test,
-            render=False,
-            progress=False,
-            progress_callback=_hook,
-            output_dir=str(out_dir),
-        )
+        with progress_hook(_hook):
+            with progress_phase(0.0, 0.05, "Loading model"):
+                try:
+                    pipe = _get_pipeline(
+                        model_repo=hub_repo,
+                        revision=hub_revision,
+                        detector=detector,
+                        pose2d=pose2d,
+                        backbone=backbone,
+                    )
+                except RuntimeError as exc:
+                    raise gr.Error(
+                        f"The GVHMR pipeline failed to load, so inference is unavailable. Details: {exc}"
+                    ) from exc
 
-        progress(0.93, desc="Rendering overlay…")
-        overlay_path = result.render(out_dir / "overlay_both.mp4", view="both")
+            camera = None if static_camera else camera_backend
+            out_dir = Path(tempfile.mkdtemp(prefix="gvhmr_"))
 
-        progress(0.98, desc="Saving SMPL params…")
-        npz_path = result.save_npz(out_dir / "motion.npz")
+            result = pipe(
+                video_path,
+                static_camera=static_camera,
+                camera=camera,
+                flip_test=flip_test,
+                render=False,
+                progress=False,
+                progress_callback=_inference_hook,
+                output_dir=str(out_dir),
+            )
 
-        summary = {
-            "frames": result.num_frames,
-            "fps": result.fps,
-            "camera": result.camera,
-            "seconds_of_motion": _seconds_of_motion(result.num_frames, result.fps),
-            "weights_repo": hub_repo.strip(),
-            "weights_revision": (hub_revision or "").strip() or "default",
-            "detector": detector,
-            "pose2d": pose2d,
-            "backbone": backbone,
-        }
+            with progress_phase(0.93, 0.98, "Rendering overlay"):
+                overlay_path = result.render(out_dir / "overlay_both.mp4", view="both")
+
+            with progress_phase(0.98, 0.995, "Saving SMPL params"):
+                npz_path = result.save_npz(out_dir / "motion.npz")
+
+            summary = {
+                "frames": result.num_frames,
+                "fps": result.fps,
+                "camera": result.camera,
+                "seconds_of_motion": _seconds_of_motion(result.num_frames, result.fps),
+                "weights_repo": hub_repo.strip(),
+                "weights_revision": (hub_revision or "").strip() or "default",
+                "detector": detector,
+                "pose2d": pose2d,
+                "backbone": backbone,
+            }
         progress(1.0, desc="Done")
         return str(overlay_path), str(npz_path), summary
 
@@ -443,6 +467,7 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
             backbone_in,
         ],
         outputs=[overlay_out, npz_out, summary_out],
+        show_progress="full",
     )
 
 

@@ -61,6 +61,13 @@ def _notify_progress(local_frac: float, desc: str) -> None:
         hook(max(0.0, min(1.0, local_frac)), desc)
 
 
+def _phase_end() -> None:
+    phase = _progress_phase.get()
+    if phase is not None and _progress_hook.get() is not None:
+        _, _, phase_desc = phase
+        _notify_progress(1.0, phase_desc)
+
+
 @contextlib.contextmanager
 def progress_hook(callback: Callable[[float, str], None] | None):
     """While active, forward ``track()`` progress to ``callback(fraction, description)``."""
@@ -80,6 +87,8 @@ def progress_phase(start: float, end: float, desc: str = ""):
             _notify_progress(0.0, desc)
         yield
     finally:
+        if _progress_hook.get() is not None:
+            _phase_end()
         _progress_phase.reset(token)
 
 
@@ -130,6 +139,18 @@ def track(
             total = len(iterable)  # type: ignore[arg-type]
         except TypeError:
             total = None
+
+    # UI hook path (Gradio etc.): skip Rich — forward every step to the callback only.
+    if _progress_hook.get() is not None:
+        if total:
+            for i, item in enumerate(iterable):
+                yield item
+                _notify_progress((i + 1) / total, label)
+        else:
+            for item in iterable:
+                yield item
+        return
+
     with progress(transient=not leave) as prog:
         task_id = prog.add_task(label, total=total)
         if _progress_hook.get() is not None:
@@ -146,6 +167,8 @@ def track(
 
 def status(message: str):
     """An indeterminate spinner for a stage whose length is unknown (context manager)."""
+    if _progress_hook.get() is not None:
+        _notify_progress(0.0, message)
     return console.status(f"[stage]{message}", spinner="dots")
 
 
