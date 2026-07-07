@@ -10,6 +10,10 @@ from types import ModuleType
 import pytest
 import torch
 
+# space/app.py does an unconditional `import gradio as gr`; gradio ships only in the `app` extra, which
+# CI (dev + cpu) doesn't install. Skip the whole module rather than erroring at collection time there.
+pytest.importorskip("gradio")
+
 SPACE_DIR = Path(__file__).resolve().parents[1] / "space"
 _APP_MOD = None
 
@@ -95,6 +99,9 @@ def test_preflight_rejects_unavailable_camera() -> None:
 
 
 def test_preflight_static_skips_camera_dep() -> None:
+    # A clean static-camera run must not raise — but that requires the `preproc` stack (yolo→ultralytics)
+    # to actually be importable, which CI's dev+cpu sync doesn't provide. Skip when it's absent.
+    pytest.importorskip("ultralytics")
     app = _load_space_app()
     app._preflight_stages(
         static_camera=True,

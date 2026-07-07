@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+import pytest
 
 from gvhmr.utils.hf_token import resolve_hf_token
 
@@ -25,5 +25,9 @@ def test_env_precedence(monkeypatch):
 def test_none_when_unset(monkeypatch):
     for key in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HUGGINGFACE_HUB_TOKEN"):
         monkeypatch.delenv(key, raising=False)
-    # get_token() may return a cached login on dev machines — only assert env path is empty.
-    assert os.environ.get("HF_TOKEN") is None
+    # Stub the cached-login lookup (a dev machine may have a real `huggingface-cli login`) so the
+    # "nothing configured" path actually resolves to None rather than a machine-dependent token.
+    hub = pytest.importorskip("huggingface_hub")
+    monkeypatch.setattr(hub, "get_token", lambda: None)
+    assert resolve_hf_token(None) is None
+    assert resolve_hf_token("") is None  # empty string is not a valid token → falls through
