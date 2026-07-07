@@ -27,8 +27,8 @@ source instead. Any necessary edit is tagged `# [GVHMR vendor patch]` and docume
 | Path | Upstream | Version | License | Policy |
 |---|---|---|---|---|
 | `gvhmr/utils/_vendor/pytorch3d/` | [PyTorch3D](https://github.com/facebookresearch/pytorch3d) | `v0.7.6` | BSD-3 | byte-identical copies of `rotation_conversions.py`, `so3.py`, `math.py`; **only import-path patches**. Re-exported by the `gvhmr.utils.geo.rotations` facade. |
-| `gvhmr/network/hmr2/` | [4D-Humans / HMR2.0](https://github.com/shubham-goel/4D-Humans) (+ MMLab ViT) | — | per upstream | frozen ViT feature extractor (used as `f_imgseq` provider) |
-| `gvhmr/utils/preproc/vitpose_pytorch/` | [ViTPose](https://github.com/ViTAE-Transformer/ViTPose) | — | per upstream | frozen 2D-pose backbone |
+| `gvhmr/network/hmr2/` | [4D-Humans / HMR2.0](https://github.com/shubham-goel/4D-Humans) (+ MMLab ViT) | — | per upstream | frozen ViT feature extractor (used as `f_imgseq` provider); `vit.py` attention patched to fused SDPA (`F.scaled_dot_product_attention`, same math) |
+| `gvhmr/utils/preproc/vitpose_pytorch/` | [ViTPose](https://github.com/ViTAE-Transformer/ViTPose) | — | per upstream | frozen 2D-pose backbone; `backbones/vit.py` attention patched to fused SDPA (`F.scaled_dot_product_attention`, same math) |
 
 Each vendored dir carries its own `README`/`LICENSE` where applicable
 (e.g. `gvhmr/utils/_vendor/pytorch3d/README.md`).
