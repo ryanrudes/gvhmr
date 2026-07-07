@@ -54,5 +54,6 @@ Source, documentation, and the full CLI: <https://github.com/ryanrudes/gvhmr>.
 
 The Space UI exposes **Model settings** with every swappable stage preset from `gvhmr config`
 (detector / 2D-pose / backbone / camera + Hub weights repo/revision). Some choices need extras
-this Space does not install (`rtmpose`, `dpvo`, `dinov2` without a matching checkpoint). Space owners
+this Space does not install (`dpvo`, `dust3r`/`vggt`, `dinov2` without a matching checkpoint). `rtmpose`
+lazy-installs `rtmlib` + `onnxruntime` on first use. Space owners
 can set `GVHMR_HUB_REPO` / `GVHMR_HUB_REPO_OPTIONS` Secrets to pre-seed extra repo choices.

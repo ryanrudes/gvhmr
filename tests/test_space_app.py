@@ -103,3 +103,8 @@ def test_preflight_static_skips_camera_dep() -> None:
         pose2d="vitpose",
         backbone="hmr2",
     )
+
+
+def test_pose2d_choices_include_rtmpose() -> None:
+    app = _load_space_app()
+    assert "rtmpose" in app.POSE2D_CHOICES

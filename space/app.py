@@ -83,7 +83,7 @@ DETECTOR_CHOICES = [
     "yolov9s",
     "yolov9t",
 ]
-POSE2D_CHOICES = ["vitpose"]  # rtmpose needs gvhmr[rtmpose] — not installed on this Space
+POSE2D_CHOICES = ["vitpose", "rtmpose"]  # rtmpose: lazy-pip rtmlib+onnxruntime on first use
 BACKBONE_CHOICES = ["hmr2"]  # dinov2 needs a retrained checkpoint
 CAMERA_CHOICES = ["simplevo"]  # dpvo/dust3r/vggt are not set up on this Space
 
@@ -179,6 +179,22 @@ def _verify_preproc_imports() -> None:
             still.append(mod)
     if still:
         raise RuntimeError(f"preproc dependencies missing after bootstrap: {', '.join(still)}")
+
+
+def _ensure_pose2d_deps(pose2d: str) -> None:
+    """Lazy-install RTMPose extras (rtmlib + onnxruntime) when selected — keeps vitpose-only runs lighter."""
+    if pose2d != "rtmpose":
+        return
+    import importlib
+
+    try:
+        importlib.import_module("rtmlib")
+    except ImportError:
+        _pip_install("rtmlib", "onnxruntime>=1.16")
+        try:
+            importlib.import_module("rtmlib")
+        except ImportError as exc:
+            raise RuntimeError("RTMPose (rtmlib) failed to install — try again or use vitpose.") from exc
 
 
 _BOOTSTRAPPED = False
@@ -279,7 +295,8 @@ def _preflight_stages(*, static_camera: bool, camera: str, detector: str, pose2d
     from gvhmr.utils.preproc.base import missing_requirements
 
     if pose2d not in POSE2D_CHOICES:
-        raise gr.Error(f"2D pose '{pose2d}' is not available on this Space. Use vitpose.")
+        raise gr.Error(f"2D pose '{pose2d}' is not available on this Space. Use vitpose or rtmpose.")
+    _ensure_pose2d_deps(pose2d)
     if backbone not in BACKBONE_CHOICES:
         raise gr.Error(f"Backbone '{backbone}' is not available on this Space. Use hmr2.")
     if not static_camera and camera not in CAMERA_CHOICES:
@@ -537,7 +554,7 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
                     value="vitpose",
                     allow_custom_value=True,
                     label="2D pose",
-                    info="`rtmpose` needs the optional rtmlib extra (not installed here).",
+                    info="`rtmpose` (RTMPose-m via rtmlib/ONNX) auto-installs on first use; ONNX weights download then too.",
                 )
                 backbone_in = gr.Dropdown(
                     choices=BACKBONE_CHOICES,
