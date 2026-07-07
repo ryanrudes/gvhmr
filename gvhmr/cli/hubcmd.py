@@ -271,14 +271,20 @@ def publish_space(
         console.print(f"[err]Space folder not found:[/] {space_dir}")
         raise typer.Exit(1)
     url = hub.publish_space(space_id, space_dir, token=token)
-    # SSR re-fetches uploads via HTTP and often 403s on Spaces; HF ignores launch(ssr_mode=…).
+    # Belt-and-suspenders SSR-off: app.py already passes launch(ssr_mode=False) (the authoritative fix —
+    # its launch() runs on HF), and this env var is a fallback. Both stop the browser uploading inputs to
+    # the HF Xet CDN, which gradio then can't re-fetch server-side (403). Restart so the new app + var
+    # apply on the SAME container — otherwise the push-triggered rebuild can briefly run pre-variable.
     try:
         from huggingface_hub import HfApi
 
         from gvhmr.utils.hf_token import resolve_hf_token
 
-        HfApi(token=resolve_hf_token(token)).add_space_variable(space_id, "GRADIO_SSR_MODE", "false")
-        console.print("[ok]Space variable[/] GRADIO_SSR_MODE=false (disables SSR file re-fetch)")
+        api = HfApi(token=resolve_hf_token(token))
+        api.add_space_variable(space_id, "GRADIO_SSR_MODE", "false")
+        console.print("[ok]Space variable[/] GRADIO_SSR_MODE=false (fallback; app forces ssr_mode=False)")
+        api.restart_space(space_id)
+        console.print("[ok]Restarted Space[/] so the new app + settings take effect")
     except Exception as exc:  # noqa: BLE001
-        console.print(f"[warn]Could not set GRADIO_SSR_MODE[/]: {exc}")
+        console.print(f"[warn]Could not set GRADIO_SSR_MODE / restart[/]: {exc}")
     console.print(f"[ok]Space published[/] → [muted]{url}[/]")

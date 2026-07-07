@@ -608,8 +608,14 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
 
 
 if __name__ == "__main__":
+    # ssr_mode=False is load-bearing on HF Spaces: with SSR on, the browser uploads inputs to the HF Xet
+    # CDN and passes a signed URL; gradio then re-fetches it server-side via an *unauthenticated* SSRF-
+    # protected GET that 403s (`Failed to download file. Status code: 403`), so uploads never reach the
+    # pipeline. Forcing it off here makes uploads go to the Space's own /gradio_api/upload (a local path),
+    # deterministically — not reliant on the GRADIO_SSR_MODE env var applying before the container starts.
     demo.launch(
         server_name=os.getenv("GRADIO_SERVER_NAME", "0.0.0.0"),
         server_port=int(os.getenv("GRADIO_SERVER_PORT", "7860")),
         show_error=True,
+        ssr_mode=False,
     )

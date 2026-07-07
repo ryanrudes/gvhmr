@@ -37,9 +37,10 @@ scene-aware backends `dust3r`/`vggt` aren't set up on this Space — use the ful
 > image build (PEP 517 isolation). `app.py` installs `chumpy` with `--no-build-isolation`, then
 > `gvhmr[preproc]`, on the first inference request.
 >
-> **SSR / uploads:** Gradio 6 SSR re-fetches uploads over HTTP and often returns **403** on Spaces.
-> `gvhmr publish-space` sets Space variable **`GRADIO_SSR_MODE=false`** (HF ignores `launch(ssr_mode=…)`).
-> After changing it, republish or restart the Space so the runtime picks it up.
+> **SSR / uploads:** with Gradio SSR on, the browser uploads inputs to the HF Xet CDN and gradio then
+> re-fetches them server-side via an unauthenticated request that **403**s (`Failed to download file`).
+> `app.py` calls `launch(ssr_mode=False)` (its `launch()` runs on HF, so this is authoritative) and
+> `gvhmr publish-space` also sets `GRADIO_SSR_MODE=false` + restarts the Space as a fallback.
 >
 > **Body models (recommended — private mirror):** the gated SMPL/SMPL-X models aren't shipped. From your
 > laptop, register at [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de) +
