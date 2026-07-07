@@ -20,9 +20,9 @@ Coordinates* (SIGGRAPH Asia 2024).
 
 Upload a video of a person and the Space returns a side-by-side mesh overlay (in-camera on
 the left, world on the right) plus an `.npz` file containing the recovered SMPL parameters
-(`global_orient`, `body_pose`, `betas`, `transl`) for every frame. You can pick a scene-aware
-camera backend (`simplevo`, `dust3r`, `vggt`) for moving cameras, or check *Static camera* for
-a fixed viewpoint.
+(`global_orient`, `body_pose`, `betas`, `transl`) for every frame. Check *Static camera* for a
+fixed viewpoint, or uncheck it to use the `simplevo` camera backend for a moving camera. (The
+scene-aware backends `dust3r`/`vggt` aren't set up on this Space — use the full CLI for those.)
 
 > **Space owners:** this Space targets **ZeroGPU** (free shared GPU for visitors — you must select
 > the **ZeroGPU** hardware flavor under Space Settings; hosting ZeroGPU requires
@@ -40,6 +40,8 @@ a fixed viewpoint.
 > **SSR / uploads:** Gradio 6 SSR re-fetches uploads over HTTP and often returns **403** on Spaces.
 > `gvhmr publish-space` sets Space variable **`GRADIO_SSR_MODE=false`** (HF ignores `launch(ssr_mode=…)`).
 > After changing it, republish or restart the Space so the runtime picks it up.
+>
+> **Body models (recommended — private mirror):** the gated SMPL/SMPL-X models aren't shipped. From your
 > laptop, register at [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de) +
 > [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de), run `gvhmr auth smpl`, then
 > `gvhmr body-models push you/gvhmr-body-models`. Set Space **Secrets**:

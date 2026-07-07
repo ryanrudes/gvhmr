@@ -21,9 +21,11 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-# ZeroGPU: import `spaces` before any torch/CUDA import (HF requirement).
-import spaces
 import gradio as gr
+
+# ZeroGPU: `spaces` must be imported before any torch/CUDA import (HF requirement). gradio above is fine —
+# it doesn't import torch — and torch is only imported later, well after this line.
+import spaces
 
 
 def _patch_gradio_file_whitelist() -> None:
@@ -208,11 +210,24 @@ def _ensure_bootstrapped() -> None:
     _BOOTSTRAPPED = True
 
 
+def _startup_bootstrap() -> None:
+    """Best-effort dependency install at app *startup* (module import), not inside ``@spaces.GPU``.
+
+    ZeroGPU reservations are short (60 s on the free tier); running the multi-minute chumpy/gvhmr[preproc]
+    install here — once, before any request is GPU-scheduled — keeps that budget for the actual inference.
+    ``spaces`` is already imported (top of file), so importing torch during the install is allowed. On
+    failure we leave ``_BOOTSTRAPPED`` False so ``run`` retries in-request as a fallback.
+    """
+    try:
+        _ensure_bootstrapped()
+    except Exception:  # noqa: BLE001 — don't crash module import; run() will retry and surface a gr.Error
+        traceback.print_exc()
+
+
 # --------------------------------------------------------------------------------------
 # Pipeline cache: lazy load inside @spaces.GPU (keyed by hub repo + stage presets).
 # --------------------------------------------------------------------------------------
 _PIPES: dict[tuple, Any] = {}
-_PIPE_ERRORS: dict[tuple, str] = {}
 
 
 def _resolve_device() -> str:
@@ -265,8 +280,6 @@ def _get_pipeline(
     key = _pipeline_key(model_repo, revision, detector, pose2d, backbone)
     if key in _PIPES:
         return _PIPES[key]
-    if key in _PIPE_ERRORS:
-        raise RuntimeError(_PIPE_ERRORS[key])
     try:
         _ensure_bootstrapped()
         import gvhmr
@@ -283,11 +296,11 @@ def _get_pipeline(
         )
         _PIPES[key] = pipe
         return pipe
-    except Exception as exc:  # noqa: BLE001 — surface any failure to the UI, keep it up
-        msg = f"{type(exc).__name__}: {exc}"
-        _PIPE_ERRORS[key] = msg
+    except Exception as exc:  # noqa: BLE001 — surface to the UI but do NOT cache the failure:
+        # a transient first-call error (cold-bootstrap timeout, network blip, creds not yet set) must not
+        # permanently disable this combo — the next request retries from scratch.
         traceback.print_exc()
-        raise RuntimeError(msg) from exc
+        raise RuntimeError(f"{type(exc).__name__}: {exc}") from exc
 
 
 def _preflight_stages(*, static_camera: bool, camera: str, detector: str, pose2d: str, backbone: str) -> None:
@@ -316,20 +329,19 @@ def _preflight_stages(*, static_camera: bool, camera: str, detector: str, pose2d
 def _is_credentials_error(exc: Exception) -> bool:
     """Heuristic: does this exception look like missing gated-body-model credentials?"""
     text = f"{type(exc).__name__} {exc}".lower()
+    # Specific to the gated body-model flow. Deliberately NOT bare "401"/"403"/"mirror"/"permissionerror":
+    # a generic Hub 403 (rate limit, private checkpoint repo) is not a body-model creds problem, and
+    # mislabelling it "SMPL/SMPL-X are gated…" sends the user down the wrong fix.
     needles = (
         "smplx_user",
         "smplx_pw",
+        "smpl_user",
+        "smpl_pw",
         "body model",
         "body_model",
-        "credential",
-        "registration",
-        "mpi",
         "registration-gated",
         "smpl-x body model",
-        "mirror",
-        "401",
-        "403",
-        "permissionerror",
+        "is.tue.mpg.de",
     )
     return any(n in text for n in needles)
 
@@ -363,10 +375,13 @@ def _estimate_gpu_duration(
     *args,
     **kwargs,
 ) -> int:
-    """ZeroGPU queue budget — HF free tier defaults to 60 s per ``@spaces.GPU`` call."""
+    """ZeroGPU queue budget (seconds) for one ``@spaces.GPU`` call — clamped to the per-call cap.
+
+    HF's free tier caps every call at 60 s; PRO owners can raise it via ``$ZERO_GPU_DURATION``. Deps are
+    bootstrapped at app startup (see ``_startup_bootstrap``), so the GPU reservation only pays for the
+    checkpoint load + inference, not pip.
+    """
     cap = _zero_gpu_duration_cap()
-    if cap <= 60:
-        return 60
 
     video_path = _video_path(video_path)
     secs = 30.0
@@ -383,10 +398,9 @@ def _estimate_gpu_duration(
         except Exception:  # noqa: BLE001
             pass
     per_sec = 5.0 if flip_test else 3.5
-    if not static_camera and camera_backend in ("dust3r", "vggt"):
-        per_sec *= 1.6
-    bootstrap = 35  # cold-start pip/bootstrap + checkpoint load (first call)
-    return int(min(cap, max(60, bootstrap + secs * per_sec)))
+    load = 20  # first-call checkpoint load / warm-up
+    est = load + secs * per_sec
+    return int(max(15, min(cap, est)))
 
 
 # --------------------------------------------------------------------------------------
@@ -403,7 +417,7 @@ def run(
     detector: str,
     pose2d: str,
     backbone: str,
-    progress: gr.Progress = gr.Progress(track_tqdm=True),  # noqa: B008
+    progress: gr.Progress = gr.Progress(),  # noqa: B008 — gvhmr uses Rich track(), not tqdm; we drive it via progress(...)
 ) -> tuple[str, str, dict]:
     """Run GVHMR on the uploaded video and return (overlay_mp4, npz_path, summary)."""
     video_path = _video_path(video_path)
@@ -511,6 +525,10 @@ def _toggle_camera(static_camera: bool) -> gr.Dropdown:
     return gr.Dropdown(interactive=not static_camera)
 
 
+# Install the runtime deps now, at import — before the platform GPU-schedules the first `run` call.
+_startup_bootstrap()
+
+
 with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
     gr.Markdown(DESCRIPTION)
 
@@ -526,7 +544,8 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
                 choices=CAMERA_CHOICES,
                 value="simplevo",
                 label="Camera backend",
-                info="Ignored when 'Static camera' is checked. dpvo needs compiled DPVO (not on this Space).",
+                info="Ignored when 'Static camera' is checked. Scene-aware backends (dpvo/dust3r/vggt) "
+                "aren't set up on this Space.",
             )
             flip_in = gr.Checkbox(value=False, label="Flip-test (slower, more accurate)")
 
@@ -552,7 +571,6 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
                 pose2d_in = gr.Dropdown(
                     choices=POSE2D_CHOICES,
                     value="vitpose",
-                    allow_custom_value=True,
                     label="2D pose",
                     info="`rtmpose` (RTMPose-m via rtmlib/ONNX) auto-installs on first use; ONNX weights download then too.",
                 )
