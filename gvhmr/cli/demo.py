@@ -236,6 +236,10 @@ def build_demo_cfg(
     # source differs — GVHMR integrates per-frame velocities, so a 60fps clip fed as-is would
     # come out at half speed and out-of-distribution) with the phone-orientation flag baked in.
     if not Path(cfg.video_path).exists():
+        # `.exists()` follows symlinks, so a DANGLING link from a prior run (its target since deleted)
+        # slips past the guard — clear it first so symlink_to/get_writer below don't hit FileExistsError
+        # (→ copyfile-through-a-broken-link) or write through the stale link. unlink acts on the link itself.
+        Path(cfg.video_path).unlink(missing_ok=True)
         src_fps = get_video_fps(video)
         resample = abs(src_fps - MODEL_FPS) > 1.5
         if not resample and get_video_rotation(video) == 0:
@@ -288,14 +292,15 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
     #    (not boxes/pose), and cv2/pycolmap release the GIL — so it genuinely overlaps the GPU stages
     #    below instead of serializing after them (~free 15-30% on moving-camera runs). GPU camera
     #    backends (dpvo/dust3r/vggt) stay serial — they'd contend for the same device.
-    vo_future = None
+    vo_thread = None
+    _vo_result: dict = {}
     if (
         not static_cam
         and cfg.camera.name == "simplevo"
         and not Path(paths.slam).exists()
         and os.environ.get("GVHMR_NO_VO_OVERLAP", "").strip().lower() not in ("1", "true", "yes")
     ):
-        from concurrent.futures import ThreadPoolExecutor
+        import threading
 
         from gvhmr.utils.preproc import SimpleVO
 
@@ -303,9 +308,18 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
         simple_vo = SimpleVO(
             cfg.video_path, scale=cam.scale, step=cam.step, method=cam.method, f_mm=cfg.f_mm, progress=False
         )
-        _vo_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="simplevo")
-        vo_future = _vo_pool.submit(simple_vo.compute)
-        _vo_pool.shutdown(wait=False)  # reaps the thread once the future resolves
+
+        def _run_vo():  # stash result/exception; re-raised (or collected) at stage 4
+            try:
+                _vo_result["value"] = simple_vo.compute()
+            except BaseException as e:  # noqa: BLE001 — surfaced to the main thread at stage 4
+                _vo_result["error"] = e
+
+        # daemon=True: if an EARLIER GPU stage raises (no person / OOM) or the user hits Ctrl-C, the
+        # process fails fast instead of blocking at exit joining a still-running VO (a compiled SIFT/
+        # pycolmap call can't be interrupted). The happy path join()s it at stage 4.
+        vo_thread = threading.Thread(target=_run_vo, name="simplevo", daemon=True)
+        vo_thread.start()
         Log.info("SimpleVO camera tracking started [muted](overlapped with GPU preprocessing)[/]")
 
     # 1) bbox tracking (pluggable detector; default YOLO). Config group cfg.detector — swap with --detector.
@@ -393,9 +407,12 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
     # 4) camera (SimpleVO / DPVO / DUSt3R-SLAM), unless static. Config group cfg.camera — swap with --camera.
     if not static_cam:
         with progress_phase("Camera motion"):
-            if vo_future is not None:
-                # SimpleVO ran concurrently with the GPU stages above — just collect (re-raises on error).
-                torch.save(vo_future.result(), paths.slam)  # (L, 4, 4) numpy
+            if vo_thread is not None:
+                # SimpleVO ran concurrently with the GPU stages above — join + collect (re-raise on error).
+                vo_thread.join()
+                if "error" in _vo_result:
+                    raise _vo_result["error"]
+                torch.save(_vo_result["value"], paths.slam)  # (L, 4, 4) numpy
             elif not Path(paths.slam).exists():
                 cam = cfg.camera
                 if cam.name == "dust3r":
