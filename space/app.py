@@ -29,6 +29,11 @@ import gradio as gr
 # it doesn't import torch — and torch is only imported later, well after this line.
 import spaces
 
+# The moderngl overlay renderer needs a GL context; on a GPU-less Space (cpu-basic) there's no hardware
+# GL ("libEGL.so not loaded"), so force Mesa's software rasterizer (llvmpipe) — with the EGL libs from
+# packages.txt this gives a headless context so rendering works instead of failing to pytorch3d (absent).
+os.environ.setdefault("LIBGL_ALWAYS_SOFTWARE", "1")
+
 
 def _patch_gradio_file_whitelist() -> None:
     """SSR mode re-fetches uploads over HTTP; HF xethub bridge hosts must be allow-listed."""

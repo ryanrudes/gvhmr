@@ -1,0 +1,9 @@
+# System libs so the moderngl overlay renderer gets a headless software-EGL context on CPU Spaces
+# (cpu-basic has no GPU/GL — "libEGL.so not loaded"). Mesa's llvmpipe provides OpenGL in software.
+libegl1
+libgl1
+libgles2
+libglx-mesa0
+libgl1-mesa-dri
+libglib2.0-0
+libgbm1
