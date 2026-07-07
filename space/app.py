@@ -151,7 +151,7 @@ def _bootstrap_deps() -> None:
         import gvhmr  # noqa: F401
     except ImportError:
         # ZeroGPU preinstalls torch 2.11 — chumpy must be present first (see requirements.txt).
-        _pip_install("gvhmr[preproc]>=1.0.3")
+        _pip_install("gvhmr[preproc]>=1.0.4")
 
     _verify_preproc_imports()
 
@@ -172,7 +172,7 @@ def _verify_preproc_imports() -> None:
             missing.append(mod)
     if not missing:
         return
-    _pip_install("gvhmr[preproc]>=1.0.3", "pycolmap>=0.6", "opencv-python-headless>=4.8")
+    _pip_install("gvhmr[preproc]>=1.0.4", "pycolmap>=0.6", "opencv-python-headless>=4.8")
     still: list[str] = []
     for mod in missing:
         try:
