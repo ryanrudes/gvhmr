@@ -21,6 +21,14 @@ def test_get_device_honours_explicit_and_env(monkeypatch) -> None:
     assert get_device().type in {"cuda", "mps", "cpu"}
 
 
+def test_get_device_falls_back_when_cuda_unavailable(monkeypatch) -> None:
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    monkeypatch.setenv("GVHMR_DEVICE", "cuda")
+    assert get_device() == torch.device("cpu")
+    monkeypatch.delenv("GVHMR_DEVICE")
+    assert get_device(prefer="cuda") == torch.device("cpu")
+
+
 def test_to_device_recurses_and_preserves_non_tensors() -> None:
     data = {"a": torch.randn(2, 3), "b": [torch.ones(4), "keep"], "n": 5}
     out = to_device(data, "cpu")

@@ -19,16 +19,34 @@ import os
 import torch
 
 
-def get_device(prefer: str | torch.device | None = None) -> torch.device:
-    """Return the best available device, honouring ``prefer`` / ``$GVHMR_DEVICE``."""
-    choice = prefer if prefer is not None else os.environ.get("GVHMR_DEVICE")
-    if choice:
-        return torch.device(choice)
+def _mps_available() -> bool:
+    mps = getattr(torch.backends, "mps", None)
+    return bool(mps and mps.is_available())
+
+
+def _auto_device() -> torch.device:
     if torch.cuda.is_available():
         return torch.device("cuda")
-    if torch.backends.mps.is_available():
+    if _mps_available():
         return torch.device("mps")
     return torch.device("cpu")
+
+
+def get_device(prefer: str | torch.device | None = None) -> torch.device:
+    """Return the best available device, honouring ``prefer`` / ``$GVHMR_DEVICE``.
+
+    If the requested type is unavailable (e.g. ``cuda`` on CPU-only hardware), falls back
+    through cuda → mps → cpu instead of raising at ``.to(device)`` time.
+    """
+    choice = prefer if prefer is not None else os.environ.get("GVHMR_DEVICE")
+    if choice:
+        dev = torch.device(choice)
+        if dev.type == "cuda" and not torch.cuda.is_available():
+            return _auto_device()
+        if dev.type == "mps" and not _mps_available():
+            return _auto_device()
+        return dev
+    return _auto_device()
 
 
 def to_device(data, device: str | torch.device):

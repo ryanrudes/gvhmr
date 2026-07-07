@@ -156,19 +156,30 @@ _PIPE_ERRORS: dict[tuple, str] = {}
 
 
 def _resolve_device() -> str:
-    """Honour ``GVHMR_DEVICE``; otherwise cuda → mps → cpu (never hard-code cuda).
+    """Pick cuda → mps → cpu; honour ``GVHMR_DEVICE`` but fall back when unavailable.
 
-    Called inside ``@spaces.GPU`` after allocation on ZeroGPU, or on CPU-only hardware when
-    no NVIDIA driver is present."""
-    if env := os.getenv("GVHMR_DEVICE", "").strip():
-        return env
+    Uses only ``torch`` (HF preinstall) so this works before the runtime ``gvhmr`` pip bootstrap.
+    """
     import torch
 
-    if torch.cuda.is_available():
-        return "cuda"
-    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
-        return "mps"
-    return "cpu"
+    def _auto() -> str:
+        if torch.cuda.is_available():
+            return "cuda"
+        mps = getattr(torch.backends, "mps", None)
+        if mps and mps.is_available():
+            return "mps"
+        return "cpu"
+
+    prefer = os.getenv("GVHMR_DEVICE", "").strip()
+    if prefer == "cuda" and not torch.cuda.is_available():
+        return _auto()
+    if prefer == "mps":
+        mps = getattr(torch.backends, "mps", None)
+        if not (mps and mps.is_available()):
+            return _auto()
+    if prefer:
+        return prefer
+    return _auto()
 
 
 def _pipeline_key(
