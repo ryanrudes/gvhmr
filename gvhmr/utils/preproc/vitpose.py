@@ -10,7 +10,7 @@ from gvhmr.utils.geo_transform import cvt_p2d_from_pm1_to_i
 from gvhmr.utils.kpts.kp2d_utils import keypoints_from_heatmaps
 from gvhmr.utils.net_utils import skip_torch_init
 
-from .vitfeat_extractor import get_batch
+from .vitfeat_extractor import _fp32_forced, get_batch
 from .vitpose_pytorch import build_model
 
 # The released default; any estimator emitting COCO-17 (F,17,3) can replace this (see base.py).
@@ -48,7 +48,7 @@ class VitPoseExtractor:
         # Inference
         L, _, H, W = imgs.shape  # (L, 3, H, W)
         batch_size = self.batch_size
-        use_amp = self.device.type == "cuda"  # bf16 autocast on CUDA: ~2x, no loss-scaling needed
+        use_amp = self.device.type == "cuda" and not _fp32_forced()  # bf16 autocast on CUDA (~2x)
         vitpose = []
         for j in track(range(0, L, batch_size), desc="ViTPose", leave=self.tqdm_leave):
             # Heat map

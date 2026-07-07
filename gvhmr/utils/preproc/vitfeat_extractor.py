@@ -1,3 +1,5 @@
+import os
+
 import cv2
 import numpy as np
 import torch
@@ -8,6 +10,12 @@ from gvhmr.utils.console import track
 from gvhmr.utils.device import get_device
 from gvhmr.utils.net_utils import skip_torch_init
 from gvhmr.utils.video_io_utils import read_video_np
+
+
+def _fp32_forced() -> bool:
+    """``$GVHMR_PREPROC_FP32=1`` forces the preproc ViTs back to full fp32 (disables bf16 autocast) —
+    the accuracy-first escape hatch / a numerical A/B baseline. bf16's measured shift is below noise."""
+    return os.environ.get("GVHMR_PREPROC_FP32", "").strip().lower() in ("1", "true", "yes")
 
 
 def get_batch(input_path, bbx_xys, img_ds=0.5, img_dst_size=256, path_type="video"):
@@ -85,7 +93,7 @@ class Extractor:
         F, _, H, W = imgs.shape  # (F, 3, H, W)
         imgs = imgs.to(self.device)
         batch_size = self.batch_size
-        use_amp = self.device.type == "cuda"  # bf16 autocast on CUDA: ~2x, features are a smoothed rep
+        use_amp = self.device.type == "cuda" and not _fp32_forced()  # bf16 autocast on CUDA (~2x)
         features = []
         for j in track(range(0, F, batch_size), desc="HMR2 Feature", leave=self.tqdm_leave):
             imgs_batch = imgs[j : j + batch_size]
