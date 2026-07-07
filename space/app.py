@@ -266,8 +266,30 @@ def _resolve_device() -> str:
 
 def _cpu_preproc_overrides() -> list[str]:
     """On a CPU Space, shrink the ViT batch so activations don't OOM the 16 GB cpu-basic box: batch 32 fp32
-    ViT-Huge (ViTPose + HMR2) is fine on a GPU but tips CPU RAM over. No-op on a GPU Space."""
-    return ["pose2d.batch_size=4", "backbone.batch_size=4"] if _resolve_device() == "cpu" else []
+    ViT-Huge (ViTPose + HMR2) is fine on a GPU but tips CPU RAM over. No-op on a GPU Space.
+
+    Guarded: only emit keys the *installed* gvhmr's config actually defines — the Space pins gvhmr from
+    PyPI, and a release predating the batch_size knob would ``ConfigCompositionException`` on the override.
+    """
+    if _resolve_device() != "cpu":
+        return []
+    try:
+        from hydra import compose, initialize_config_module
+        from omegaconf import OmegaConf
+
+        from gvhmr.configs import register_store_gvhmr
+
+        register_store_gvhmr()
+        with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):
+            cfg = compose(config_name="demo", overrides=["video_name=_"])
+        ov = []
+        if OmegaConf.select(cfg, "pose2d.batch_size") is not None:
+            ov.append("pose2d.batch_size=4")
+        if OmegaConf.select(cfg, "backbone.batch_size") is not None:
+            ov.append("backbone.batch_size=4")
+        return ov
+    except Exception:  # noqa: BLE001 — never let a memory-tuning override break inference
+        return []
 
 
 def _pipeline_key(
