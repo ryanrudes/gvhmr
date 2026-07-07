@@ -35,6 +35,7 @@ from gvhmr.utils.video_io_utils import (
     get_video_fps,
     get_video_lwh,
     get_video_reader,
+    get_video_rotation,
     get_writer,
     merge_videos_horizontal,
     read_video_np,
@@ -237,6 +238,18 @@ def build_demo_cfg(
     if not Path(cfg.video_path).exists():
         src_fps = get_video_fps(video)
         resample = abs(src_fps - MODEL_FPS) > 1.5
+        if not resample and get_video_rotation(video) == 0:
+            # Already ~30fps and upright: skip the whole decode+re-encode — link the original in place.
+            # (Higher fidelity too: models read the original pixels instead of a recompressed copy. The
+            # rotation guard protects decoders that ignore the phone-orientation flag, e.g. ultralytics'.)
+            try:
+                Path(cfg.video_path).symlink_to(Path(video).resolve())
+            except OSError:  # filesystem without symlinks → plain copy
+                import shutil
+
+                shutil.copyfile(video, cfg.video_path)
+            Log.info(f"Staging skipped: input already ~{MODEL_FPS}fps and upright [muted](linked in place)[/]")
+            return cfg
         keep = None
         if resample:
             n_out = max(1, round(length * MODEL_FPS / src_fps))
@@ -270,6 +283,30 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
     paths = cfg.paths
     static_cam = cfg.static_cam
     verbose = cfg.verbose
+
+    # 0) Kick the CPU-only SimpleVO camera off FIRST, in a background thread: it needs only the video
+    #    (not boxes/pose), and cv2/pycolmap release the GIL — so it genuinely overlaps the GPU stages
+    #    below instead of serializing after them (~free 15-30% on moving-camera runs). GPU camera
+    #    backends (dpvo/dust3r/vggt) stay serial — they'd contend for the same device.
+    vo_future = None
+    if (
+        not static_cam
+        and cfg.camera.name == "simplevo"
+        and not Path(paths.slam).exists()
+        and os.environ.get("GVHMR_NO_VO_OVERLAP", "").strip().lower() not in ("1", "true", "yes")
+    ):
+        from concurrent.futures import ThreadPoolExecutor
+
+        from gvhmr.utils.preproc import SimpleVO
+
+        cam = cfg.camera
+        simple_vo = SimpleVO(
+            cfg.video_path, scale=cam.scale, step=cam.step, method=cam.method, f_mm=cfg.f_mm, progress=False
+        )
+        _vo_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="simplevo")
+        vo_future = _vo_pool.submit(simple_vo.compute)
+        _vo_pool.shutdown(wait=False)  # reaps the thread once the future resolves
+        Log.info("SimpleVO camera tracking started [muted](overlapped with GPU preprocessing)[/]")
 
     # 1) bbox tracking (pluggable detector; default YOLO). Config group cfg.detector — swap with --detector.
     with progress_phase("Tracking person"):
@@ -356,7 +393,10 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
     # 4) camera (SimpleVO / DPVO / DUSt3R-SLAM), unless static. Config group cfg.camera — swap with --camera.
     if not static_cam:
         with progress_phase("Camera motion"):
-            if not Path(paths.slam).exists():
+            if vo_future is not None:
+                # SimpleVO ran concurrently with the GPU stages above — just collect (re-raises on error).
+                torch.save(vo_future.result(), paths.slam)  # (L, 4, 4) numpy
+            elif not Path(paths.slam).exists():
                 cam = cfg.camera
                 if cam.name == "dust3r":
                     # scene-aware, metric camera on MPS/CPU/CUDA — recovers translation (DPVO does too but

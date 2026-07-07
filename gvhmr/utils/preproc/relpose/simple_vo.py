@@ -29,13 +29,15 @@ def _log_degenerate(n_degenerate, n_pairs):
 
 
 class SimpleVO:
-    def __init__(self, video_path, scale=0.5, step=8, method="sift", f_mm=None, num_workers=1):
+    def __init__(self, video_path, scale=0.5, step=8, method="sift", f_mm=None, num_workers=1, progress=True):
         self.video_path = video_path
         self.scale = scale
         self.step = step
         self.method = method
         self.f_mm = 24 if f_mm is None else f_mm  # fullframe camera focal length in mm
         self.num_workers = num_workers
+        # progress=False when run in a background thread — two live Rich displays would collide.
+        self.progress = progress
 
     def compute(self):
         # Read video
@@ -71,7 +73,8 @@ class SimpleVO:
             prev_frame = frames[0]
             last_delta = np.eye(4, dtype=np.float32)
             n_degenerate = 0
-            for frame_idx in track(range(1, len(frames))):
+            pairs = track(range(1, len(frames))) if self.progress else range(1, len(frames))
+            for frame_idx in pairs:
                 curr_frame = frames[frame_idx]
                 pts0, pts1 = matcher.match_np(prev_frame, curr_frame)
                 T_delta = solver.solve(pts0, pts1)
@@ -105,10 +108,10 @@ class SimpleVO:
 
         T_deltas = [None] * n_pairs
         with ThreadPoolExecutor(max_workers=self.num_workers) as ex:
-            for i, T in track(
-                zip(range(n_pairs), ex.map(solve_pair, range(n_pairs))),
-                total=n_pairs,
-            ):
+            it = zip(range(n_pairs), ex.map(solve_pair, range(n_pairs)))
+            if self.progress:
+                it = track(it, total=n_pairs)
+            for i, T in it:
                 T_deltas[i] = T
 
         T_w2c_list = [np.eye(4)]

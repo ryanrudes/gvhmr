@@ -1,3 +1,4 @@
+import functools
 import shutil
 from pathlib import Path
 
@@ -8,6 +9,17 @@ import numpy as np
 import torch
 
 from gvhmr.utils.console import track
+
+#: intermediate/overlay videos re-encode with x264 — trade compression ratio for CPU time.
+#: 'veryfast' is ~3-5x faster than the default 'medium' at a small size cost (these are throwaway).
+_X264_PRESET = "veryfast"
+
+
+@functools.lru_cache(maxsize=64)
+def _probe(video_path: str) -> dict:
+    """Cached ``ffmpeg.probe`` — the demo probes the same path many times (fps, rotation, lwh); each
+    probe spawns an ffprobe subprocess (~tens of ms). Keyed by the path string."""
+    return ffmpeg.probe(str(video_path))
 
 
 def get_video_rotation(video_path) -> int:
@@ -20,7 +32,7 @@ def get_video_rotation(video_path) -> int:
     flag and rotate to match what video players show. k=0 (no flag) is the no-op common case.
     """
     try:
-        streams = ffmpeg.probe(str(video_path))["streams"]
+        streams = _probe(video_path)["streams"]
     except Exception:
         return 0
     video = next((s for s in streams if s.get("codec_type") == "video"), None)
@@ -47,7 +59,7 @@ def get_video_fps(video_path) -> float:
     keys its resampling off of.
     """
     try:
-        streams = ffmpeg.probe(str(video_path))["streams"]
+        streams = _probe(video_path)["streams"]
         video = next(s for s in streams if s.get("codec_type") == "video")
         num, _, den = video.get("avg_frame_rate", "0/1").partition("/")
         fps = float(num) / float(den) if float(den or 0) else 0.0
@@ -134,7 +146,7 @@ def save_video(images, video_path, fps=30, crf=17):
 
     with iio.imopen(video_path, "w", plugin="pyav") as writer:
         writer.init_video_stream("libx264", fps=fps)
-        writer._video_stream.options = {"crf": str(crf)}
+        writer._video_stream.options = {"crf": str(crf), "preset": _X264_PRESET}
         writer.write(images)
 
 
@@ -142,7 +154,7 @@ def get_writer(video_path, fps=30, crf=17):
     """remember to .close()"""
     writer = iio.imopen(video_path, "w", plugin="pyav")
     writer.init_video_stream("libx264", fps=fps)
-    writer._video_stream.options = {"crf": str(crf)}
+    writer._video_stream.options = {"crf": str(crf), "preset": _X264_PRESET}
     return writer
 
 

@@ -90,36 +90,86 @@ def missing_requirements(selections: dict[str, str], have=None) -> list[tuple[st
     return out
 
 
-def make_detector(name: str = "yolo", **kwargs) -> Detector:
-    """Construct a registered detector. ``kwargs`` (e.g. ``ckpt``, ``conf``) pass to its ctor."""
-    if name == "yolo":
-        from gvhmr.utils.preproc.tracker import Tracker
+# --- Resident-model cache -------------------------------------------------------------------------
+# Loading the preproc models dominates short clips (ViTPose 2.5GB + HMR2 2.7GB ≈ 13s/clip): keep the
+# last-built instance of each stage resident so folder/library/Space loops reload nothing. One slot per
+# stage (a different name/kwargs evicts the previous instance). All three resident together is ~5-6GB of
+# GPU weights — disable on low-memory boxes with GVHMR_NO_MODEL_CACHE=1 to restore build-use-free.
+_MODEL_CACHE: dict[str, tuple] = {}
 
-        return Tracker(**kwargs)
+
+def _resident(stage: str, name: str, kwargs: dict, build):
+    import os
+
+    if os.environ.get("GVHMR_NO_MODEL_CACHE", "").strip().lower() in ("1", "true", "yes"):
+        return build()
+    try:
+        key = (name, tuple(sorted(kwargs.items())))
+    except TypeError:  # unhashable kwarg → just build uncached
+        return build()
+    entry = _MODEL_CACHE.get(stage)
+    if entry is not None and entry[0] == key:
+        return entry[1]
+    model = build()
+    _MODEL_CACHE[stage] = (key, model)
+    return model
+
+
+def clear_model_cache() -> None:
+    """Drop all resident preproc models (frees their GPU/CPU memory on the next GC)."""
+    _MODEL_CACHE.clear()
+
+
+def make_detector(name: str = "yolo", **kwargs) -> Detector:
+    """Construct (or reuse a resident) registered detector. ``kwargs`` (e.g. ``ckpt``, ``conf``) pass to its ctor."""
+    if name == "yolo":
+
+        def build():
+            from gvhmr.utils.preproc.tracker import Tracker
+
+            return Tracker(**kwargs)
+
+        return _resident("detector", name, kwargs, build)
     raise KeyError(f"unknown detector {name!r}; registered: {DETECTORS}")
 
 
 def make_pose2d(name: str = "vitpose", **kwargs) -> Pose2D:
-    """Construct a registered 2D-pose estimator. Must emit COCO-17 ``(F,17,3)``."""
+    """Construct (or reuse a resident) registered 2D-pose estimator. Must emit COCO-17 ``(F,17,3)``."""
     if name == "vitpose":
-        from gvhmr.utils.preproc.vitpose import VitPoseExtractor
 
-        return VitPoseExtractor(**kwargs)
+        def build():
+            from gvhmr.utils.preproc.vitpose import VitPoseExtractor
+
+            return VitPoseExtractor(**kwargs)
+
+        return _resident("pose2d", name, kwargs, build)
     if name == "rtmpose":
-        from gvhmr.utils.preproc.rtmpose import RTMPoseExtractor
 
-        return RTMPoseExtractor(**kwargs)
+        def build():
+            from gvhmr.utils.preproc.rtmpose import RTMPoseExtractor
+
+            return RTMPoseExtractor(**kwargs)
+
+        return _resident("pose2d", name, kwargs, build)
     raise KeyError(f"unknown pose2d {name!r}; registered: {POSE2D}")
 
 
 def make_backbone(name: str = "hmr2", **kwargs) -> FeatureBackbone:
-    """Construct a registered image-feature backbone. Emits ``(F, feat_dim)``; swapping it needs a retrain."""
+    """Construct (or reuse a resident) registered feature backbone. Emits ``(F, feat_dim)``; swapping needs a retrain."""
     if name == "hmr2":
-        from gvhmr.utils.preproc.vitfeat_extractor import Extractor
 
-        return Extractor(**kwargs)
+        def build():
+            from gvhmr.utils.preproc.vitfeat_extractor import Extractor
+
+            return Extractor(**kwargs)
+
+        return _resident("backbone", name, kwargs, build)
     if name == "dinov2":
-        from gvhmr.utils.preproc.dinov2_backbone import DINOv2Backbone
 
-        return DINOv2Backbone(**kwargs)
+        def build():
+            from gvhmr.utils.preproc.dinov2_backbone import DINOv2Backbone
+
+            return DINOv2Backbone(**kwargs)
+
+        return _resident("backbone", name, kwargs, build)
     raise KeyError(f"unknown backbone {name!r}; registered: {BACKBONES}")

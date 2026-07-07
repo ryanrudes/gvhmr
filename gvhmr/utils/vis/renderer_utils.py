@@ -1,6 +1,6 @@
 import numpy as np
-from gvhmr.utils.console import track
 
+from gvhmr.utils.console import track
 from gvhmr.utils.vis.renderer import Renderer
 
 

@@ -229,8 +229,18 @@ identity is IoU-guarded against the canonical track (mismatch ⇒ canonical boxe
 
 Profile/bench with `gvhmr bench`. Optimizations must keep
 `tests/test_golden_inference.py` green (golden output from the released checkpoint).
-Note: the GVHMR model `predict` is **faster on CPU** than MPS (latency-bound on the IK's
-small ops); MPS helps the batched preproc models. See `docs/PERFORMANCE.md`.
+Preproc (the two ViT-Huge models) is ~85-95% of a run; the GVHMR `predict` is small.
+
+**Speed defaults (all overridable):** the network `predict` runs on **CPU** — it's ~6.7x faster there
+than CUDA (launch-overhead-bound on the IK's small ops), `device.predict_device()` (`$GVHMR_PREDICT_DEVICE`
+to force); preproc + render stay on GPU. `device.get_device()` enables **TF32 + cudnn.benchmark** on CUDA
+(`$GVHMR_DISABLE_TF32`). The two ViTs (ViTPose/HMR2) run **bf16 autocast** on CUDA with **SDPA/Flash
+attention** (vendor-patched), batch 32; ViTPose's internal flip-test is **off** by default (`pose2d.flip_test`).
+YOLO uses `half=True`. Preproc models are kept **resident** across videos (`make_*` cache in `preproc/base.py`;
+`$GVHMR_NO_MODEL_CACHE`, `clear_model_cache()`) and skip random init (immediately overwritten). SimpleVO runs
+in a **background thread overlapped with the GPU stages** (`$GVHMR_NO_VO_OVERLAP`); a ~30fps upright input
+**skips the staging re-encode** (symlinked). Accuracy-sensitive ones (bf16, flip-off) are `gvhmr eval`-gated.
+See `docs/PERFORMANCE.md`.
 
 ## Conventions
 

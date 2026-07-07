@@ -3,8 +3,8 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from gvhmr.utils.console import track
 
+from gvhmr.utils.console import track
 from gvhmr.utils.geo_transform import convert_lurb_to_bbx_xys
 from gvhmr.utils.video_io_utils import get_video_lwh
 
