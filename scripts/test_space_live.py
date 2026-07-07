@@ -70,13 +70,14 @@ def main() -> int:
             job = client.submit(
                 handle_file(str(video)),
                 True,  # static_camera
-                "simplevo",
+                "simplevo",  # camera
                 False,  # flip_test
-                "ryanrudes/gvhmr",
-                "",
-                "yolo",
-                "vitpose",
-                "hmr2",
+                "ryanrudes/gvhmr",  # hub_repo
+                "",  # hub_revision
+                "yolo",  # detector
+                "vitpose",  # pose2d
+                "hmr2",  # backbone
+                True,  # native SMPL-X mesh (Space default — needs only the SMPL-X body model, not gated SMPL)
                 api_name="/run",
             )
             result = job.result(timeout=args.timeout)

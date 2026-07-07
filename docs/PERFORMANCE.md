@@ -42,7 +42,7 @@ via `--fast` / `--recipe fast`.
 | **Resident-model cache** (`preproc/base.py`, `$GVHMR_NO_MODEL_CACHE`) | −13s per extra clip (folder/library/Space) | identical |
 | **SimpleVO ⇄ GPU overlap** (`$GVHMR_NO_VO_OVERLAP`) | hides the CPU camera stage | identical |
 | **Staging re-encode skip** (~30fps upright → symlink), x264 veryfast, cached probe | −1 decode+encode | reads original pixels |
-| ViTPose **flip-test off** — OPT-IN `--fast` only | 2.2× on 2D-pose | real train/test trade — not a default |
+| ViTPose **flip-test off** + ByteTrack — OPT-IN `--fast` only | 2.2× on 2D-pose | **eval-certified cost: +2.3 PA-MPJPE / +7.6 MPJPE / +8.7 PVE (mm) on 3DPW** — real, so opt-in only |
 
 Net: **~3-4× end-to-end on a long clip** (YOLO, still fp32-CNN, becomes the bottleneck), more on short
 clips where the ~13× load win dominates. Retrain-gated levers (faster default detector, RTMPose, fused

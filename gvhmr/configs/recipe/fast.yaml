@@ -1,7 +1,9 @@
 # @package _global_
-# "fast" recipe — opt-in speed at a small accuracy cost. Turns OFF ViTPose's internal flip-test TTA
-# (the released model was trained with it, so this is a real train/test trade — ~2.2x on the 2D-pose
-# stage, the biggest preproc slice). Compose with:  gvhmr demo VIDEO --recipe fast   (or the --fast flag)
+# "fast" recipe — opt-in speed for a REAL accuracy cost (measured, so you can decide): eval-certified on
+# 3DPW at +2.3 PA-MPJPE / +7.6 MPJPE / +8.7 PVE (mm) vs the accuracy-first default. Turns OFF ViTPose's
+# internal flip-test TTA (the released model trained with it — a real train/test trade, ~2.2x on the 2D-pose
+# stage, the biggest preproc slice) + ByteTrack. Use for previews/interactive, NOT for benchmark numbers.
+# Compose with:  gvhmr demo VIDEO --recipe fast   (or the --fast flag)
 #
 # The accuracy-SAFE speedups (CPU predict, TF32, bf16, SDPA, mmap/skip-init loading, resident models,
 # SimpleVO overlap, staging skip) are always on — they don't need this recipe.
