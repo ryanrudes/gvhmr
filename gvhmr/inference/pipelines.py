@@ -99,6 +99,7 @@ class GVHMRPipeline:
         flip_test: bool = False,
         world_from_incam: bool = True,
         render: bool = False,
+        mesh: str = "smpl",
         output_dir=None,
         output_root: str | None = None,
         render_scale: float | None = None,
@@ -117,6 +118,7 @@ class GVHMRPipeline:
             flip_test: mirror-averaging test-time augmentation (the benchmark setting; +1 feature pass).
             world_from_incam: for a static camera, take the world trajectory from the in-cam motion.
             render: also render the overlay videos now (else call ``result.render()`` later).
+            mesh: ``'smpl'`` (default SMPL-topology mesh) or ``'smplx'`` (native ~10475-vertex SMPL-X surface).
             output_dir / output_root: where to stage artifacts (default: ``outputs/demo/<video>``, reusable cache).
             render_scale: overlay resolution fraction (0.5 default).
             recipe / set_overrides: a bundled config recipe and/or raw Hydra overrides (advanced).
@@ -211,7 +213,7 @@ class GVHMRPipeline:
             )
             if render:
                 with progress_phase("Rendering overlay"):
-                    result.render(render_scale=render_scale)
+                    result.render(render_scale=render_scale, mesh=mesh)
         return result
 
     # ``recover`` reads a touch nicer than calling the object; identical behaviour.
@@ -256,6 +258,7 @@ def recover(video, *, model: str = hub.DEFAULT_REPO, device=None, **kwargs) -> M
         "flip_test",
         "world_from_incam",
         "render",
+        "mesh",
         "output_dir",
         "output_root",
         "render_scale",

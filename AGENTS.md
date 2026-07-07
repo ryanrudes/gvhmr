@@ -99,6 +99,16 @@ mesh the moderngl renderer draws): `--skeleton` (world-frame skeleton-only video
 `render_mesh`/`render_with_ground`), and `--skeleton-joints` for a subset (groups like `legs`/`left_arm`,
 or joint names/indices; a bone draws only when both endpoints are kept). Left side warm, right cool.
 
+**Native SMPL-X mesh (`--smplx`).** The model predicts SMPL-X params; the *default* render maps them to the
+6890-vertex **SMPL** topology (`smplx2smpl` sparse matrix + SMPL faces + SMPL J-regressor — byte-identical
+history, golden-guarded). `--smplx` (on `demo`/`demo-folder`; `MotionResult.render(mesh='smplx')`;
+`GVHMRPipeline(video, mesh='smplx')`; Space checkbox) instead renders the **native ~10475-vertex SMPL-X
+surface** (`smplx_out.vertices` + SMPL-X faces + `smplx_out.joints[:24]`) to `_smplx`-suffixed videos, and
+needs only the SMPL-X body model (not the gated SMPL one). The library exposes it as
+`params_to_verts_joints(..., topology='smplx')` and `MotionResult.vertices_*_smplx`/`joints_*_smplx`/`faces_smplx`.
+Landmine: the SMPL J-regressor can't apply to 10475 verts, so the world-frame placement uses `smplx_out.joints`
+(the joint-aware `move_to_start_point_face_z_smplx`); skeleton joints 22/23 are SMPL-X jaw/eye, not SMPL wrists.
+
 Extras: `preproc` (YOLO/ViTPose/pycolmap — **`gvhmr demo` needs it**), `rtmpose` (rtmlib/onnxruntime —
 the alt 2D-pose backend), `train` (wandb + tensorboard loggers), `dpvo` (numba/pypose — DPVO's locked,
 torch-ABI-free runtime deps; see DPVO below), `vis` (wis3d/viser), `notebook`, `render` (optional

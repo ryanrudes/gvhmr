@@ -287,11 +287,25 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
             bbx_xyxy = torch.load(paths.bbx, weights_only=False)["bbx_xyxy"]
             save_video(draw_bbx_xyxy_on_image_batch(bbx_xyxy, video), cfg.paths.bbx_xyxy_video_overlay)
 
+    # ViTPose and the HMR2/DINOv2 backbone both build the SAME cropped batch — get_batch(video_path,
+    # bbx_xys, img_ds=0.5), a deterministic decode+GaussianBlur+crop_and_resize with no RNG. When BOTH
+    # stages need to run and both consume get_batch, decode+crop ONCE and feed the shared tensor to each:
+    # byte-identical output (each gets exactly the tensor it would have built), one fewer full decode.
+    shared_imgs = shared_bbx = None
+    _need_pose, _need_feat = not Path(paths.vitpose).exists(), not Path(paths.vit_features).exists()
+    if _need_pose and _need_feat and cfg.pose2d.name == "vitpose" and cfg.backbone.name in ("hmr2", "dinov2"):
+        from gvhmr.utils.preproc.vitfeat_extractor import get_batch
+
+        shared_imgs, shared_bbx = get_batch(video_path, bbx_xys, img_ds=0.5)  # (F,3,256,256), (F,3)
+
     # 2) 2D keypoints (pluggable 2D-pose; default ViTPose → COCO-17). Config group cfg.pose2d — swap with --pose2d.
     with progress_phase("2D pose estimation"):
         if not Path(paths.vitpose).exists():
             vitpose_extractor = make_pose2d(cfg.pose2d.name, **_ctor_kwargs(cfg.pose2d))
-            vitpose = vitpose_extractor.extract(video_path, bbx_xys)
+            if shared_imgs is not None:  # ViTPose's tensor branch takes the pre-cropped imgs + adjusted bbx
+                vitpose = vitpose_extractor.extract(shared_imgs, shared_bbx)
+            else:
+                vitpose = vitpose_extractor.extract(video_path, bbx_xys)
             torch.save(vitpose, paths.vitpose)
             del vitpose_extractor
         else:
@@ -306,11 +320,17 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
     with progress_phase("Image features"):
         if not Path(paths.vit_features).exists():
             extractor = make_backbone(cfg.backbone.name, **_ctor_kwargs(cfg.backbone))
-            vit_features = extractor.extract_video_features(video_path, bbx_xys)
+            if (
+                shared_imgs is not None
+            ):  # HMR2/DINOv2 tensor branch takes the pre-cropped imgs (bbx required but ignored)
+                vit_features = extractor.extract_video_features(shared_imgs, shared_bbx)
+            else:
+                vit_features = extractor.extract_video_features(video_path, bbx_xys)
             torch.save(vit_features, paths.vit_features)
             del extractor
         else:
             Log.info(f"vit_features cached: [muted]{paths.vit_features}[/]")
+    del shared_imgs, shared_bbx
 
     # 3b) flip-test: re-extract image features on the horizontally-flipped video (TTA)
     if flip_test:
@@ -453,8 +473,10 @@ def recover_motion(
     return pred
 
 
-def render_incam(cfg, device, skeleton_overlay: bool = False, joint_indices=None) -> None:
+def render_incam(cfg, device, skeleton_overlay: bool = False, joint_indices=None, mesh: str = "smpl") -> None:
     incam_video_path = Path(cfg.paths.incam_video)
+    if mesh == "smplx":  # native SMPL-X render → distinct output paths (never shadows the SMPL cache)
+        incam_video_path = incam_video_path.with_stem(incam_video_path.stem + "_smplx")
     overlay_path = incam_video_path.with_stem(incam_video_path.stem + "_skeleton")
     want_mesh = not incam_video_path.exists()
     want_overlay = skeleton_overlay and not overlay_path.exists()
@@ -464,15 +486,20 @@ def render_incam(cfg, device, skeleton_overlay: bool = False, joint_indices=None
 
     pred = torch.load(cfg.paths.hmr4d_results, weights_only=False)
     smplx = make_smplx("supermotion").to(device)
-    smplx2smpl = torch.load(SMPLX2SMPL_PATH, weights_only=False).to(device)
-    faces_smpl = make_smplx("smpl").faces
-
     smplx_out = smplx(**to_device(pred["smpl_params_incam"], device))
-    pred_c_verts = torch.stack([torch.matmul(smplx2smpl, v_) for v_ in smplx_out.vertices])
     joints_c = None
-    if want_overlay:  # in-cam joints from the SMPL verts (same regressor the world frame uses)
-        J_regressor = torch.load(SMPL_J_REGRESSOR_PATH, weights_only=False).to(device)
-        joints_c = einsum(J_regressor, pred_c_verts, "j v, l v i -> l j i").cpu().numpy()
+    if mesh == "smplx":  # full ~10475-vertex SMPL-X surface + SMPL-X faces (predicted params are native SMPL-X)
+        faces = smplx.faces
+        pred_c_verts = smplx_out.vertices
+        if want_overlay:  # SMPL-X joints[:24]: first 22 body joints match SMPL; joints 22/23 differ (see docs)
+            joints_c = smplx_out.joints[:, :24].cpu().numpy()
+    else:  # default: project SMPL-X verts to the 6890-vertex SMPL topology (byte-identical to before)
+        smplx2smpl = torch.load(SMPLX2SMPL_PATH, weights_only=False).to(device)
+        faces = make_smplx("smpl").faces
+        pred_c_verts = torch.stack([torch.matmul(smplx2smpl, v_) for v_ in smplx_out.vertices])
+        if want_overlay:  # in-cam joints from the SMPL verts (same regressor the world frame uses)
+            J_regressor = torch.load(SMPL_J_REGRESSOR_PATH, weights_only=False).to(device)
+            joints_c = einsum(J_regressor, pred_c_verts, "j v, l v i -> l j i").cpu().numpy()
 
     length, width, height = get_video_lwh(cfg.video_path)
     render_scale = float(cfg.get("render_scale", 1.0))
@@ -480,7 +507,7 @@ def render_incam(cfg, device, skeleton_overlay: bool = False, joint_indices=None
     K = pred["K_fullimg"][0].clone()
     K[:2] *= render_scale
 
-    renderer = make_renderer(rw, rh, device=device, faces=faces_smpl, K=K)
+    renderer = make_renderer(rw, rh, device=device, faces=faces, K=K)
     reader = get_video_reader(cfg.video_path)
     mesh_writer = get_writer(incam_video_path, fps=30, crf=CRF) if want_mesh else None
     overlay_writer = get_writer(overlay_path, fps=30, crf=CRF) if want_overlay else None
@@ -501,8 +528,12 @@ def render_incam(cfg, device, skeleton_overlay: bool = False, joint_indices=None
     reader.close()
 
 
-def render_global(cfg, device, skeleton: bool = False, skeleton_overlay: bool = False, joint_indices=None) -> None:
+def render_global(
+    cfg, device, skeleton: bool = False, skeleton_overlay: bool = False, joint_indices=None, mesh: str = "smpl"
+) -> None:
     global_video_path = Path(cfg.paths.global_video)
+    if mesh == "smplx":  # native SMPL-X render → distinct output paths
+        global_video_path = global_video_path.with_stem(global_video_path.stem + "_smplx")
     skel_path = global_video_path.with_stem(global_video_path.stem + "_skeleton")  # skeleton only
     overlay_path = global_video_path.with_stem(global_video_path.stem + "_meshskel")  # mesh + skeleton
     want_mesh = not global_video_path.exists()
@@ -514,24 +545,41 @@ def render_global(cfg, device, skeleton: bool = False, skeleton_overlay: bool = 
 
     pred = torch.load(cfg.paths.hmr4d_results, weights_only=False)
     smplx = make_smplx("supermotion").to(device)
-    smplx2smpl = torch.load(SMPLX2SMPL_PATH, weights_only=False).to(device)
-    faces_smpl = make_smplx("smpl").faces
-    J_regressor = torch.load(SMPL_J_REGRESSOR_PATH, weights_only=False).to(device)
-
     smplx_out = smplx(**to_device(pred["smpl_params_global"], device))
-    pred_ay_verts = torch.stack([torch.matmul(smplx2smpl, v_) for v_ in smplx_out.vertices])
 
-    def move_to_start_point_face_z(verts):
-        "XZ to origin, Start from the ground, Face-Z"
-        verts = verts.clone()
-        offset = einsum(J_regressor, verts[0], "j v, v i -> j i")[0]
-        offset[1] = verts[:, :, [1]].min()
-        verts = verts - offset
-        T_ay2ayfz = compute_T_ayfz2ay(einsum(J_regressor, verts[[0]], "j v, l v i -> l j i"), inverse=True)
-        return apply_T_on_points(verts, T_ay2ayfz)
+    if mesh == "smplx":  # place the native SMPL-X surface using its own joints (SMPL J-regressor can't
+        faces = smplx.faces  # apply to 10475 verts) — same XZ-origin / ground / face-Z transform as SMPL
+        pred_ay_verts = smplx_out.vertices
+        pred_ay_joints = smplx_out.joints[:, :24]
 
-    verts_glob = move_to_start_point_face_z(pred_ay_verts)
-    joints_glob = einsum(J_regressor, verts_glob, "j v, l v i -> l j i")
+        def move_to_start_point_face_z_smplx(verts, joints):
+            verts, joints = verts.clone(), joints.clone()
+            offset = joints[0, 0].clone()  # frame-0 pelvis (SMPL-X joint 0)
+            offset[1] = verts[:, :, [1]].min()
+            verts = verts - offset
+            joints = joints - offset
+            T_ay2ayfz = compute_T_ayfz2ay(joints[[0]], inverse=True)
+            return apply_T_on_points(verts, T_ay2ayfz), apply_T_on_points(joints, T_ay2ayfz)
+
+        verts_glob, joints_glob = move_to_start_point_face_z_smplx(pred_ay_verts, pred_ay_joints)
+    else:  # default: SMPL topology (byte-identical to before)
+        smplx2smpl = torch.load(SMPLX2SMPL_PATH, weights_only=False).to(device)
+        faces = make_smplx("smpl").faces
+        J_regressor = torch.load(SMPL_J_REGRESSOR_PATH, weights_only=False).to(device)
+        pred_ay_verts = torch.stack([torch.matmul(smplx2smpl, v_) for v_ in smplx_out.vertices])
+
+        def move_to_start_point_face_z(verts):
+            "XZ to origin, Start from the ground, Face-Z"
+            verts = verts.clone()
+            offset = einsum(J_regressor, verts[0], "j v, v i -> j i")[0]
+            offset[1] = verts[:, :, [1]].min()
+            verts = verts - offset
+            T_ay2ayfz = compute_T_ayfz2ay(einsum(J_regressor, verts[[0]], "j v, l v i -> l j i"), inverse=True)
+            return apply_T_on_points(verts, T_ay2ayfz)
+
+        verts_glob = move_to_start_point_face_z(pred_ay_verts)
+        joints_glob = einsum(J_regressor, verts_glob, "j v, l v i -> l j i")
+
     joints_glob_np = joints_glob.cpu().numpy()  # for the skeleton mesh builder
     global_R, global_T, global_lights = get_global_cameras_static(
         verts_glob.cpu(), beta=2.0, cam_height_degree=20, target_center_height=1.0
@@ -541,7 +589,7 @@ def render_global(cfg, device, skeleton: bool = False, skeleton_overlay: bool = 
     render_scale = float(cfg.get("render_scale", 1.0))
     rw, rh = max(1, round(width * render_scale)), max(1, round(height * render_scale))
     _, _, K = create_camera_sensor(rw, rh, 24)
-    renderer = make_renderer(rw, rh, device=device, faces=faces_smpl, K=K)
+    renderer = make_renderer(rw, rh, device=device, faces=faces, K=K)
     scale, cx, cz = get_ground_params_from_points(joints_glob[:, 0], verts_glob)
     renderer.set_ground(scale * 1.5, cx, cz)
     color = torch.ones(3).float().to(device) * 0.8
@@ -568,18 +616,36 @@ def render_global(cfg, device, skeleton: bool = False, skeleton_overlay: bool = 
             w.close()
 
 
-def _render(cfg, device, skeleton: bool = False, skeleton_overlay: bool = False, joint_indices=None) -> bool:
-    """Render the overlay videos. Returns True if produced, False if skipped (missing deps)."""
+def _render(
+    cfg, device, skeleton: bool = False, skeleton_overlay: bool = False, joint_indices=None, mesh: str = "smpl"
+) -> bool:
+    """Render the overlay videos. Returns True if produced, False if skipped (missing deps).
+
+    ``mesh='smplx'`` renders the native ~10475-vertex SMPL-X surface (opt-in) to ``_smplx``-suffixed
+    paths, leaving the default SMPL-topology outputs untouched.
+    """
     # pytorch3d rasterizes on CPU/CUDA (not MPS); render on CPU when the device is MPS.
     render_device = device if device.type == "cuda" else torch.device("cpu")
     paths = cfg.paths
+    suffix = "_smplx" if mesh == "smplx" else ""
+
+    def _sfx(p: str) -> str:  # append the mesh suffix to a video path's stem
+        pp = Path(p)
+        return str(pp.with_stem(pp.stem + suffix)) if suffix else str(pp)
+
     try:
-        render_incam(cfg, render_device, skeleton_overlay=skeleton_overlay, joint_indices=joint_indices)
+        render_incam(cfg, render_device, skeleton_overlay=skeleton_overlay, joint_indices=joint_indices, mesh=mesh)
         render_global(
-            cfg, render_device, skeleton=skeleton, skeleton_overlay=skeleton_overlay, joint_indices=joint_indices
+            cfg,
+            render_device,
+            skeleton=skeleton,
+            skeleton_overlay=skeleton_overlay,
+            joint_indices=joint_indices,
+            mesh=mesh,
         )
-        if not Path(paths.incam_global_horiz_video).exists():
-            merge_videos_horizontal([paths.incam_video, paths.global_video], paths.incam_global_horiz_video)
+        horiz = _sfx(paths.incam_global_horiz_video)
+        if not Path(horiz).exists():
+            merge_videos_horizontal([_sfx(paths.incam_video), _sfx(paths.global_video)], horiz)
         return True
     except (ImportError, AssertionError, FileNotFoundError) as e:
         from gvhmr.utils.assets import BODY_MODEL_ROOT
@@ -611,6 +677,7 @@ def run(
     skeleton: bool = False,
     skeleton_overlay: bool = False,
     skeleton_joints: str | None = None,
+    smplx: bool = False,
     detector: str | None = None,
     pose2d: str | None = None,
     backbone: str | None = None,
@@ -620,6 +687,7 @@ def run(
     set_overrides: list[str] | None = None,
 ) -> None:
     """Run the full single-video demo with a Rich, staged display."""
+    mesh = "smplx" if smplx else "smpl"  # native ~10475-vert SMPL-X surface vs the default SMPL topology
     torch.set_num_threads(os.cpu_count() or 1)  # pytorch3d CPU rasterizer scales with torch threads
     joint_indices = resolve_joint_subset(skeleton_joints)  # validates the spec up front
     # Fall back to the config file's [models] defaults for any stage not chosen on the CLI (precedence:
@@ -672,7 +740,8 @@ def run(
     flip_test = cfg.flip_test  # resolved from the CLI flag / a --recipe / --set
 
     ensure_deps(cfg)  # fail fast (with the install command) before any download or compute
-    ensure_assets(cam_name, want_render=not no_render)  # auto-fetch checkpoints; gated body models → clear error
+    # SMPL body model is only needed for the SMPL-topology render; native SMPL-X render needs only SMPL-X.
+    ensure_assets(cam_name, want_render=(not no_render and mesh == "smpl"))
 
     rule("Preprocess")
     run_preprocess(cfg, flip_test=flip_test)
@@ -709,19 +778,22 @@ def run(
 
     rendered = True
     if not no_render:
-        rule("Render")
+        rule("Render" + (" · native SMPL-X" if mesh == "smplx" else ""))
         rendered = _render(
-            cfg, device, skeleton=skeleton, skeleton_overlay=skeleton_overlay, joint_indices=joint_indices
+            cfg, device, skeleton=skeleton, skeleton_overlay=skeleton_overlay, joint_indices=joint_indices, mesh=mesh
         )
 
     # Summary
+    _sfx = "_smplx" if mesh == "smplx" else ""
+    horiz = Path(paths.incam_global_horiz_video)
     summary = Table(show_header=False, box=None, pad_edge=False)
     summary.add_column(style="muted")
     summary.add_column()
     summary.add_row("motion", str(paths.hmr4d_results))
     if rendered and not no_render:
-        summary.add_row("overlay", str(paths.incam_global_horiz_video))
+        summary.add_row("overlay", str(horiz.with_stem(horiz.stem + _sfx)) if _sfx else str(horiz))
         gv = Path(paths.global_video)
+        gv = gv.with_stem(gv.stem + _sfx) if _sfx else gv
         if skeleton:
             summary.add_row("skeleton", str(gv.with_stem(gv.stem + "_skeleton")))
         if skeleton_overlay:

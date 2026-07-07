@@ -56,16 +56,16 @@ class MotionResult:
         return f"MotionResult(frames={self.num_frames}, fps={self.fps:g}, camera={self.camera!r})"
 
     # ---- meshes & joints (lazy; need the SMPL-X body model) ------------------------------------
-    def _verts_joints(self, frame: str):
-        key = f"vj_{frame}"
+    def _verts_joints(self, frame: str, topology: str = "smpl"):
+        key = f"vj_{frame}_{topology}"
         if key not in self._cache:
             from gvhmr.inference._smpl import params_to_verts_joints
 
             params = self.smpl_params_world if frame == "world" else self.smpl_params_camera
             device = self._device if self._device is not None else "cpu"
-            verts, joints, faces = params_to_verts_joints(params, device=str(device))
+            verts, joints, faces = params_to_verts_joints(params, device=str(device), topology=topology)
             self._cache[key] = (verts, joints)
-            self._cache["faces"] = faces
+            self._cache[f"faces_{topology}"] = faces
         return self._cache[key]
 
     @property
@@ -91,11 +91,41 @@ class MotionResult:
     @property
     def faces(self) -> np.ndarray:
         """SMPL triangle faces, ``(13776, 3)`` — shared across frames."""
-        if "faces" not in self._cache:
+        if "faces_smpl" not in self._cache:
             from gvhmr.inference._smpl import smpl_faces
 
-            self._cache["faces"] = smpl_faces(str(self._device or "cpu"))
-        return self._cache["faces"]
+            self._cache["faces_smpl"] = smpl_faces(str(self._device or "cpu"))
+        return self._cache["faces_smpl"]
+
+    # ---- native SMPL-X (opt-in): the full ~10475-vertex surface the model predicts natively ------
+    @property
+    def vertices_world_smplx(self) -> torch.Tensor:
+        """Native SMPL-X mesh vertices in the world frame, ``(L, ~10475, 3)``."""
+        return self._verts_joints("world", "smplx")[0]
+
+    @property
+    def vertices_camera_smplx(self) -> torch.Tensor:
+        """Native SMPL-X mesh vertices in the camera frame, ``(L, ~10475, 3)``."""
+        return self._verts_joints("camera", "smplx")[0]
+
+    @property
+    def joints_world_smplx(self) -> torch.Tensor:
+        """SMPL-X joints[:24] in the world frame, ``(L, 24, 3)`` (first 22 match SMPL; 22/23 are jaw/eye)."""
+        return self._verts_joints("world", "smplx")[1]
+
+    @property
+    def joints_camera_smplx(self) -> torch.Tensor:
+        """SMPL-X joints[:24] in the camera frame, ``(L, 24, 3)``."""
+        return self._verts_joints("camera", "smplx")[1]
+
+    @property
+    def faces_smplx(self) -> np.ndarray:
+        """Native SMPL-X triangle faces, ``(~20908, 3)`` — shared across frames."""
+        if "faces_smplx" not in self._cache:
+            from gvhmr.inference._smpl import smplx_faces
+
+            self._cache["faces_smplx"] = smplx_faces(str(self._device or "cpu"))
+        return self._cache["faces_smplx"]
 
     # ---- serialization ---------------------------------------------------------------------------
     def to_dict(self) -> dict:
@@ -145,12 +175,15 @@ class MotionResult:
         skeleton_overlay: bool = False,
         skeleton_joints: str | None = None,
         render_scale: float | None = None,
+        mesh: str = "smpl",
     ) -> Path:
         """Render the overlay video(s) and return the path.
 
         ``view`` selects which video to return: ``"both"`` (in-cam ∥ world side-by-side, the default),
-        ``"world"``, or ``"camera"``. Needs the pipeline-staged artifacts (produced by ``pipeline(video)``)
-        and the SMPL body model. If ``path`` is given the chosen video is copied there.
+        ``"world"``, or ``"camera"``. ``mesh='smplx'`` renders the native ~10475-vertex SMPL-X surface
+        (needs only the SMPL-X body model) instead of the default SMPL-topology mesh. Needs the
+        pipeline-staged artifacts (produced by ``pipeline(video)``). If ``path`` is given the chosen
+        video is copied there.
         """
         if self._cfg is None:
             raise RuntimeError(
@@ -171,7 +204,9 @@ class MotionResult:
             self.save(cfg.paths.hmr4d_results)
         joint_indices = resolve_joint_subset(skeleton_joints)
         device = self._device or get_device()
-        ok = _render(cfg, device, skeleton=skeleton, skeleton_overlay=skeleton_overlay, joint_indices=joint_indices)
+        ok = _render(
+            cfg, device, skeleton=skeleton, skeleton_overlay=skeleton_overlay, joint_indices=joint_indices, mesh=mesh
+        )
         if not ok:
             raise RuntimeError(
                 "Rendering was skipped (missing SMPL body model or no GL context). "
@@ -184,6 +219,8 @@ class MotionResult:
                 "camera": cfg.paths.incam_video,
             }[view]
         )
+        if mesh == "smplx":  # native SMPL-X renders to _smplx-suffixed paths
+            produced = produced.with_stem(produced.stem + "_smplx")
         if path is not None:
             path = Path(path)
             path.parent.mkdir(parents=True, exist_ok=True)

@@ -38,14 +38,25 @@ def _load_assets(device_str: str):
 
 
 @torch.no_grad()
-def params_to_verts_joints(params: dict, device="cpu") -> tuple[torch.Tensor, torch.Tensor, object]:
-    """SMPL parameters → ``(vertices (L, 6890, 3), joints (L, 24, 3), faces)``, all on CPU.
+def params_to_verts_joints(
+    params: dict, device="cpu", *, topology: str = "smpl"
+) -> tuple[torch.Tensor, torch.Tensor, object]:
+    """SMPL(-X) parameters → ``(vertices, joints, faces)``, all on CPU.
 
     ``params`` is one of ``MotionResult.smpl_params_world`` / ``smpl_params_camera``
-    (``global_orient`` / ``body_pose`` / ``betas`` / ``transl``). Byte-identical to the demo renderer.
+    (``global_orient`` / ``body_pose`` / ``betas`` / ``transl``).
+
+    ``topology='smpl'`` (default): map the SMPL-X surface to the 6890-vertex SMPL topology + 24 SMPL joints
+    — byte-identical to the demo renderer. ``topology='smplx'``: the native ~10475-vertex SMPL-X surface,
+    SMPL-X faces, and ``smplx_out.joints[:, :24]`` (first 22 match SMPL; joints 22/23 are SMPL-X jaw/eye —
+    the native SMPL-X render uses the same choice, so the two stay in lockstep).
     """
     smplx, smplx2smpl, j_regressor, faces = _load_assets(str(torch.device(device)))
     out = smplx(**to_device(dict(params), device))
+    if topology == "smplx":
+        verts = out.vertices  # (L, 10475, 3)
+        joints = out.joints[:, :24]  # (L, 24, 3)
+        return verts.cpu(), joints.cpu(), smplx.faces
     verts = torch.stack([torch.matmul(smplx2smpl, v_) for v_ in out.vertices])  # (L, 6890, 3)
     joints = einsum(j_regressor, verts, "j v, l v i -> l j i")  # (L, 24, 3)
     return verts.cpu(), joints.cpu(), faces
@@ -54,3 +65,8 @@ def params_to_verts_joints(params: dict, device="cpu") -> tuple[torch.Tensor, to
 def smpl_faces(device="cpu"):
     """The (13776, 3) SMPL triangle faces (shared across frames)."""
     return _load_assets(str(torch.device(device)))[3]
+
+
+def smplx_faces(device="cpu"):
+    """The (~20908, 3) native SMPL-X triangle faces (shared across frames)."""
+    return _load_assets(str(torch.device(device)))[0].faces

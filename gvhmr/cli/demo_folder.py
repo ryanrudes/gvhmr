@@ -18,6 +18,7 @@ def run(
     f_mm: int | None = None,
     render_scale: float | None = None,
     no_render: bool = False,
+    smplx: bool = False,
 ) -> None:
     from gvhmr.cli.demo import run as run_demo
 
@@ -35,4 +36,5 @@ def run(
             f_mm=f_mm,
             render_scale=render_scale,
             no_render=no_render,
+            smplx=smplx,
         )

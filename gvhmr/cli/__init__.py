@@ -120,6 +120,14 @@ def demo(
             "hands, feet) and/or joint names/indices, comma-separated — e.g. [gvhmr]legs,left_arm[/].",
         ),
     ] = None,
+    smplx: Annotated[
+        bool,
+        typer.Option(
+            "--smplx",
+            help="Render the [bold]native ~10475-vertex SMPL-X surface[/] (SMPL-X faces) instead of the "
+            "default SMPL-topology mesh [dim](→ _smplx-suffixed videos; needs only the SMPL-X body model)[/].",
+        ),
+    ] = False,
     detector: Annotated[
         str | None,
         typer.Option(
@@ -173,6 +181,7 @@ def demo(
         skeleton=skeleton,
         skeleton_overlay=skeleton_overlay,
         skeleton_joints=skeleton_joints,
+        smplx=smplx,
         detector=detector,
         pose2d=pose2d,
         backbone=backbone,
@@ -195,6 +204,9 @@ def demo_folder(
     f_mm: Annotated[int | None, typer.Option(help="Focal length in mm.")] = None,
     render_scale: Annotated[float | None, typer.Option(help="Overlay resolution fraction.")] = None,
     no_render: Annotated[bool, typer.Option("--no-render", help="Skip overlays.")] = False,
+    smplx: Annotated[
+        bool, typer.Option("--smplx", help="Render the native ~10475-vertex SMPL-X surface (→ _smplx videos).")
+    ] = False,
 ) -> None:
     """Run the demo over [bold]every video in a folder[/]."""
     from gvhmr.cli.demo_folder import run
@@ -208,6 +220,7 @@ def demo_folder(
         f_mm=f_mm,
         render_scale=render_scale,
         no_render=no_render,
+        smplx=smplx,
     )
 
 
@@ -284,6 +297,22 @@ def eval_(
         list[str] | None,
         typer.Option("--set", help="Raw Hydra override(s), repeatable [dim](passed to the test task)[/]."),
     ] = None,
+    diagnostics: Annotated[
+        bool,
+        typer.Option(
+            "--diagnostics",
+            help="Also capture the full distribution [dim](std/percentiles/per-sequence/per-joint/timing "
+            "+ provenance) → diagnostics.json[/].",
+        ),
+    ] = False,
+    dump_raw: Annotated[
+        bool,
+        typer.Option("--dump-raw", help="With --diagnostics, also dump the raw per-sequence arrays as <DS>_raw.npz."),
+    ] = False,
+    diagnostics_out: Annotated[
+        Path | None,
+        typer.Option("--diagnostics-out", help="Where to write diagnostics.json [dim](default: next to --json)[/]."),
+    ] = None,
 ) -> None:
     """Run the paper benchmarks (auto-fetches data; prints your numbers next to the paper's)."""
     from gvhmr.cli.evalcmd import run
@@ -299,6 +328,9 @@ def eval_(
         variant=variant,
         raw_dir=raw_dir,
         regen=regen,
+        diagnostics=diagnostics,
+        dump_raw=dump_raw,
+        diagnostics_out=diagnostics_out,
     )
 
 
