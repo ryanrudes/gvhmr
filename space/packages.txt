@@ -1,6 +1,9 @@
 libegl1
+libegl-dev
+libegl-mesa0
 libgl1-mesa-dri
+libgl-dev
 libglx-mesa0
-libgles2
 libgbm1
+libgles2
 libglib2.0-0
