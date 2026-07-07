@@ -78,3 +78,28 @@ def test_gradio_whitelist_includes_xethub() -> None:
 def test_video_path_normalization(video, expected) -> None:
     app = _load_space_app()
     assert app._video_path(video) == expected
+
+
+def test_preflight_rejects_unavailable_camera() -> None:
+    app = _load_space_app()
+    import gradio as gr
+
+    with pytest.raises(gr.Error, match="not set up"):
+        app._preflight_stages(
+            static_camera=False,
+            camera="dust3r",
+            detector="yolo",
+            pose2d="vitpose",
+            backbone="hmr2",
+        )
+
+
+def test_preflight_static_skips_camera_dep() -> None:
+    app = _load_space_app()
+    app._preflight_stages(
+        static_camera=True,
+        camera="simplevo",
+        detector="yolo",
+        pose2d="vitpose",
+        backbone="hmr2",
+    )

@@ -83,9 +83,9 @@ DETECTOR_CHOICES = [
     "yolov9s",
     "yolov9t",
 ]
-POSE2D_CHOICES = ["vitpose", "rtmpose"]
-BACKBONE_CHOICES = ["hmr2", "dinov2"]
-CAMERA_CHOICES = ["simplevo", "dpvo", "dust3r", "vggt"]
+POSE2D_CHOICES = ["vitpose"]  # rtmpose needs gvhmr[rtmpose] — not installed on this Space
+BACKBONE_CHOICES = ["hmr2"]  # dinov2 needs a retrained checkpoint
+CAMERA_CHOICES = ["simplevo"]  # dpvo/dust3r/vggt are not set up on this Space
 
 DESCRIPTION = f"""
 # GVHMR — World-Grounded Human Motion Recovery
@@ -151,9 +151,34 @@ def _bootstrap_deps() -> None:
         # ZeroGPU preinstalls torch 2.11 — chumpy must be present first (see requirements.txt).
         _pip_install("gvhmr[preproc]>=1.0.3")
 
+    _verify_preproc_imports()
+
     from gvhmr.utils._smpl_compat import apply
 
     apply()
+
+
+def _verify_preproc_imports() -> None:
+    """Fail fast if the runtime preproc extra did not land (common on first pip bootstrap)."""
+    import importlib
+
+    missing: list[str] = []
+    for mod in ("ultralytics", "pycolmap", "cv2"):
+        try:
+            importlib.import_module(mod)
+        except ImportError:
+            missing.append(mod)
+    if not missing:
+        return
+    _pip_install("gvhmr[preproc]>=1.0.3", "pycolmap>=0.6", "opencv-python-headless>=4.8")
+    still: list[str] = []
+    for mod in missing:
+        try:
+            importlib.import_module(mod)
+        except ImportError:
+            still.append(mod)
+    if still:
+        raise RuntimeError(f"preproc dependencies missing after bootstrap: {', '.join(still)}")
 
 
 _BOOTSTRAPPED = False
@@ -247,6 +272,28 @@ def _get_pipeline(
         _PIPE_ERRORS[key] = msg
         traceback.print_exc()
         raise RuntimeError(msg) from exc
+
+
+def _preflight_stages(*, static_camera: bool, camera: str, detector: str, pose2d: str, backbone: str) -> None:
+    """Mirror ``ensure_deps`` checks but raise ``gr.Error`` (never ``SystemExit``)."""
+    from gvhmr.utils.preproc.base import missing_requirements
+
+    if pose2d not in POSE2D_CHOICES:
+        raise gr.Error(f"2D pose '{pose2d}' is not available on this Space. Use vitpose.")
+    if backbone not in BACKBONE_CHOICES:
+        raise gr.Error(f"Backbone '{backbone}' is not available on this Space. Use hmr2.")
+    if not static_camera and camera not in CAMERA_CHOICES:
+        raise gr.Error(
+            f"Camera '{camera}' is not set up on this Space. Check Static camera, or use simplevo."
+        )
+
+    selections: dict[str, str] = {"detector": detector, "pose2d": pose2d, "backbone": backbone}
+    if not static_camera:
+        selections["camera"] = camera
+    missing = missing_requirements(selections)
+    if missing:
+        detail = "; ".join(f"{why} requires {mod}" for why, mod, _ in missing)
+        raise gr.Error(f"Missing dependencies for this run: {detail}")
 
 
 def _is_credentials_error(exc: Exception) -> bool:
@@ -364,6 +411,13 @@ def run(
         from gvhmr.utils.console import progress_hook, progress_phase
 
         progress(0.01, desc="Starting…")
+        _preflight_stages(
+            static_camera=static_camera,
+            camera=camera_backend if not static_camera else "simplevo",
+            detector=detector,
+            pose2d=pose2d,
+            backbone=backbone,
+        )
         with progress_hook(_hook):
             with progress_phase(0.0, 0.05, "Loading model"):
                 try:
@@ -415,6 +469,12 @@ def run(
 
     except gr.Error:
         raise
+    except SystemExit as exc:
+        raise gr.Error(
+            "GVHMR dependency check failed (see Space Logs for the package list). "
+            "On this Space: keep Static camera checked unless you need simplevo, "
+            "and use the default vitpose / hmr2 / yolo presets."
+        ) from exc
     except Exception as exc:  # noqa: BLE001 — convert everything to a friendly UI error
         if _is_credentials_error(exc):
             raise gr.Error(
@@ -440,7 +500,11 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
     with gr.Row():
         with gr.Column():
             video_in = gr.Video(label="Input video", sources=["upload"], format="mp4")
-            static_in = gr.Checkbox(value=False, label="Static camera")
+            static_in = gr.Checkbox(
+                value=True,
+                label="Static camera",
+                info="Recommended on this Space (faster; skips visual odometry). Uncheck only for simplevo.",
+            )
             camera_in = gr.Dropdown(
                 choices=CAMERA_CHOICES,
                 value="simplevo",
