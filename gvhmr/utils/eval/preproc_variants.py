@@ -40,12 +40,20 @@ from gvhmr.utils.pylogger import Log
 IDENTITY_IOU_THR = 0.5
 
 
-def variant_slug(detector: str | None, pose2d: str | None, backbone: str | None = None) -> str:
-    """Deterministic cache name for a stage selection (defaults spelled out, e.g. ``yolo26x-vitpose``)."""
+def variant_slug(
+    detector: str | None, pose2d: str | None, backbone: str | None = None, stage_overrides: list[str] | None = None
+) -> str:
+    """Deterministic cache name for a stage selection (defaults spelled out, e.g. ``yolo26x-vitpose``).
+    Stage ``--set`` knobs (e.g. ``pose2d.flip_test=false``) fold into the slug so different knob sets
+    don't collide in the cache — ``yolo-vitpose__pose2d.flip_test=false``."""
     parts = [detector or "yolo", pose2d or "vitpose"]
     if backbone and backbone != "hmr2":
         parts.append(backbone)
-    return "-".join(parts)
+    slug = "-".join(parts)
+    if stage_overrides:
+        tag = ",".join(sorted(stage_overrides)).replace("/", "").replace(" ", "")
+        slug = f"{slug}__{tag}"
+    return slug
 
 
 def xys_iou(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
@@ -205,15 +213,18 @@ class VariantReport:
 class _LazyStages:
     """Construct stage implementations on first use — full cache hits load no models at all."""
 
-    def __init__(self, detector: str | None, pose2d: str | None, backbone: str | None):
+    def __init__(
+        self, detector: str | None, pose2d: str | None, backbone: str | None, overrides: list[str] | None = None
+    ):
         self._names = {"detector": detector, "pose2d": pose2d or "vitpose", "backbone": backbone or "hmr2"}
+        self._overrides = list(overrides or [])
         self._built: dict = {}
 
     def get(self, stage: str):
         if stage not in self._built:
             from gvhmr.utils.preproc.base import make_backbone, make_detector, make_pose2d
 
-            impl, kwargs = _resolve_stage(stage, self._names[stage])
+            impl, kwargs = _resolve_stage(stage, self._names[stage], self._overrides)
             maker = {"detector": make_detector, "pose2d": make_pose2d, "backbone": make_backbone}[stage]
             self._built[stage] = maker(impl, **kwargs)
         return self._built[stage]
@@ -383,18 +394,21 @@ def _extract_stages(
     return {"bbx_xys": bbx_xys, "kp2d": kp2d, **feats}
 
 
-def _resolve_stage(group: str, name: str) -> tuple[str, dict]:
+def _resolve_stage(group: str, name: str, extra_overrides: list[str] | None = None) -> tuple[str, dict]:
     """Resolve a stage selection through the demo's Hydra config group (the same mechanism the demo's
     ``--detector/--pose2d/--backbone`` use), so every preset (``yolo26x``, ``rtmpose``, …) and its knobs
-    mean exactly the same thing here. Returns the implementation name + ctor kwargs."""
+    mean exactly the same thing here. ``extra_overrides`` are stage-scoped ``--set`` knobs (e.g.
+    ``pose2d.flip_test=false``); only those addressing THIS ``group`` apply, so the same list is safe to
+    pass to every stage. Returns the implementation name + ctor kwargs."""
     from hydra import compose, initialize_config_module
     from omegaconf import OmegaConf
 
     from gvhmr.configs import register_store_gvhmr
 
+    scoped = [o for o in (extra_overrides or []) if o.split("=", 1)[0].split(".", 1)[0] == group]
     register_store_gvhmr()
     with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):
-        node = compose(config_name="demo", overrides=[f"{group}={name}", "video_name=_"])[group]
+        node = compose(config_name="demo", overrides=[f"{group}={name}", *scoped, "video_name=_"])[group]
     conf = OmegaConf.to_container(node, resolve=True)
     impl = conf.pop("name")
     return impl, {k: v for k, v in conf.items() if v is not None}
@@ -410,6 +424,7 @@ def generate_3dpw_variant(
     pose2d: str | None,
     backbone: str | None = None,
     overwrite: bool = False,
+    stage_overrides: list[str] | None = None,
 ) -> VariantReport:
     """Write ``preproc_variants/<slug>/`` for 3DPW (same file schema the canonical loader reads)."""
     report = VariantReport(slug=slug)
@@ -421,7 +436,7 @@ def generate_3dpw_variant(
     feat_dir.mkdir(parents=True, exist_ok=True)
     flip_dir.mkdir(parents=True, exist_ok=True)
 
-    stages = _LazyStages(detector, pose2d, backbone)
+    stages = _LazyStages(detector, pose2d, backbone, stage_overrides)
     new_bbx: dict = {}
     new_kp2d: dict = {}
     bbx_pt, kp2d_pt = out / "preproc_test_bbx.pt", out / "preproc_test_kp2d.pt"
@@ -469,6 +484,7 @@ def generate_emdb_variant(
     pose2d: str | None,
     backbone: str | None = None,
     overwrite: bool = False,
+    stage_overrides: list[str] | None = None,
 ) -> VariantReport:
     """Write ``preproc_variants/<slug>/`` for EMDB (overlay file + flip imgfeats; GT stays canonical)."""
     report = VariantReport(slug=slug)
@@ -482,7 +498,7 @@ def generate_emdb_variant(
     if overlay_pt.exists() and not overwrite:
         overlay = torch.load(overlay_pt, weights_only=False)
 
-    stages = _LazyStages(detector, pose2d, backbone)
+    stages = _LazyStages(detector, pose2d, backbone, stage_overrides)
     for vid in labels:
         if vid in overlay and (flip_dir / f"{vid}.pt").exists() and not overwrite:
             report.cached.append(vid)

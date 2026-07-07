@@ -54,7 +54,14 @@ once upstream), so by default a detector/2D-pose swap is *invisible* to the benc
 ```bash
 gvhmr eval 3dpw --detector yolo26x                        # first run: fetches raw 3DPW + regenerates
 gvhmr eval 3dpw,emdb --detector yolo26x --pose2d rtmpose  # variants are cached + resumable
+gvhmr eval 3dpw --set pose2d.flip_test=false --set detector.tracker=bytetrack.yaml  # tune stage knobs
 ```
+
+**Stage `--set` knobs.** A `--set` whose key targets a stage group (`detector.`/`pose2d.`/`backbone.`,
+e.g. `pose2d.flip_test=false`) drives the **preproc regen** — the same knob the demo's `--set` tweaks,
+so you can measure exactly what a stage setting costs on the benchmark (this is how the `--fast` recipe's
+flip-off + ByteTrack is certified). Each distinct knob set caches under its own slug. Any non-stage
+`--set` still tunes the model/test task.
 
 What to know before trusting a variant number:
 

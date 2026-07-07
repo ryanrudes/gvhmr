@@ -219,6 +219,7 @@ def ensure_variant(
     backbone: str | None,
     raw_dir: Path | None,
     regen: bool,
+    stage_overrides: list[str] | None = None,
 ) -> None:
     """Generate (or reuse) the regenerated-preprocessing cache for each dataset."""
     from gvhmr.utils import assets
@@ -233,7 +234,7 @@ def ensure_variant(
         ensure_variant_inputs([n], raw_dir)
         Log.info(f"[{n}] regenerating preprocessing as variant '{slug}' (resumable; ~minutes/sequence)…")
         gen = pv.generate_3dpw_variant if n == "3dpw" else pv.generate_emdb_variant
-        report = gen(support, slug, detector, pose2d, backbone, overwrite=regen)
+        report = gen(support, slug, detector, pose2d, backbone, overwrite=regen, stage_overrides=stage_overrides)
         report.log()
 
 
@@ -341,12 +342,17 @@ def run(
     from gvhmr.utils import assets
 
     names = parse_datasets(datasets)
-    variant_mode = any(v is not None for v in (detector, pose2d, backbone, variant))
+    # Split --set overrides: stage-scoped ones (detector./pose2d./backbone.) drive the preproc REGEN
+    # (e.g. `--set pose2d.flip_test=false` to certify --fast); the rest tune the eval/model phase.
+    _STAGE_GROUPS = ("detector", "pose2d", "backbone")
+    stage_overrides = [o for o in (set_overrides or []) if o.split("=", 1)[0].split(".", 1)[0] in _STAGE_GROUPS]
+    eval_overrides = [o for o in (set_overrides or []) if o not in stage_overrides]
+    variant_mode = any(v is not None for v in (detector, pose2d, backbone, variant)) or bool(stage_overrides)
     slug = None
     if variant_mode:
         from gvhmr.utils.eval.preproc_variants import variant_slug
 
-        slug = variant or variant_slug(detector, pose2d, backbone)
+        slug = variant or variant_slug(detector, pose2d, backbone, stage_overrides)
         unsupported = [n for n in names if n not in VARIANT_GROUPS]
         if unsupported:
             console.print(
@@ -369,7 +375,7 @@ def run(
         )
     ensure_inputs(names)
     if variant_mode:
-        ensure_variant(names, slug, detector, pose2d, backbone, raw_dir, regen)
+        ensure_variant(names, slug, detector, pose2d, backbone, raw_dir, regen, stage_overrides=stage_overrides)
     ckpt = str(ckpt or assets.GVHMR_CKPT)
 
     diagnostics = diagnostics or dump_raw or diagnostics_out is not None
@@ -378,10 +384,10 @@ def run(
     if diagnostics:
         os.environ["GVHMR_EVAL_DIAGNOSTICS"] = "1"  # in-process toggle read by the metric callbacks
         results, detailed, raw = run_benchmarks(
-            names, ckpt, slug=slug, set_overrides=set_overrides, collect_detailed=True
+            names, ckpt, slug=slug, set_overrides=eval_overrides, collect_detailed=True
         )
     else:
-        results = run_benchmarks(names, ckpt, slug=slug, set_overrides=set_overrides)
+        results = run_benchmarks(names, ckpt, slug=slug, set_overrides=eval_overrides)
     if not results:
         Log.warning("No metrics were produced — check the run output above.")
         raise SystemExit(1)

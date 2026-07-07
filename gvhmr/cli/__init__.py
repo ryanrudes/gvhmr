@@ -304,7 +304,12 @@ def eval_(
     regen: Annotated[bool, typer.Option("--regen", help="Regenerate the variant cache even if present.")] = False,
     set_: Annotated[
         list[str] | None,
-        typer.Option("--set", help="Raw Hydra override(s), repeatable [dim](passed to the test task)[/]."),
+        typer.Option(
+            "--set",
+            help="Raw Hydra override(s), repeatable. Stage-scoped keys "
+            "[dim](detector./pose2d./backbone., e.g. pose2d.flip_test=false)[/] drive the preproc regen; "
+            "the rest tune the test task.",
+        ),
     ] = None,
     diagnostics: Annotated[
         bool,
