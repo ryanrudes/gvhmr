@@ -159,60 +159,59 @@ class GVHMRPipeline:
             config_overrides.append(f"output_dir={output_dir}")
         config_overrides += list(set_overrides or [])
 
-        with _maybe_quiet(not progress):
-            with progress_hook(progress_callback):
-                with progress_phase(0.0, 0.06, "Preparing video"):
-                    cfg = build_demo_cfg(
-                        video,
-                        output_root=output_root,
-                        static_cam=static_camera,
-                        use_dpvo=False,
-                        f_mm=f_mm,
-                        verbose=False,
-                        render_scale=render_scale,
-                        config_overrides=config_overrides,
-                    )
-                cam_name = cfg.camera.name
-                resolved_flip = cfg.flip_test
-
-                with progress_phase(0.06, 0.10, "Fetching assets"):
-                    ensure_deps(cfg)
-                    ensure_assets(cam_name, want_render=render, repo=self.model.repo_id)
-
-                run_preprocess(cfg, flip_test=resolved_flip)
-
-                with progress_phase(0.80, 0.82, "Loading motion data"):
-                    data = load_data_dict(cfg, flip_test=resolved_flip)
-
-                self.model.to(self.device).eval()
-                with progress_phase(0.82, 0.92, "Recovering motion"):
-                    pred = recover_motion(
-                        self.model.pl,
-                        data,
-                        static_cam=static_camera,
-                        flip_test_data=data.get("flip_test"),
-                        world_from_incam=(static_camera and world_from_incam),
-                        cam_name=cam_name,
-                        slam_path=cfg.paths.slam,
-                    )
-                import torch
-
-                torch.save(pred, cfg.paths.hmr4d_results)  # persist so result.render()/caching work
-
-                result = MotionResult(
-                    smpl_params_world=pred["smpl_params_global"],
-                    smpl_params_camera=pred["smpl_params_incam"],
-                    intrinsics=pred["K_fullimg"],
-                    fps=30.0,
-                    camera="static" if static_camera else cam_name,
-                    video_path=Path(cfg.video_path),
-                    output_dir=Path(cfg.output_dir),
-                    raw=pred,
-                    _cfg=cfg,
+        with _maybe_quiet(not progress), progress_hook(progress_callback):
+            with progress_phase(0.0, 0.06, "Preparing video"):
+                cfg = build_demo_cfg(
+                    video,
+                    output_root=output_root,
+                    static_cam=static_camera,
+                    use_dpvo=False,
+                    f_mm=f_mm,
+                    verbose=False,
+                    render_scale=render_scale,
+                    config_overrides=config_overrides,
                 )
-                if render:
-                    with progress_phase(0.92, 0.99, "Rendering overlay"):
-                        result.render(render_scale=render_scale)
+            cam_name = cfg.camera.name
+            resolved_flip = cfg.flip_test
+
+            with progress_phase(0.06, 0.10, "Fetching assets"):
+                ensure_deps(cfg)
+                ensure_assets(cam_name, want_render=render, repo=self.model.repo_id)
+
+            run_preprocess(cfg, flip_test=resolved_flip)
+
+            with progress_phase(0.80, 0.82, "Loading motion data"):
+                data = load_data_dict(cfg, flip_test=resolved_flip)
+
+            self.model.to(self.device).eval()
+            with progress_phase(0.82, 0.92, "Recovering motion"):
+                pred = recover_motion(
+                    self.model.pl,
+                    data,
+                    static_cam=static_camera,
+                    flip_test_data=data.get("flip_test"),
+                    world_from_incam=(static_camera and world_from_incam),
+                    cam_name=cam_name,
+                    slam_path=cfg.paths.slam,
+                )
+            import torch
+
+            torch.save(pred, cfg.paths.hmr4d_results)  # persist so result.render()/caching work
+
+            result = MotionResult(
+                smpl_params_world=pred["smpl_params_global"],
+                smpl_params_camera=pred["smpl_params_incam"],
+                intrinsics=pred["K_fullimg"],
+                fps=30.0,
+                camera="static" if static_camera else cam_name,
+                video_path=Path(cfg.video_path),
+                output_dir=Path(cfg.output_dir),
+                raw=pred,
+                _cfg=cfg,
+            )
+            if render:
+                with progress_phase(0.92, 1.0, "Rendering overlay"):
+                    result.render(render_scale=render_scale)
         return result
 
     # ``recover`` reads a touch nicer than calling the object; identical behaviour.

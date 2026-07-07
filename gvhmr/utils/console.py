@@ -151,24 +151,21 @@ def track(
                 yield item
         return
 
+    # Plain CLI path: a Rich bar (the hook is always None here — the UI path returned above).
     with progress(transient=not leave) as prog:
         task_id = prog.add_task(label, total=total)
-        if _progress_hook.get() is not None:
-            _notify_progress(0.0, label)
         for item in iterable:
             yield item
             prog.advance(task_id)
-            if total:
-                completed = prog.tasks[task_id].completed
-                _notify_progress(completed / total, label)
-            elif _progress_hook.get() is not None:
-                _notify_progress(0.0, label)
 
 
 def status(message: str):
     """An indeterminate spinner for a stage whose length is unknown (context manager)."""
     if _progress_hook.get() is not None:
+        # Under a UI hook, forward the label but don't emit a Rich spinner into the shared console
+        # (it would print stray dots in e.g. a Gradio log) — match track()'s Rich-suppressing behaviour.
         _notify_progress(0.0, message)
+        return contextlib.nullcontext()
     return console.status(f"[stage]{message}", spinner="dots")
 
 
