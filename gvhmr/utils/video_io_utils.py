@@ -1,4 +1,5 @@
 import functools
+import os
 import shutil
 from pathlib import Path
 
@@ -16,10 +17,21 @@ _X264_PRESET = "veryfast"
 
 
 @functools.lru_cache(maxsize=64)
-def _probe(video_path: str) -> dict:
-    """Cached ``ffmpeg.probe`` — the demo probes the same path many times (fps, rotation, lwh); each
-    probe spawns an ffprobe subprocess (~tens of ms). Keyed by the path string."""
-    return ffmpeg.probe(str(video_path))
+def _probe_cached(video_path: str, _token: object) -> dict:
+    return ffmpeg.probe(video_path)
+
+
+def _probe(video_path) -> dict:
+    """Cached ``ffmpeg.probe`` — the demo probes the same path many times (fps, rotation, lwh); each probe
+    spawns an ffprobe subprocess (~tens of ms). Keyed by (path, mtime, size) so a long-lived process that
+    REWRITES a fixed scratch path (server/watch-folder, ``gvhmr.recover`` reuse) re-probes the new content
+    instead of returning stale fps/rotation and silently mis-staging the clip."""
+    try:
+        st = os.stat(video_path)
+        token = (st.st_mtime_ns, st.st_size)
+    except OSError:
+        token = None  # let ffmpeg.probe surface the real error; still de-dups within a call
+    return _probe_cached(str(video_path), token)
 
 
 def get_video_rotation(video_path) -> int:
