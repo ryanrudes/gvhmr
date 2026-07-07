@@ -95,11 +95,19 @@ def _standalone_context(moderngl):
     display`` on headless HPC/cluster GPU nodes (and containers). NVIDIA GPUs render fine
     through EGL there, so try the platform default first (CGL on macOS, GLX on an X11
     desktop) and fall back to the EGL backend.
+
+    glcontext's EGL backend ``dlopen``\\s the *unversioned* ``libEGL.so``/``libGL.so``,
+    which only the ``-dev`` packages ship — a runtime-only image (Debian ``libegl1`` +
+    Mesa, e.g. the HF Space) has just ``libEGL.so.1`` and fails with ``libEGL.so not
+    loaded``. So retry EGL with the versioned SONAMEs before giving up.
     """
     try:
         return moderngl.create_standalone_context()
     except Exception:
-        return moderngl.create_standalone_context(backend="egl")
+        try:
+            return moderngl.create_standalone_context(backend="egl")
+        except Exception:
+            return moderngl.create_standalone_context(backend="egl", libegl="libEGL.so.1", libgl="libGL.so.1")
 
 
 class ModernGLRenderer:
