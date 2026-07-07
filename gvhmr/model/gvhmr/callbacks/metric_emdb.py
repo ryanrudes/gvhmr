@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import cv2
@@ -6,14 +7,21 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 from einops import einsum
-from gvhmr.utils.console import track
 
 from gvhmr import PROJ_ROOT
 from gvhmr.configs import MainStore, builds
+from gvhmr.model.gvhmr.callbacks._diagnostics import (
+    SMPL_JOINT_NAMES,
+    diagnostics_enabled,
+    gather_diagnostics,
+    stash_diagnostics,
+)
 from gvhmr.utils.comm.gather import all_gather
+from gvhmr.utils.console import track
 from gvhmr.utils.eval.eval_utils import (
     as_np_array,
     compute_camcoord_metrics,
+    compute_camcoord_perjoint_metrics,
     compute_global_metrics,
     rearrange_by_mask,
 )
@@ -27,12 +35,16 @@ from gvhmr.utils.wis3d_utils import add_motion_as_lines, make_wis3d
 
 
 class MetricMocap(pl.Callback):
-    def __init__(self, emdb_split=1):
+    def __init__(self, emdb_split=1, diagnostics: bool = False):
         """
         Args:
             emdb_split: 1 to evaluate incam, 2 to evaluate global
+            diagnostics: opt-in — preserve the full distribution / per-sequence (+ per-joint for EMDB_1)
         """
         super().__init__()
+        self.diagnostics = diagnostics_enabled(diagnostics)
+        self._perjoint_agg = {"mpjpe": {}}  # EMDB_1 only (global EMDB_2 has no per-joint)
+        self._diag_timing = {}
         # vid->result
         if emdb_split == 1:
             self.target_dataset_id = "EMDB_1"
@@ -116,9 +128,16 @@ class MetricMocap(pl.Callback):
                 "pred_verts": pred_c_verts,
                 "target_verts": target_c_verts,
             }
+            _t0 = time.perf_counter()
             camcoord_metrics = compute_camcoord_metrics(batch_eval, mask=mask)
             for k in camcoord_metrics:
                 self.metric_aggregator[k][vid] = as_np_array(camcoord_metrics[k])
+
+            if self.diagnostics:  # additive per-joint mpjpe on the same masked frames + timing
+                masked_eval = {k: (v[mask] if mask is not None else v) for k, v in batch_eval.items()}
+                perjoint = compute_camcoord_perjoint_metrics(masked_eval)
+                self._perjoint_agg["mpjpe"][vid] = as_np_array(perjoint["mpjpe"])
+                self._diag_timing[vid] = time.perf_counter() - _t0
 
         elif self.target_dataset_id == "EMDB_2":  # global metrics
             # 2. global (align-y axis)
@@ -134,9 +153,12 @@ class MetricMocap(pl.Callback):
                 "pred_verts_glob": pred_ay_verts,
                 "target_verts_glob": target_w_verts,
             }
+            _t0 = time.perf_counter()
             global_metrics = compute_global_metrics(batch_eval, mask=mask)
             for k in global_metrics:
                 self.metric_aggregator[k][vid] = as_np_array(global_metrics[k])
+            if self.diagnostics:
+                self._diag_timing[vid] = time.perf_counter() - _t0
 
         if False:  # wis3d debug
             wis3d = make_wis3d(name="debug-emdb-incam")
@@ -317,12 +339,23 @@ class MetricMocap(pl.Callback):
             pl_module.metrics_summary = {}
         pl_module.metrics_summary[self.target_dataset_id] = {k: float(v) for k, v in metrics_avg.items()}
 
+        if self.diagnostics:
+            perjoint = self._perjoint_agg if self.target_dataset_id == "EMDB_1" else None
+            gather_diagnostics(perjoint, self._diag_timing)  # collective — all ranks
+            if local_rank == 0:
+                stash_diagnostics(
+                    pl_module, self.target_dataset_id, self.metric_aggregator, perjoint, self._diag_timing,
+                    SMPL_JOINT_NAMES,
+                )  # fmt: skip
+
         # reset
         for k in self.metric_aggregator:
             self.metric_aggregator[k] = {}
+        self._perjoint_agg = {"mpjpe": {}}
+        self._diag_timing = {}
 
 
-emdb1_node = builds(MetricMocap, emdb_split=1)
-emdb2_node = builds(MetricMocap, emdb_split=2)
+emdb1_node = builds(MetricMocap, emdb_split=1, diagnostics=False)
+emdb2_node = builds(MetricMocap, emdb_split=2, diagnostics=False)
 MainStore.store(name="metric_emdb1", node=emdb1_node, group="callbacks", package="callbacks.metric_emdb1")
 MainStore.store(name="metric_emdb2", node=emdb2_node, group="callbacks", package="callbacks.metric_emdb2")

@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import numpy as np
@@ -7,8 +8,14 @@ from einops import einsum
 
 from gvhmr import PROJ_ROOT
 from gvhmr.configs import MainStore, builds
+from gvhmr.model.gvhmr.callbacks._diagnostics import (
+    COMMON14_JOINT_NAMES,
+    diagnostics_enabled,
+    gather_diagnostics,
+    stash_diagnostics,
+)
 from gvhmr.utils.comm.gather import all_gather
-from gvhmr.utils.eval.eval_utils import as_np_array, compute_camcoord_metrics
+from gvhmr.utils.eval.eval_utils import as_np_array, compute_camcoord_metrics, compute_camcoord_perjoint_metrics
 from gvhmr.utils.geo_transform import apply_T_on_points
 from gvhmr.utils.pylogger import Log
 from gvhmr.utils.seq_utils import rearrange_by_mask
@@ -19,7 +26,7 @@ from gvhmr.utils.vis.renderer_utils import simple_render_mesh_background
 
 
 class MetricMocap(pl.Callback):
-    def __init__(self):
+    def __init__(self, diagnostics: bool = False):
         super().__init__()
         # vid->result
         self.metric_aggregator = {
@@ -28,6 +35,10 @@ class MetricMocap(pl.Callback):
             "pve": {},
             "accel": {},
         }
+        # Opt-in rich diagnostics (also toggled by $GVHMR_EVAL_DIAGNOSTICS); off = byte-identical eval.
+        self.diagnostics = diagnostics_enabled(diagnostics)
+        self._perjoint_agg = {"mpjpe": {}}  # vid -> (F, J) per-joint mpjpe
+        self._diag_timing = {}  # vid -> per-sequence metric compute seconds
 
         # SMPLX and SMPL. Committed assets resolve from the repo root (not the CWD).
         _bm = PROJ_ROOT / "gvhmr/utils/body_model"
@@ -88,9 +99,16 @@ class MetricMocap(pl.Callback):
             "pred_verts": pred_c_verts,
             "target_verts": target_c_verts,
         }
+        _t0 = time.perf_counter()
         camcoord_metrics = compute_camcoord_metrics(batch_eval, mask=mask, pelvis_idxs=[2, 3])
         for k in camcoord_metrics:
             self.metric_aggregator[k][vid] = as_np_array(camcoord_metrics[k])
+
+        if self.diagnostics:  # additive: per-joint mpjpe on the same masked frames + timing
+            masked_eval = {k: (v[mask] if mask is not None else v) for k, v in batch_eval.items()}
+            perjoint = compute_camcoord_perjoint_metrics(masked_eval, pelvis_idxs=[2, 3])
+            self._perjoint_agg["mpjpe"][vid] = as_np_array(perjoint["mpjpe"])
+            self._diag_timing[vid] = time.perf_counter() - _t0
 
         if False:  # Render incam (simple)
             meta_render = batch["meta_render"][0]
@@ -186,10 +204,21 @@ class MetricMocap(pl.Callback):
             pl_module.metrics_summary = {}
         pl_module.metrics_summary["3DPW"] = {k: float(v) for k, v in metrics_avg.items()}
 
+        # opt-in: preserve the full distribution / per-sequence / per-joint before the reset discards it
+        if self.diagnostics:
+            gather_diagnostics(self._perjoint_agg, self._diag_timing)  # collective — all ranks
+            if local_rank == 0:  # 3DPW's per-joint is the common-14 (LSP) order, not SMPL-24
+                stash_diagnostics(
+                    pl_module, "3DPW", self.metric_aggregator, self._perjoint_agg, self._diag_timing,
+                    COMMON14_JOINT_NAMES,
+                )  # fmt: skip
+
         # reset
         for k in self.metric_aggregator:
             self.metric_aggregator[k] = {}
+        self._perjoint_agg = {"mpjpe": {}}
+        self._diag_timing = {}
 
 
-node_3dpw = builds(MetricMocap)
+node_3dpw = builds(MetricMocap, diagnostics=False)
 MainStore.store(name="metric_3dpw", node=node_3dpw, group="callbacks", package="callbacks.metric_3dpw")

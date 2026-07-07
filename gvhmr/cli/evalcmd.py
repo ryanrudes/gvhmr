@@ -238,13 +238,21 @@ def ensure_variant(
 
 
 def run_benchmarks(
-    names: list[str], ckpt: str, slug: str | None = None, set_overrides: list[str] | None = None
-) -> dict[str, dict[str, float]]:
+    names: list[str],
+    ckpt: str,
+    slug: str | None = None,
+    set_overrides: list[str] | None = None,
+    collect_detailed: bool = False,
+):
     """Run the Lightning test task(s) for the given datasets and return {dataset_id: {metric: value}}.
 
     The shared engine under both ``gvhmr eval`` and ``gvhmr sweep``: one combined run for all three
     canonical datasets, else one task per dataset sequentially in-process; a ``slug`` applies a
-    regenerated preprocessing variant via the root ``preproc_variant`` config key."""
+    regenerated preprocessing variant via the root ``preproc_variant`` config key.
+
+    With ``collect_detailed`` (used by ``--diagnostics``), returns ``(results, detailed, raw)`` where
+    ``detailed``/``raw`` are the opt-in diagnostics stashed by the metric callbacks; otherwise returns
+    just ``results`` (unchanged, so ``gvhmr sweep``'s existing call is untouched)."""
     import importlib
 
     # The Typer command *function* `train` shadows the submodule on the package, so import explicitly.
@@ -253,6 +261,8 @@ def run_benchmarks(
     combined = set(names) == set(DATASETS) and slug is None
     tasks = [COMBINED_TASK] if combined else [DATASETS[n][0] for n in names]
     results: dict[str, dict[str, float]] = {}
+    detailed: dict[str, dict] = {}
+    raw: dict[str, dict] = {}
     for task in tasks:
         overrides = [f"global/task={task}", "exp=gvhmr/mixed/mixed", f"ckpt_path={ckpt}"]
         if slug is not None:
@@ -261,7 +271,50 @@ def run_benchmarks(
         Log.info(f"Running [gvhmr]gvhmr train {' '.join(overrides)}[/]")
         train_cli.run(overrides)
         results.update(train_cli.LAST_TEST_METRICS)
+        if collect_detailed:
+            detailed.update(train_cli.LAST_TEST_DETAILED)
+            raw.update(train_cli.LAST_TEST_RAW)
+    if collect_detailed:
+        return results, detailed, raw
     return results
+
+
+def _provenance(ckpt: str, slug: str | None, names: list[str], detailed: dict) -> dict:
+    """A reproducibility record for a diagnostics dump: git sha, ckpt hash, env, dataset sizes."""
+    import hashlib
+    import subprocess
+    from datetime import datetime, timezone
+
+    import torch
+
+    def _git_sha() -> str | None:
+        try:
+            return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()  # noqa: S607
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _sha256(path: str) -> str | None:
+        try:
+            h = hashlib.sha256()
+            with open(path, "rb") as f:
+                for chunk in iter(lambda: f.read(1 << 20), b""):
+                    h.update(chunk)
+            return h.hexdigest()
+        except Exception:  # noqa: BLE001
+            return None
+
+    sizes = {ds: {"n_sequences": d.get("n_sequences"), "n_frames": d.get("n_frames")} for ds, d in detailed.items()}
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "git_sha": _git_sha(),
+        "ckpt": ckpt,
+        "ckpt_sha256": _sha256(ckpt),
+        "preproc_variant": slug,
+        "datasets": names,
+        "dataset_sizes": sizes,
+        "torch_version": torch.__version__,
+        "cuda_device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
+    }
 
 
 def run(
@@ -275,9 +328,13 @@ def run(
     variant: str | None = None,
     raw_dir: Path | None = None,
     regen: bool = False,
+    diagnostics: bool = False,
+    dump_raw: bool = False,
+    diagnostics_out: Path | None = None,
 ) -> None:
     """Run the benchmark eval end-to-end and print the consolidated table."""
     import json
+    import os
 
     import torch
 
@@ -315,11 +372,22 @@ def run(
         ensure_variant(names, slug, detector, pose2d, backbone, raw_dir, regen)
     ckpt = str(ckpt or assets.GVHMR_CKPT)
 
-    results = run_benchmarks(names, ckpt, slug=slug, set_overrides=set_overrides)
+    diagnostics = diagnostics or dump_raw or diagnostics_out is not None
+    detailed: dict = {}
+    raw: dict = {}
+    if diagnostics:
+        os.environ["GVHMR_EVAL_DIAGNOSTICS"] = "1"  # in-process toggle read by the metric callbacks
+        results, detailed, raw = run_benchmarks(
+            names, ckpt, slug=slug, set_overrides=set_overrides, collect_detailed=True
+        )
+    else:
+        results = run_benchmarks(names, ckpt, slug=slug, set_overrides=set_overrides)
     if not results:
         Log.warning("No metrics were produced — check the run output above.")
         raise SystemExit(1)
     print_summary(results, variant=slug)
+
+    provenance = _provenance(ckpt, slug, names, detailed) if diagnostics else None
 
     if json_out is not None:
         from datetime import datetime, timezone
@@ -333,7 +401,32 @@ def run(
             "metrics": results,
             "paper_reference": {ds: PAPER_REFERENCE.get(ds, {}) for ds in results},
         }
+        if provenance is not None:
+            payload["provenance"] = provenance
         json_out = Path(json_out)
         json_out.parent.mkdir(parents=True, exist_ok=True)
         json_out.write_text(json.dumps(payload, indent=2) + "\n")
         Log.info(f"[ok]metrics written[/] → [muted]{json_out}[/]")
+
+    if diagnostics:
+        out = (
+            Path(diagnostics_out)
+            if diagnostics_out is not None
+            else (Path(json_out).parent if json_out else Path("outputs/eval")) / "diagnostics.json"
+        )
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps({"provenance": provenance, "detailed": detailed}, indent=2) + "\n")
+        Log.info(f"[ok]diagnostics written[/] → [muted]{out}[/] [dim](std/percentiles/per-seq/per-joint/timing)[/]")
+        if dump_raw:
+            import numpy as np
+
+            raw_dir_out = out.parent / "results_diagnostics"
+            raw_dir_out.mkdir(parents=True, exist_ok=True)
+            for ds, metrics in raw.items():
+                arrays = {}
+                for metric, vid2arr in metrics.items():
+                    for vid, arr in vid2arr.items():
+                        arrays[f"{metric}__{vid}"] = np.asarray(arr)
+                npz_path = raw_dir_out / f"{ds}_raw.npz"
+                np.savez_compressed(npz_path, **arrays)
+                Log.info(f"[ok]raw arrays[/] → [muted]{npz_path}[/] ({len(arrays)} arrays)")

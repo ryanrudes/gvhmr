@@ -27,6 +27,10 @@ _PL_ACCELERATOR = {"cuda": "gpu", "mps": "mps", "cpu": "cpu"}
 
 #: After a `task=test` run: {dataset_id: {metric: value}} from the metric callbacks (see `gvhmr eval`).
 LAST_TEST_METRICS: dict[str, dict[str, float]] = {}
+#: Opt-in diagnostics from the last `task=test` (populated only when GVHMR_EVAL_DIAGNOSTICS / --diagnostics):
+#: rich summaries (std/percentiles/per-sequence/per-joint/timing) and the raw per-sequence arrays.
+LAST_TEST_DETAILED: dict[str, dict] = {}
+LAST_TEST_RAW: dict[str, dict] = {}
 
 
 def get_callbacks(cfg: DictConfig) -> list | None:
@@ -117,8 +121,10 @@ def train(cfg: DictConfig) -> None:
         Log.info("Start testing...")
         trainer.test(model, datamodule.test_dataloader())
         # Expose the metric callbacks' epoch averages to in-process callers (`gvhmr eval`'s table).
-        global LAST_TEST_METRICS
+        global LAST_TEST_METRICS, LAST_TEST_DETAILED, LAST_TEST_RAW
         LAST_TEST_METRICS = dict(getattr(model, "metrics_summary", {}))
+        LAST_TEST_DETAILED = dict(getattr(model, "metrics_detailed", {}))
+        LAST_TEST_RAW = dict(getattr(model, "metrics_raw", {}))
     else:
         raise ValueError(f"Unknown task: {cfg.task}")
     Log.info("[ok]End of script.[/]")

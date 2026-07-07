@@ -476,3 +476,69 @@ def as_np_array(d: torch.Tensor | np.ndarray | object) -> np.ndarray:
         return d
     else:
         return np.array(d)
+
+
+# ------------------------------------------------------------------------------------------------
+# Additive diagnostics helpers (opt-in via the callbacks' `diagnostics` flag / $GVHMR_EVAL_DIAGNOSTICS).
+# These NEVER touch the existing metric means — they summarise the per-frame/per-sequence arrays the
+# callbacks already compute and normally discard, so `gvhmr eval`/`gvhmr sweep` can preserve the full
+# distribution (std, percentiles, per-sequence, per-joint) instead of just the mean.
+# ------------------------------------------------------------------------------------------------
+#: Percentiles captured for every metric distribution.
+DIAG_PERCENTILES = (1, 5, 25, 50, 75, 95, 99)
+
+
+def summarize_metric_array(arr: np.ndarray) -> dict:
+    """Full distribution summary of a 1-D metric array (per-frame values pooled over all sequences)."""
+    arr = np.asarray(arr, dtype=np.float64).ravel()
+    if arr.size == 0:
+        return {"count": 0}
+    pcts = np.percentile(arr, DIAG_PERCENTILES)
+    out = {
+        "mean": float(arr.mean()),
+        "std": float(arr.std()),
+        "var": float(arr.var()),
+        "min": float(arr.min()),
+        "max": float(arr.max()),
+        "count": int(arr.size),
+    }
+    for p, v in zip(DIAG_PERCENTILES, pcts, strict=True):
+        out[f"p{p:02d}"] = float(v)
+    out["median"] = out["p50"]
+    return out
+
+
+def summarize_per_sequence(vid2arr: dict) -> dict:
+    """Per-sequence summary: ``{vid: {mean, std, min, max, median, count}}`` for one metric."""
+    out = {}
+    for vid, arr in vid2arr.items():
+        a = np.asarray(arr, dtype=np.float64).ravel()
+        if a.size == 0:
+            out[vid] = {"count": 0}
+            continue
+        out[vid] = {
+            "mean": float(a.mean()),
+            "std": float(a.std()),
+            "min": float(a.min()),
+            "max": float(a.max()),
+            "median": float(np.median(a)),
+            "count": int(a.size),
+        }
+    return out
+
+
+def summarize_per_joint(vid2joint_arr: dict, joint_labels: list | None = None) -> dict:
+    """Per-joint summary of per-frame per-joint arrays ``{vid: (F, J)}`` → mean/std/median per joint J."""
+    arrays = [np.asarray(a, dtype=np.float64) for a in vid2joint_arr.values() if np.asarray(a).size]
+    if not arrays:
+        return {}
+    stacked = np.concatenate([a.reshape(-1, a.shape[-1]) for a in arrays], axis=0)  # (sum_F, J)
+    n_joints = stacked.shape[1]
+    labels = joint_labels if (joint_labels and len(joint_labels) >= n_joints) else [str(j) for j in range(n_joints)]
+    return {
+        "labels": [str(labels[j]) for j in range(n_joints)],
+        "mean": [float(x) for x in stacked.mean(axis=0)],
+        "std": [float(x) for x in stacked.std(axis=0)],
+        "median": [float(x) for x in np.median(stacked, axis=0)],
+        "count": int(stacked.shape[0]),
+    }

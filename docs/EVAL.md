@@ -25,6 +25,25 @@ This pipeline is verified end-to-end: on 2026-07-02 the released checkpoint repr
 camera-space numbers exactly (3DPW 36.2/55.6/67.2, EMDB-1 42.7/72.6/84.2, RICH within 0.3 mm) and the
 world metrics within ~1% (EMDB-2 W-MPJPE 272.8 vs 274.9) on an RTX 6000 Ada.
 
+### Full-distribution diagnostics — `gvhmr eval --diagnostics`
+
+By default only the per-metric **mean** survives. `--diagnostics` additionally preserves everything the
+metric callbacks compute and normally discard — **std / variance, min / max / median, percentiles
+(p01…p99), per-sequence stats, per-joint MPJPE, per-sequence timing**, plus a **provenance** block
+(git sha, ckpt sha256, torch/GPU, preproc variant, dataset sizes) — written to `diagnostics.json`
+next to `--json`. `--dump-raw` also writes the raw per-sequence arrays as `results_diagnostics/<DS>_raw.npz`
+(keys `<metric>__<vid>`, `perjoint_mpjpe__<vid>`). It is purely additive: the printed table, the logged
+means, and the `--json` metrics are **byte-identical** with or without it (golden-safe). Enable it in a
+sub-process by exporting `GVHMR_EVAL_DIAGNOSTICS=1`, or per callback with `--set callbacks.<name>.diagnostics=true`.
+
+```bash
+gvhmr eval all --json out/metrics.json --diagnostics --dump-raw   # means + full distribution + raw arrays
+```
+
+`gvhmr sweep … --diagnostics` does the same per trial, logging the extended scalars, per-metric
+`wandb.Histogram`s, a per-sequence `wandb.Table`, per-joint bar charts, a raw-arrays `wandb.Artifact`,
+and the provenance to `run.summary` — alongside the unchanged `<DS>/<metric>` means.
+
 ### Measuring preprocessing swaps — `gvhmr eval --detector / --pose2d`
 
 The packs ship **frozen** preprocessing (YOLOv8x boxes, ViTPose keypoints, HMR2 features — computed

@@ -34,6 +34,7 @@ O(detectors) heavy passes, one-time; every later sweep is ~1 min/trial.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -71,6 +72,7 @@ def build_sweep_config(
     method: str = "grid",
     metric: str | None = None,
     name: str | None = None,
+    diagnostics: bool = False,
 ) -> dict:
     """The W&B sweep config (pure dict — pass to ``wandb.sweep`` or dump as YAML).
 
@@ -97,6 +99,7 @@ def build_sweep_config(
             "datasets": {"value": ",".join(names)},
             "detector": {"values": detector_values},
             "pose2d": {"values": pose2d_values},
+            "diagnostics": {"value": bool(diagnostics)},  # trials read this to capture full-distribution stats
         },
     }
 
@@ -188,7 +191,6 @@ def _preflight_variants(sweep_cfg: dict, raw_dir: Path | None) -> None:
 def _trial(raw_dir: Path | None, ckpt: str | None) -> None:
     """One sweep trial: regenerate the combo's variant if needed, benchmark, log to W&B."""
     import wandb
-
     from gvhmr.cli.evalcmd import (
         PAPER_REFERENCE,
         ensure_inputs,
@@ -208,7 +210,21 @@ def _trial(raw_dir: Path | None, ckpt: str | None) -> None:
         ensure_inputs(names)
         if slug is not None:
             ensure_variant(names, slug, detector, pose2d, None, raw_dir, regen=False)
-        results = run_benchmarks(names, str(ckpt or assets.GVHMR_CKPT), slug=slug)
+
+        # Opt-in rich diagnostics: `gvhmr sweep run --diagnostics` (or $GVHMR_EVAL_DIAGNOSTICS / a sweep-config
+        # `diagnostics: true`). Captures the full distribution and logs it alongside the unchanged means.
+        from gvhmr.cli.evalcmd import _provenance
+        from gvhmr.model.gvhmr.callbacks._diagnostics import diagnostics_enabled
+
+        diagnostics = diagnostics_enabled(bool(run.config.get("diagnostics", False)))
+        detailed: dict = {}
+        raw: dict = {}
+        ckpt_str = str(ckpt or assets.GVHMR_CKPT)
+        if diagnostics:
+            os.environ["GVHMR_EVAL_DIAGNOSTICS"] = "1"
+            results, detailed, raw = run_benchmarks(names, ckpt_str, slug=slug, collect_detailed=True)
+        else:
+            results = run_benchmarks(names, ckpt_str, slug=slug)
         if not results:
             raise RuntimeError("no metrics produced — see the run log")
 
@@ -221,7 +237,64 @@ def _trial(raw_dir: Path | None, ckpt: str | None) -> None:
                     flat[f"{ds}/{k}_vs_paper"] = v - ref[k]
         run.log(flat)
         run.summary["preproc_variant"] = slug or "canonical"
+        if diagnostics:
+            _log_diagnostics_to_wandb(run, wandb, detailed, raw, _provenance(ckpt_str, slug, names, detailed))
         print_summary(results, variant=slug)
+
+
+def _log_diagnostics_to_wandb(run, wandb, detailed: dict, raw: dict, provenance: dict) -> None:
+    """Log the opt-in diagnostics to a W&B trial: extended distribution scalars, per-metric histograms,
+    a per-sequence table, per-joint bars, a raw-arrays artifact, and the provenance record."""
+    import tempfile
+
+    import numpy as np
+
+    try:
+        run.summary["provenance"] = provenance
+        scalars: dict[str, float] = {}
+        for ds, detail in detailed.items():
+            for metric, dist in detail.get("distribution", {}).items():
+                for stat in ("std", "median", "p05", "p25", "p75", "p95", "p99", "min", "max"):
+                    if stat in dist:
+                        scalars[f"{ds}/{metric}_{stat}"] = dist[stat]
+        if scalars:
+            run.log(scalars)
+        # per-metric histograms + per-sequence tables from the raw arrays
+        for ds, metrics in raw.items():
+            for metric, vid2arr in metrics.items():
+                if metric.startswith("perjoint_"):
+                    continue
+                pooled = np.concatenate([np.asarray(a).ravel() for a in vid2arr.values()]) if vid2arr else np.array([])
+                if pooled.size:
+                    run.log({f"hist_{ds}/{metric}": wandb.Histogram(pooled)})
+            table = wandb.Table(columns=["sequence", "metric", "mean", "std", "median", "count"])
+            for metric, per_seq in detailed.get(ds, {}).get("per_sequence", {}).items():
+                for vid, s in per_seq.items():
+                    table.add_data(vid, metric, s.get("mean"), s.get("std"), s.get("median"), s.get("count"))
+            run.log({f"per_sequence/{ds}": table})
+            # per-joint bars
+            for metric, pj in detailed.get(ds, {}).get("per_joint", {}).items():
+                if pj.get("labels"):
+                    bar = wandb.Table(data=list(zip(pj["labels"], pj["mean"], strict=False)), columns=["joint", "mean"])
+                    run.log(
+                        {
+                            f"per_joint/{ds}_{metric}": wandb.plot.bar(
+                                bar, "joint", "mean", title=f"{ds} {metric} per joint"
+                            )
+                        }
+                    )
+        # raw arrays as an artifact
+        with tempfile.TemporaryDirectory() as td:
+            art = wandb.Artifact(f"eval-raw-{run.id}", type="eval-raw")
+            for ds, metrics in raw.items():
+                arrays = {f"{m}__{vid}": np.asarray(a) for m, vid2arr in metrics.items() for vid, a in vid2arr.items()}
+                if arrays:
+                    p = Path(td) / f"{ds}_raw.npz"
+                    np.savez_compressed(p, **arrays)
+                    art.add_file(str(p))
+            run.log_artifact(art)
+    except Exception as exc:  # noqa: BLE001 — diagnostics logging must never fail a sweep trial
+        Log.warning(f"[warn]diagnostics logging skipped[/]: {type(exc).__name__}: {exc}")
 
 
 def build_report(entity: str, project: str, sweep_id: str, names: list[str]) -> str:
@@ -309,6 +382,12 @@ def create(
     config_yaml: Path | None = typer.Option(
         None, "--config", help="Hand-written W&B sweep YAML (overrides the flags)."
     ),
+    diagnostics: bool = typer.Option(
+        False,
+        "--diagnostics",
+        help="Log the full distribution per trial (std/percentiles/per-seq/per-joint "
+        "histograms + raw-arrays artifact + provenance), not just the means.",
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print the sweep config without creating it."),
 ) -> None:
     """Create the sweep on W&B (+ its comparison report) and print the agent command."""
@@ -317,7 +396,7 @@ def create(
 
         cfg = yaml.safe_load(Path(config_yaml).read_text())
     else:
-        cfg = build_sweep_config(datasets, detectors, pose2ds, method=method, metric=metric)
+        cfg = build_sweep_config(datasets, detectors, pose2ds, method=method, metric=metric, diagnostics=diagnostics)
     print_dimensions(cfg)
     if dry_run:
         import json
@@ -392,10 +471,13 @@ def run_(
     count: int | None = typer.Option(None, "--count", help="Max trials for this agent."),
     project: str = typer.Option(DEFAULT_PROJECT, "--project", help="W&B project."),
     entity: str | None = typer.Option(None, "--entity", help="W&B entity (team/user)."),
+    diagnostics: bool = typer.Option(
+        False, "--diagnostics", help="Log the full distribution per trial (not just the means)."
+    ),
 ) -> None:
     """Create the sweep and run every trial locally — the one-command comparison."""
     wandb = _require_wandb()
-    cfg = build_sweep_config(datasets, detectors, pose2ds, method=method, metric=metric)
+    cfg = build_sweep_config(datasets, detectors, pose2ds, method=method, metric=metric, diagnostics=diagnostics)
     print_dimensions(cfg)
     _preflight_variants(cfg, raw_dir)  # fail once, before creating the sweep — not on all N trials
     sweep_id = wandb.sweep(cfg, project=project, entity=entity)

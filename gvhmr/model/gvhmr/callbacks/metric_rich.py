@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import cv2
@@ -7,14 +8,21 @@ import pytorch_lightning as pl
 import torch
 from einops import einsum
 from smplx.joint_names import JOINT_NAMES
-from gvhmr.utils.console import track
 
 from gvhmr import PROJ_ROOT
 from gvhmr.configs import MainStore, builds
+from gvhmr.model.gvhmr.callbacks._diagnostics import (
+    SMPL_JOINT_NAMES,
+    diagnostics_enabled,
+    gather_diagnostics,
+    stash_diagnostics,
+)
 from gvhmr.utils.comm.gather import all_gather
+from gvhmr.utils.console import track
 from gvhmr.utils.eval.eval_utils import (
     as_np_array,
     compute_camcoord_metrics,
+    compute_camcoord_perjoint_metrics,
     compute_global_metrics,
 )
 from gvhmr.utils.geo.hmr_cam import estimate_focal_length
@@ -27,8 +35,11 @@ from gvhmr.utils.wis3d_utils import add_motion_as_lines, make_wis3d
 
 
 class MetricMocap(pl.Callback):
-    def __init__(self):
+    def __init__(self, diagnostics: bool = False):
         super().__init__()
+        self.diagnostics = diagnostics_enabled(diagnostics)
+        self._perjoint_agg = {"mpjpe": {}}
+        self._diag_timing = {}
         # vid->result
         self.metric_aggregator = {
             "pa_mpjpe": {},
@@ -127,9 +138,15 @@ class MetricMocap(pl.Callback):
             "pred_verts": pred_c_verts,
             "target_verts": target_c_verts,
         }
+        _t0 = time.perf_counter()
         camcoord_metrics = compute_camcoord_metrics(batch_eval)
         for k in camcoord_metrics:
             self.metric_aggregator[k][vid] = as_np_array(camcoord_metrics[k])
+
+        if self.diagnostics:  # additive per-joint mpjpe (RICH camcoord uses no mask) + timing
+            perjoint = compute_camcoord_perjoint_metrics(batch_eval)
+            self._perjoint_agg["mpjpe"][vid] = as_np_array(perjoint["mpjpe"])
+            self._diag_timing[vid] = time.perf_counter() - _t0
 
         batch_eval = {
             "pred_j3d_glob": pred_ay_j3d,
@@ -381,10 +398,19 @@ class MetricMocap(pl.Callback):
             pl_module.metrics_summary = {}
         pl_module.metrics_summary["RICH"] = {k: float(v) for k, v in metrics_avg.items()}
 
+        if self.diagnostics:
+            gather_diagnostics(self._perjoint_agg, self._diag_timing)  # collective — all ranks
+            if local_rank == 0:
+                stash_diagnostics(
+                    pl_module, "RICH", self.metric_aggregator, self._perjoint_agg, self._diag_timing, SMPL_JOINT_NAMES
+                )
+
         # reset
+        self._perjoint_agg = {"mpjpe": {}}
+        self._diag_timing = {}
         for k in self.metric_aggregator:
             self.metric_aggregator[k] = {}
 
 
-rich_node = builds(MetricMocap)
+rich_node = builds(MetricMocap, diagnostics=False)
 MainStore.store(name="metric_rich", node=rich_node, group="callbacks", package="callbacks.metric_rich")
