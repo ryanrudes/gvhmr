@@ -4,8 +4,10 @@ Upload a video → recover SMPL human motion → get a side-by-side (in-camera +
 mesh overlay video plus an .npz of the SMPL parameters.
 
 Uses Hugging Face **ZeroGPU** (free shared GPU for visitors; the Space owner selects the
-ZeroGPU hardware flavor in Settings — requires a PRO/Team/Enterprise plan to host). Inference
-runs inside ``@spaces.GPU``; the pipeline loads lazily on first request (inside the GPU decorator).
+ZeroGPU hardware flavor in Settings — requires a PRO/Team/Enterprise plan to host). Only the GPU
+work (preproc models + the network) runs inside ``@spaces.GPU`` (``_recover_gpu``); dependency
+bootstrap, preflight, the moderngl render and the npz save run OUTSIDE it, so the short ZeroGPU
+budget isn't spent on non-CUDA work.
 
 Body models: configure a private mirror (`GVHMR_BODY_MODELS_MIRROR` + `HF_TOKEN`) or MPI
 Secrets — see space/README.md.
@@ -313,9 +315,7 @@ def _preflight_stages(*, static_camera: bool, camera: str, detector: str, pose2d
     if backbone not in BACKBONE_CHOICES:
         raise gr.Error(f"Backbone '{backbone}' is not available on this Space. Use hmr2.")
     if not static_camera and camera not in CAMERA_CHOICES:
-        raise gr.Error(
-            f"Camera '{camera}' is not set up on this Space. Check Static camera, or use simplevo."
-        )
+        raise gr.Error(f"Camera '{camera}' is not set up on this Space. Check Static camera, or use simplevo.")
 
     selections: dict[str, str] = {"detector": detector, "pose2d": pose2d, "backbone": backbone}
     if not static_camera:
@@ -407,6 +407,46 @@ def _estimate_gpu_duration(
 # Inference callback (GPU allocated for the duration of this function on ZeroGPU Spaces)
 # --------------------------------------------------------------------------------------
 @spaces.GPU(duration=_estimate_gpu_duration)
+def _recover_gpu(
+    video_path: str,
+    static_camera: bool,
+    camera_backend: str,
+    flip_test: bool,
+    hub_repo: str,
+    hub_revision: str,
+    detector: str,
+    pose2d: str,
+    backbone: str,
+    out_dir: str,
+    progress: gr.Progress,
+):
+    """The GPU-bound core (ZeroGPU allocation held ONLY here): load the pipeline + run preproc models +
+    the network. Render (moderngl/EGL — not CUDA), npz save, bootstrap and preflight all run OUTSIDE this
+    window (in ``run``), so the 60s free-tier budget isn't spent on non-GPU work. Returns the MotionResult
+    with ``render=False`` (the pred is torch.saved to ``out_dir`` on the shared FS for ``run`` to render)."""
+    from gvhmr.utils.console import progress_hook, progress_phase
+
+    def _hook(frac: float, desc: str) -> None:
+        progress(max(0.0, min(1.0, frac)), desc=desc)
+
+    with progress_hook(_hook):
+        with progress_phase("Loading model"):
+            pipe = _get_pipeline(
+                model_repo=hub_repo, revision=hub_revision, detector=detector, pose2d=pose2d, backbone=backbone
+            )
+        camera = None if static_camera else camera_backend
+        return pipe(
+            video_path,
+            static_camera=static_camera,
+            camera=camera,
+            flip_test=flip_test,
+            render=False,
+            progress=False,
+            progress_callback=_hook,
+            output_dir=str(out_dir),
+        )
+
+
 def run(
     video_path: str | None,
     static_camera: bool,
@@ -417,9 +457,11 @@ def run(
     detector: str,
     pose2d: str,
     backbone: str,
+    native_smplx: bool = False,
     progress: gr.Progress = gr.Progress(),  # noqa: B008 — gvhmr uses Rich track(), not tqdm; we drive it via progress(...)
 ) -> tuple[str, str, dict]:
-    """Run GVHMR on the uploaded video and return (overlay_mp4, npz_path, summary)."""
+    """Gradio handler: validate + bootstrap + preflight (CPU), run inference under @spaces.GPU, then render
+    + save (CPU / moderngl — no CUDA) OUTSIDE the GPU window so ZeroGPU time is spent only on the GPU work."""
     video_path = _video_path(video_path)
     if not video_path:
         raise gr.Error("Please upload a video first.")
@@ -429,73 +471,68 @@ def run(
             "upload the clip again, and click Recover motion immediately — do not reuse a stale tab."
         )
 
-    # Each pipeline stage drives its own 0→1 bar under a clean label (see gvhmr.utils.console): the
-    # Gradio bar fills to 100% and relabels per stage, instead of one global bar stuck at fractional
-    # values with low-level model names.
     def _hook(frac: float, desc: str) -> None:
         progress(max(0.0, min(1.0, frac)), desc=desc)
 
     try:
         progress(0.0, desc="Preparing environment…")
-        _ensure_bootstrapped()
+        _ensure_bootstrapped()  # CPU / pip — outside the GPU window
         from gvhmr.utils.console import progress_hook, progress_phase
 
         progress(0.01, desc="Starting…")
-        _preflight_stages(
+        _preflight_stages(  # CPU dependency checks — outside the GPU window
             static_camera=static_camera,
             camera=camera_backend if not static_camera else "simplevo",
             detector=detector,
             pose2d=pose2d,
             backbone=backbone,
         )
+        out_dir = Path(tempfile.mkdtemp(prefix="gvhmr_"))
+
+        try:  # GPU window: preproc models + network only
+            result = _recover_gpu(
+                video_path, static_camera, camera_backend, flip_test, hub_repo, hub_revision,
+                detector, pose2d, backbone, str(out_dir), progress,
+            )  # fmt: skip
+        except RuntimeError as exc:
+            raise gr.Error(f"The GVHMR pipeline failed, so inference is unavailable. Details: {exc}") from exc
+
+        # Render (moderngl/EGL — not CUDA) + save: run OUTSIDE the @spaces.GPU allocation. Native SMPL-X
+        # (default here) needs only the SMPL-X body model; the SMPL-topology mesh needs the gated SMPL one.
+        mesh = "smplx" if native_smplx else "smpl"
         with progress_hook(_hook):
-            with progress_phase("Loading model"):
-                try:
-                    pipe = _get_pipeline(
-                        model_repo=hub_repo,
-                        revision=hub_revision,
-                        detector=detector,
-                        pose2d=pose2d,
-                        backbone=backbone,
-                    )
-                except RuntimeError as exc:
-                    raise gr.Error(
-                        f"The GVHMR pipeline failed to load, so inference is unavailable. Details: {exc}"
-                    ) from exc
-
-            camera = None if static_camera else camera_backend
-            out_dir = Path(tempfile.mkdtemp(prefix="gvhmr_"))
-
-            result = pipe(
-                video_path,
-                static_camera=static_camera,
-                camera=camera,
-                flip_test=flip_test,
-                render=False,
-                progress=False,
-                progress_callback=_hook,
-                output_dir=str(out_dir),
-            )
-
-            with progress_phase("Rendering overlay"):
-                overlay_path = result.render(out_dir / "overlay_both.mp4", view="both")
-
-            with progress_phase("Saving SMPL params"):
+            with progress_phase("Saving SMPL params"):  # always produced — the reliable output
                 npz_path = result.save_npz(out_dir / "motion.npz")
+            overlay_path = None
+            render_status = "ok"
+            with progress_phase("Rendering overlay"):
+                try:  # render is best-effort: never fail the request over a missing SMPL model / GL context
+                    overlay_path = result.render(out_dir / "overlay_both.mp4", view="both", mesh=mesh)
+                except Exception as exc:  # noqa: BLE001
+                    traceback.print_exc()
+                    hint = (
+                        " — the SMPL-topology mesh needs the gated SMPL body model; tick 'Native SMPL-X mesh' "
+                        "(needs only SMPL-X)"
+                        if mesh == "smpl"
+                        else " — the renderer needs a working GL context (moderngl/EGL) on this Space"
+                    )
+                    render_status = f"skipped ({type(exc).__name__}: {exc}){hint}"
 
-            summary = {
-                "frames": result.num_frames,
-                "fps": result.fps,
-                "camera": result.camera,
-                "seconds_of_motion": _seconds_of_motion(result.num_frames, result.fps),
-                "weights_repo": hub_repo.strip(),
-                "weights_revision": (hub_revision or "").strip() or "default",
-                "detector": detector,
-                "pose2d": pose2d,
-                "backbone": backbone,
-            }
+        summary = {
+            "frames": result.num_frames,
+            "fps": result.fps,
+            "camera": result.camera,
+            "seconds_of_motion": _seconds_of_motion(result.num_frames, result.fps),
+            "mesh": "SMPL-X (native)" if native_smplx else "SMPL topology",
+            "overlay": render_status,  # 'ok', or why the overlay was skipped (the .npz is always returned)
+            "weights_repo": hub_repo.strip(),
+            "weights_revision": (hub_revision or "").strip() or "default",
+            "detector": detector,
+            "pose2d": pose2d,
+            "backbone": backbone,
+        }
         progress(1.0, desc="Done")
-        return str(overlay_path), str(npz_path), summary
+        return (str(overlay_path) if overlay_path else None), str(npz_path), summary
 
     except gr.Error:
         raise
@@ -547,6 +584,13 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
                 "aren't set up on this Space.",
             )
             flip_in = gr.Checkbox(value=False, label="Flip-test (slower, more accurate)")
+            smplx_in = gr.Checkbox(
+                value=True,
+                label="Native SMPL-X mesh",
+                info="Render the full ~10475-vertex SMPL-X surface (the model predicts SMPL-X natively). "
+                "Default ON: it needs only the SMPL-X body model. Uncheck for the SMPL-topology mesh — "
+                "which additionally requires the gated SMPL body model.",
+            )
 
             with gr.Accordion("Model settings", open=False):
                 hub_repo_in = gr.Dropdown(
@@ -600,6 +644,7 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
             detector_in,
             pose2d_in,
             backbone_in,
+            smplx_in,
         ],
         outputs=[overlay_out, npz_out, summary_out],
         show_progress="full",
