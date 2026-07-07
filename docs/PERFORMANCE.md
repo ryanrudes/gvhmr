@@ -36,7 +36,7 @@ via `--fast` / `--recipe fast`.
 |---|---|---|
 | Network `predict` on **CPU** (`device.predict_device()`, `$GVHMR_PREDICT_DEVICE`) | ~7-9× on predict (launch-bound) | golden-byte-identical |
 | **TF32 + cudnn.benchmark** in `get_device()` (`$GVHMR_DISABLE_TF32`) | 2.7× on fp32 ViT matmul | negligible (≤~1e-3), CUDA-only |
-| **bf16 autocast** on ViTPose + HMR2 (`$GVHMR_PREPROC_FP32` to disable) | HMR2 254→64ms (4.0×), ViTPose 252→57ms (4.4×) | feature 1.6% rel, kp2d 0.02px; eval-certified |
+| **bf16 autocast** on ViTPose + HMR2 (`$GVHMR_PREPROC_FP32` to disable) | HMR2 254→64ms (4.0×), ViTPose 252→57ms (4.4×) | feature 1.6% rel, kp2d 0.02px; **eval-certified: bf16-vs-fp32 worst \|Δ\|=0.08mm on 3DPW** (PA-MPJPE 43.71 vs 43.63) — noise |
 | **SDPA/Flash attention** in the two vendored ViTs | 1.1-1.3× (bf16) | fp32 max\|Δ\|≤2e-6 |
 | **skip-init + mmap** model loading | HMR2 4.9s→0.35s, ViTPose ~5s→0.42s (~13×) | every param bit-identical |
 | **Resident-model cache** (`preproc/base.py`, `$GVHMR_NO_MODEL_CACHE`) | −13s per extra clip (folder/library/Space) | identical |
