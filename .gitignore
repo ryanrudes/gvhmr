@@ -200,3 +200,4 @@ third-party/
 *.bak
 # Local machine config (asset paths + model defaults; machine-specific)
 gvhmr.toml
+e499-s188500.ckpt
