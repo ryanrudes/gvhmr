@@ -714,6 +714,7 @@ def run(
     no_render: bool = False,
     flip_test: bool = False,
     incam_world_traj: bool = True,
+    fast: bool = False,
     skeleton: bool = False,
     skeleton_overlay: bool = False,
     skeleton_joints: str | None = None,
@@ -760,6 +761,8 @@ def run(
         config_overrides.append(f"pose2d.ckpt_path={pose2d_ckpt}")
     if flip_test:  # the CLI flag forces flip-test on; a recipe/--set can also set cfg.flip_test
         config_overrides.append("flip_test=true")
+    if fast:  # opt-in accuracy-for-speed trade: turn off ViTPose's internal flip-test TTA (~2.2x 2D-pose)
+        config_overrides.append("pose2d.flip_test=false")
     config_overrides += list(set_overrides or [])
 
     console.print(Panel.fit("[gvhmr]GVHMR[/] · world-grounded human motion recovery", border_style="gvhmr"))

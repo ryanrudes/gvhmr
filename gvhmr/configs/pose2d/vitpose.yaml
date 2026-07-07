@@ -4,5 +4,5 @@
 name: vitpose
 ckpt_path: null # null → the released vitpose-h checkpoint (assets.VITPOSE_CKPT)
 model_name: ViTPose_huge_coco_256x192
-flip_test: false # ViTPose TTA (input + its mirror): ~2x slower, small kp2d-accuracy gain. Off for speed.
+flip_test: true # ViTPose TTA (input+mirror). ON = accuracy (released model trained on it). `--fast` sets false (~2.2x).
 batch_size: 32 # frames per forward; bf16 (auto on CUDA) halves memory, so raise this on a big card

@@ -105,6 +105,14 @@ def demo(
             "(captures gliding/skateboarding the velocity prior misses). Default on; no-op for moving cameras.",
         ),
     ] = True,
+    fast: Annotated[
+        bool,
+        typer.Option(
+            "--fast",
+            help="Opt-in extra speed at a small accuracy cost [dim](turns off ViTPose flip-test TTA, ~2.2x on "
+            "2D-pose). The accuracy-safe speedups are always on. Same as [gvhmr]--recipe fast[/].",
+        ),
+    ] = False,
     skeleton: Annotated[
         bool, typer.Option("--skeleton", help="Also export a [bold]world-frame skeleton[/] video (joints + bones).")
     ] = False,
@@ -178,6 +186,7 @@ def demo(
         no_render=no_render,
         flip_test=flip_test,
         incam_world_traj=incam_world_traj,
+        fast=fast,
         skeleton=skeleton,
         skeleton_overlay=skeleton_overlay,
         skeleton_joints=skeleton_joints,

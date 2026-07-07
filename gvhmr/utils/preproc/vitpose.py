@@ -22,17 +22,18 @@ class VitPoseExtractor:
     """2D-keypoint estimator (ViTPose). Satisfies the ``Pose2D`` protocol (base.py); emits COCO-17."""
 
     def __init__(
-        self, ckpt_path=None, model_name: str = DEFAULT_VITPOSE_MODEL, tqdm_leave=True, flip_test=False, batch_size=32
+        self, ckpt_path=None, model_name: str = DEFAULT_VITPOSE_MODEL, tqdm_leave=True, flip_test=True, batch_size=32
     ):
         with skip_torch_init():  # random init is overwritten by build_model's strict ckpt load
             self.pose = build_model(model_name, ckpt_path or DEFAULT_VITPOSE_CKPT)
         self.device = get_device()
         self.pose.to(self.device).eval()
 
-        # flip_test doubles the ViT-Huge forward (input + its mirror) for a small kp2d-accuracy gain — OFF
-        # by default for speed (~1.8x this stage). batch_size 32 (bf16 halves memory; 16 was tuned for a 3090).
+        # flip_test = ViTPose TTA (input + its mirror). ON by default: the RELEASED GVHMR was TRAINED on
+        # flip-test kp2d, so turning it off is a genuine train/test shift (not just numerical noise) — a real
+        # accuracy trade, so it's opt-in via `--fast` / pose2d.flip_test=false (~2.2x this stage when off).
         self.flip_test = flip_test
-        self.batch_size = batch_size
+        self.batch_size = batch_size  # bf16 halves memory (16 was tuned for a 3090)
         self.tqdm_leave = tqdm_leave
 
     @torch.no_grad()
