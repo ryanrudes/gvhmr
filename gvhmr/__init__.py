@@ -8,7 +8,7 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 PROJ_ROOT = Path(__file__).resolve().parents[1]
 
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 
 #: The HuggingFace-style inference API, re-exported at the top level. Loaded lazily (via ``__getattr__``)
 #: so ``import gvhmr`` stays instant — torch/hydra are only imported when you first touch one of these.
