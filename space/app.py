@@ -570,6 +570,27 @@ def _toggle_camera(static_camera: bool) -> gr.Dropdown:
 _startup_bootstrap()
 
 
+def _probe_gl() -> None:
+    """Log whether the moderngl/EGL overlay renderer can init here (diagnostic; the real render is
+    best-effort in ``run``). glcontext's standalone EGL needs an *enumerable* device — on a device-less
+    cpu-basic box software rendering may be unavailable no matter which Mesa libs are installed, so this
+    line tells us (from the Space Logs) which case we're in without running a full job."""
+    try:
+        import moderngl
+
+        from gvhmr.utils.vis.renderer_gl import _standalone_context
+
+        ctx = _standalone_context(moderngl)
+        info = ctx.info
+        print(f"[gvhmr] GL overlay context OK — renderer={info.get('GL_RENDERER')!r} ({info.get('GL_VERSION')!r})")
+        ctx.release()
+    except Exception as exc:  # noqa: BLE001 — purely diagnostic; the app runs (npz-only) either way
+        print(f"[gvhmr] GL overlay context UNAVAILABLE ({type(exc).__name__}: {exc}) — overlays fall back to npz-only")
+
+
+_probe_gl()
+
+
 with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
     gr.Markdown(DESCRIPTION)
 
