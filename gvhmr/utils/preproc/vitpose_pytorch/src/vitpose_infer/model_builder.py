@@ -158,7 +158,11 @@ def build_model(model_name, checkpoint=None):
 
     pose = VitPoseModel(backbone, head)
     if checkpoint is not None:
-        check = torch.load(checkpoint)
+        # [GVHMR vendor patch] mmap=True (with legacy-format fallback) + map_location="cpu" — the
+        # upstream bare torch.load restored tensors onto their save-time device (a latent CUDA bug).
+        from gvhmr.utils.net_utils import torch_load_mmap
+
+        check = torch_load_mmap(checkpoint, map_location="cpu")
 
         pose.load_state_dict(check["state_dict"])
     return pose

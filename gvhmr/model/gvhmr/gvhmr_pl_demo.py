@@ -9,6 +9,7 @@ from gvhmr.model.gvhmr.utils.postprocess import pp_static_joint, pp_static_joint
 from gvhmr.utils.geo.flip_utils import avg_smplx_aa, flip_smplx_params
 from gvhmr.utils.geo.hmr_cam import normalize_kp2d
 from gvhmr.utils.geo.rotations import axis_angle_to_matrix
+from gvhmr.utils.net_utils import torch_load_mmap
 from gvhmr.utils.pylogger import Log
 
 
@@ -122,7 +123,7 @@ class DemoPL(pl.LightningModule):
 
         # weights_only=False: this is a trusted Lightning checkpoint carrying more than
         # tensors; torch>=2.6 defaults weights_only=True, which would refuse to load it.
-        state_dict = torch.load(ckpt_path, map_location="cpu", weights_only=False)["state_dict"]
+        state_dict = torch_load_mmap(ckpt_path, map_location="cpu", weights_only=False)["state_dict"]
         missing, unexpected = self.load_state_dict(state_dict, strict=False)
         if len(missing) > 0:
             Log.warn(f"Missing keys: {missing}")

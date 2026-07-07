@@ -16,6 +16,7 @@ from gvhmr.utils.geo.augment_noisy_pose import (
 from gvhmr.utils.geo.flip_utils import avg_smplx_aa, flip_smplx_params
 from gvhmr.utils.geo.hmr_cam import get_bbx_xys, normalize_kp2d, perspective_projection, safely_render_x3d_K
 from gvhmr.utils.geo_transform import apply_T_on_points, compute_T_ayfz2ay
+from gvhmr.utils.net_utils import torch_load_mmap
 from gvhmr.utils.pylogger import Log
 from gvhmr.utils.smplx_utils import make_smplx
 from gvhmr.utils.video_io_utils import save_video
@@ -295,7 +296,7 @@ class GvhmrPL(pl.LightningModule):
         """Load pretrained checkpoint, and assign each weight to the corresponding part."""
         Log.info(f"[PL-Trainer] Loading ckpt: {ckpt_path}")
 
-        state_dict = torch.load(ckpt_path, "cpu", weights_only=False)["state_dict"]
+        state_dict = torch_load_mmap(ckpt_path, map_location="cpu", weights_only=False)["state_dict"]
         missing, unexpected = self.load_state_dict(state_dict, strict=False)
         real_missing = []
         for k in missing:

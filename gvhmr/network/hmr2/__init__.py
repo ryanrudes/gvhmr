@@ -3,6 +3,7 @@ from .hmr2 import HMR2
 from pathlib import Path
 from .configs import get_config
 from gvhmr.utils.assets import HMR2_CKPT  # [GVHMR vendor patch] route through the configurable checkpoint root
+from gvhmr.utils.net_utils import torch_load_mmap  # [GVHMR vendor patch] mmap the 2.7GB ckpt load
 
 HMR2A_CKPT = HMR2_CKPT  # this is HMR2.0a, follow WHAM
 
@@ -24,7 +25,8 @@ def load_hmr2(checkpoint_path=HMR2A_CKPT):
     # model = HMR2.load_from_checkpoint(checkpoint_path, strict=False, cfg=model_cfg)
     model = HMR2(model_cfg)
 
-    state_dict = torch.load(checkpoint_path, map_location="cpu")["state_dict"]
+    # [GVHMR vendor patch] mmap=True (with legacy-format fallback) instead of a plain torch.load
+    state_dict = torch_load_mmap(checkpoint_path, map_location="cpu")["state_dict"]
     keys = [k for k in state_dict.keys() if k.split(".")[0] in ["backbone", "smpl_head"]]
     state_dict = {k: v for k, v in state_dict.items() if k in keys}
     model.load_state_dict(state_dict, strict=True)

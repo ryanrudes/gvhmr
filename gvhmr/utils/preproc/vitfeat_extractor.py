@@ -6,6 +6,7 @@ from gvhmr.network.hmr2 import HMR2, load_hmr2
 from gvhmr.network.hmr2.utils.preproc import IMAGE_MEAN, IMAGE_STD, crop_and_resize
 from gvhmr.utils.console import track
 from gvhmr.utils.device import get_device
+from gvhmr.utils.net_utils import skip_torch_init
 from gvhmr.utils.video_io_utils import read_video_np
 
 
@@ -63,7 +64,8 @@ class Extractor:
 
     def __init__(self, tqdm_leave=True, batch_size=32):
         self.device = get_device()
-        self.extractor: HMR2 = load_hmr2().to(self.device).eval()
+        with skip_torch_init():  # random init is overwritten by load_hmr2's strict ckpt load
+            self.extractor: HMR2 = load_hmr2().to(self.device).eval()
         self.tqdm_leave = tqdm_leave
         self.batch_size = batch_size  # 16 was tuned for a 3090; bf16 halves memory so raise it
 

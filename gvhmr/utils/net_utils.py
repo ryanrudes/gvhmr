@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 
 import torch
@@ -10,6 +11,74 @@ from pytorch_lightning.utilities.memory import recursive_detach
 from scipy.ndimage._filters import _gaussian_kernel1d
 
 from gvhmr.utils.pylogger import Log
+
+# The in-place initializers modules call via dynamic ``torch.nn.init.<name>`` lookups
+# (nn.Linear/Conv reset_parameters use kaiming_uniform_/uniform_, LayerNorm uses ones_/zeros_, ...).
+_TORCH_INIT_FNS = (
+    "uniform_",
+    "normal_",
+    "trunc_normal_",
+    "constant_",
+    "ones_",
+    "zeros_",
+    "eye_",
+    "dirac_",
+    "xavier_uniform_",
+    "xavier_normal_",
+    "kaiming_uniform_",
+    "kaiming_normal_",
+    "orthogonal_",
+    "sparse_",
+)
+
+
+@contextlib.contextmanager
+def skip_torch_init():
+    """Temporarily no-op ``torch.nn.init.*`` (and timm's ``trunc_normal_``).
+
+    Wrap the *construction* of a model whose weights are immediately overwritten by a strict
+    ``load_state_dict`` — the random init is pure wasted work there (seconds for a ViT-Huge).
+    Only safe when the subsequent checkpoint load covers every parameter and persistent buffer
+    (i.e. ``strict=True``); skipped tensors hold uninitialized memory until the load.
+    """
+
+    def _noop(tensor, *args, **kwargs):
+        return tensor
+
+    saved = {name: getattr(torch.nn.init, name) for name in _TORCH_INIT_FNS}
+    try:
+        # The vendored ViTs (hmr2, vitpose) initialize pos_embed via timm's trunc_normal_, which fills
+        # tensors directly instead of going through torch.nn.init — patch its shared internal helper.
+        from timm.layers import weight_init as _timm_weight_init
+
+        saved_timm = _timm_weight_init._trunc_normal_
+    except ImportError:  # pragma: no cover
+        _timm_weight_init = None
+        saved_timm = None
+    try:
+        for name in _TORCH_INIT_FNS:
+            setattr(torch.nn.init, name, _noop)
+        if _timm_weight_init is not None:
+            _timm_weight_init._trunc_normal_ = _noop
+        yield
+    finally:
+        for name, fn in saved.items():
+            setattr(torch.nn.init, name, fn)
+        if _timm_weight_init is not None:
+            _timm_weight_init._trunc_normal_ = saved_timm
+
+
+def torch_load_mmap(path: str | Path, **kwargs):
+    """``torch.load`` with ``mmap=True``, falling back to a regular load for legacy-format saves.
+
+    mmap avoids reading the whole file eagerly (and re-uses the OS page cache across loads), but
+    requires the zipfile serialization format — torch.load raises on old pickle-format checkpoints,
+    hence the fallback. Keyword args (map_location, weights_only, ...) pass through unchanged.
+    """
+    try:
+        return torch.load(path, mmap=True, **kwargs)
+    except (RuntimeError, ValueError):
+        return torch.load(path, **kwargs)
 
 
 def load_pretrained_model(model: nn.Module, ckpt_path: str | Path) -> None:

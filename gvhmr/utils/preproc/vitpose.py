@@ -8,6 +8,7 @@ from gvhmr.utils.device import get_device
 from gvhmr.utils.geo.flip_utils import flip_heatmap_coco17
 from gvhmr.utils.geo_transform import cvt_p2d_from_pm1_to_i
 from gvhmr.utils.kpts.kp2d_utils import keypoints_from_heatmaps
+from gvhmr.utils.net_utils import skip_torch_init
 
 from .vitfeat_extractor import get_batch
 from .vitpose_pytorch import build_model
@@ -23,7 +24,8 @@ class VitPoseExtractor:
     def __init__(
         self, ckpt_path=None, model_name: str = DEFAULT_VITPOSE_MODEL, tqdm_leave=True, flip_test=False, batch_size=32
     ):
-        self.pose = build_model(model_name, ckpt_path or DEFAULT_VITPOSE_CKPT)
+        with skip_torch_init():  # random init is overwritten by build_model's strict ckpt load
+            self.pose = build_model(model_name, ckpt_path or DEFAULT_VITPOSE_CKPT)
         self.device = get_device()
         self.pose.to(self.device).eval()
 
