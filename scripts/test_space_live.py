@@ -78,6 +78,7 @@ def main() -> int:
                 "vitpose",  # pose2d
                 "hmr2",  # backbone
                 True,  # native SMPL-X mesh (Space default — needs only the SMPL-X body model, not gated SMPL)
+                False,  # render_overlay — off by default (the fast, reliable npz path on cpu-basic)
                 api_name="/run",
             )
             result = job.result(timeout=args.timeout)

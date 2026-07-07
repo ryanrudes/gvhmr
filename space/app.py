@@ -264,6 +264,12 @@ def _resolve_device() -> str:
     return _auto()
 
 
+def _cpu_preproc_overrides() -> list[str]:
+    """On a CPU Space, shrink the ViT batch so activations don't OOM the 16 GB cpu-basic box: batch 32 fp32
+    ViT-Huge (ViTPose + HMR2) is fine on a GPU but tips CPU RAM over. No-op on a GPU Space."""
+    return ["pose2d.batch_size=4", "backbone.batch_size=4"] if _resolve_device() == "cpu" else []
+
+
 def _pipeline_key(
     model_repo: str,
     revision: str,
@@ -449,6 +455,7 @@ def _recover_gpu(
             progress=False,
             progress_callback=_hook,
             output_dir=str(out_dir),
+            set_overrides=_cpu_preproc_overrides(),  # small CPU batch → don't OOM cpu-basic
         )
 
 
@@ -463,6 +470,7 @@ def run(
     pose2d: str,
     backbone: str,
     native_smplx: bool = False,
+    render_overlay: bool = False,
     progress: gr.Progress = gr.Progress(),  # noqa: B008 — gvhmr uses Rich track(), not tqdm; we drive it via progress(...)
 ) -> tuple[str, str, dict]:
     """Gradio handler: validate + bootstrap + preflight (CPU), run inference under @spaces.GPU, then render
@@ -509,19 +517,24 @@ def run(
             with progress_phase("Saving SMPL params"):  # always produced — the reliable output
                 npz_path = result.save_npz(out_dir / "motion.npz")
             overlay_path = None
-            render_status = "ok"
-            with progress_phase("Rendering overlay"):
-                try:  # render is best-effort: never fail the request over a missing SMPL model / GL context
-                    overlay_path = result.render(out_dir / "overlay_both.mp4", view="both", mesh=mesh)
-                except Exception as exc:  # noqa: BLE001
-                    traceback.print_exc()
-                    hint = (
-                        " — the SMPL-topology mesh needs the gated SMPL body model; tick 'Native SMPL-X mesh' "
-                        "(needs only SMPL-X)"
-                        if mesh == "smpl"
-                        else " — the renderer needs a working GL context (moderngl/EGL) on this Space"
-                    )
-                    render_status = f"skipped ({type(exc).__name__}: {exc}){hint}"
+            # Render is OFF by default on this CPU Space (opt-in checkbox): software (llvmpipe) rasterization of
+            # the mesh per frame is slow and memory-heavy on cpu-basic, and the .npz is the reliable output.
+            if not render_overlay:
+                render_status = "not requested (tick 'Render overlay video' to also produce the mesh video)"
+            else:
+                render_status = "ok"
+                with progress_phase("Rendering overlay"):
+                    try:  # best-effort: never fail the request over a missing SMPL model / GL context
+                        overlay_path = result.render(out_dir / "overlay_both.mp4", view="both", mesh=mesh)
+                    except Exception as exc:  # noqa: BLE001
+                        traceback.print_exc()
+                        hint = (
+                            " — the SMPL-topology mesh needs the gated SMPL body model; tick 'Native SMPL-X mesh' "
+                            "(needs only SMPL-X)"
+                            if mesh == "smpl"
+                            else " — the renderer needs a working GL context (moderngl/EGL) on this Space"
+                        )
+                        render_status = f"skipped ({type(exc).__name__}: {exc}){hint}"
 
         summary = {
             "frames": result.num_frames,
@@ -617,6 +630,12 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
                 "Default ON: it needs only the SMPL-X body model. Uncheck for the SMPL-topology mesh — "
                 "which additionally requires the gated SMPL body model.",
             )
+            render_in = gr.Checkbox(
+                value=False,
+                label="Render overlay video (slow on CPU)",
+                info="OFF by default on this free CPU Space: the .npz (SMPL params) is always returned fast. "
+                "Tick to also rasterize the mesh overlay in software (llvmpipe) — adds minutes for a short clip.",
+            )
 
             with gr.Accordion("Model settings", open=False):
                 hub_repo_in = gr.Dropdown(
@@ -671,6 +690,7 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
             pose2d_in,
             backbone_in,
             smplx_in,
+            render_in,
         ],
         outputs=[overlay_out, npz_out, summary_out],
         show_progress="full",
