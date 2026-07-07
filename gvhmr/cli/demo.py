@@ -762,6 +762,13 @@ def run(
     # first (a committable bundle of choices), then the stage selectors (CLI flag or config-file default),
     # then the raw --set passthrough last — so --set wins over everything.
     config_overrides: list[str] = []
+    if fast and recipe is None:
+        # --fast IS --recipe fast: a @package _global_ recipe that MERGES flip-off + ByteTrack onto whatever
+        # stages are selected. Raw `pose2d.flip_test=`/`detector.tracker=` overrides would ConfigComposition-
+        # crash on any non-default --pose2d/--detector that lacks those keys (rtmpose, yolo11x, …).
+        recipe = "fast"
+    elif fast and recipe is not None:
+        console.print("[warn]--fast ignored[/]: an explicit --recipe was given (add flip-off/ByteTrack via --set).")
     if recipe is not None:
         config_overrides.append(f"+recipe={recipe}")
     if detector is not None:
@@ -778,9 +785,6 @@ def run(
         config_overrides.append(f"pose2d.ckpt_path={pose2d_ckpt}")
     if flip_test:  # the CLI flag forces flip-test on; a recipe/--set can also set cfg.flip_test
         config_overrides.append("flip_test=true")
-    if fast:  # opt-in accuracy-for-speed trades: ViTPose flip-test off (~2.2x 2D-pose) + ByteTrack (faster YOLO)
-        config_overrides.append("pose2d.flip_test=false")
-        config_overrides.append("detector.tracker=bytetrack.yaml")
     config_overrides += list(set_overrides or [])
 
     console.print(Panel.fit("[gvhmr]GVHMR[/] · world-grounded human motion recovery", border_style="gvhmr"))
