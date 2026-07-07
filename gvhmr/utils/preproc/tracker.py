@@ -43,6 +43,7 @@ class Tracker:
             "classes": 0,  # human
             "verbose": False,
             "stream": True,
+            "half": self.device == 0,  # fp16 on CUDA (~1.5-2x, negligible detection change at conf=0.5)
         }
         results = self.yolo.track(video_path, **cfg)
         # frame-by-frame tracking

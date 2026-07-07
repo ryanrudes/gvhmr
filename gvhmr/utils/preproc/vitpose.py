@@ -20,12 +20,17 @@ DEFAULT_VITPOSE_MODEL = "ViTPose_huge_coco_256x192"
 class VitPoseExtractor:
     """2D-keypoint estimator (ViTPose). Satisfies the ``Pose2D`` protocol (base.py); emits COCO-17."""
 
-    def __init__(self, ckpt_path=None, model_name: str = DEFAULT_VITPOSE_MODEL, tqdm_leave=True):
+    def __init__(
+        self, ckpt_path=None, model_name: str = DEFAULT_VITPOSE_MODEL, tqdm_leave=True, flip_test=False, batch_size=32
+    ):
         self.pose = build_model(model_name, ckpt_path or DEFAULT_VITPOSE_CKPT)
         self.device = get_device()
         self.pose.to(self.device).eval()
 
-        self.flip_test = True
+        # flip_test doubles the ViT-Huge forward (input + its mirror) for a small kp2d-accuracy gain — OFF
+        # by default for speed (~1.8x this stage). batch_size 32 (bf16 halves memory; 16 was tuned for a 3090).
+        self.flip_test = flip_test
+        self.batch_size = batch_size
         self.tqdm_leave = tqdm_leave
 
     @torch.no_grad()
@@ -39,18 +44,21 @@ class VitPoseExtractor:
 
         # Inference
         L, _, H, W = imgs.shape  # (L, 3, H, W)
-        batch_size = 16
+        batch_size = self.batch_size
+        use_amp = self.device.type == "cuda"  # bf16 autocast on CUDA: ~2x, no loss-scaling needed
         vitpose = []
         for j in track(range(0, L, batch_size), desc="ViTPose", leave=self.tqdm_leave):
             # Heat map
             imgs_batch = imgs[j : j + batch_size, :, :, 32:224].to(self.device)
-            if self.flip_test:
-                heatmap, heatmap_flipped = self.pose(torch.cat([imgs_batch, imgs_batch.flip(3)], dim=0)).chunk(2)
-                heatmap_flipped = flip_heatmap_coco17(heatmap_flipped)
-                heatmap = (heatmap + heatmap_flipped) * 0.5
-                del heatmap_flipped
-            else:
-                heatmap = self.pose(imgs_batch.clone())  # (B, J, 64, 48)
+            with torch.autocast("cuda", dtype=torch.bfloat16, enabled=use_amp):
+                if self.flip_test:
+                    heatmap, heatmap_flipped = self.pose(torch.cat([imgs_batch, imgs_batch.flip(3)], dim=0)).chunk(2)
+                    heatmap_flipped = flip_heatmap_coco17(heatmap_flipped)
+                    heatmap = (heatmap + heatmap_flipped) * 0.5
+                    del heatmap_flipped
+                else:
+                    heatmap = self.pose(imgs_batch)  # (B, J, 64, 48)
+            heatmap = heatmap.float()  # back to fp32 for the mmpose UDP decode (numpy has no bf16)
 
             if False:
                 # Get joint

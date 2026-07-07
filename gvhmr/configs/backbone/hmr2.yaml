@@ -5,3 +5,4 @@
 # space, so a different backbone needs a RETRAIN (re-extract features with `gvhmr extract-features`, set
 # network.imgseq_dim to the new width, retrain the core). See docs/EXTENSIBILITY.md Tier B.
 name: hmr2
+batch_size: 32 # frames per ViT forward; bf16 (auto on CUDA) halves memory, so raise on a big card

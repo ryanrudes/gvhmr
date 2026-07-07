@@ -22,7 +22,7 @@ from gvhmr import PROJ_ROOT
 from gvhmr.configs import register_store_gvhmr
 from gvhmr.model.gvhmr.gvhmr_pl_demo import DemoPL
 from gvhmr.utils.console import console, progress_phase, rule, status, track
-from gvhmr.utils.device import device_name, get_device, to_device
+from gvhmr.utils.device import device_name, get_device, predict_device, to_device
 from gvhmr.utils.geo.hmr_cam import convert_K_to_K4, create_camera_sensor, estimate_K, get_bbx_xys_from_xyxy
 from gvhmr.utils.geo.rotations import quaternion_to_matrix
 from gvhmr.utils.geo_transform import apply_T_on_points, compute_cam_angvel, compute_T_ayfz2ay
@@ -752,7 +752,9 @@ def run(
         with status("Loading model + checkpoint"):
             model: DemoPL = hydra.utils.instantiate(cfg.model, _recursive_=False)
             model.load_pretrained_model(cfg.ckpt_path)
-            model = model.eval().to(device)
+            # The network runs on CPU by default — it's ~6.7x faster there (launch-bound); preproc + render
+            # already ran/​run on the GPU. Override with $GVHMR_PREDICT_DEVICE=cuda.
+            model = model.eval().to(predict_device())
         tic = Log.sync_time()
         # On a static camera, derive world translation from the in-cam motion (captures scene
         # traversal the velocity prior misses — gliding/skateboarding). No-op for moving cameras.

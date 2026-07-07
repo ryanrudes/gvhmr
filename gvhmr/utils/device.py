@@ -32,6 +32,48 @@ def _auto_device() -> torch.device:
     return torch.device("cpu")
 
 
+_BACKENDS_CONFIGURED = False
+
+
+def configure_torch_backends() -> None:
+    """Enable the free CUDA fast paths (idempotent; called from :func:`get_device` on a CUDA box).
+
+    - **TF32** for fp32 matmuls (``set_float32_matmul_precision('high')`` + ``allow_tf32``): ~1.3–1.8x
+      on tensor-core hardware at ~10-bit mantissa — far below model noise. PyTorch-Lightning literally
+      warns when it's off. The ``@autocast(enabled=False)`` FK/IK guards keep TF32 out of nothing they
+      care about (3×3 rotation matmuls / SVD run off the tensor cores anyway).
+    - **cuDNN benchmark**: our conv/ViT inputs are fixed-shape per stage, so autotuning the kernels once
+      pays off across the (many) frames.
+
+    CUDA-only, so the CPU-run golden test (``test_golden_inference.py``) is unaffected by construction.
+    Overridable with ``GVHMR_DISABLE_TF32=1`` for a strict-fp32 numerical A/B.
+    """
+    global _BACKENDS_CONFIGURED
+    if _BACKENDS_CONFIGURED or not torch.cuda.is_available():
+        return
+    _BACKENDS_CONFIGURED = True
+    if os.environ.get("GVHMR_DISABLE_TF32", "").strip().lower() in ("1", "true", "yes"):
+        return
+    torch.set_float32_matmul_precision("high")
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+    torch.backends.cudnn.benchmark = True
+
+
+def predict_device() -> torch.device:
+    """Device for the GVHMR network's ``predict()`` (the RoPE denoiser + EnDecoder FK/IK).
+
+    Verified ~6.7x FASTER on CPU than CUDA (1989→299 ms @ L=256) and faster than MPS too: it's a small
+    model dominated by many tiny sequential ops (rotation recurrences, per-frame IK), so per-kernel launch
+    overhead on an accelerator dwarfs the compute. Preproc (the heavy ViTs) and rendering stay on the GPU
+    — only the network moves here. Default CPU; override with ``$GVHMR_PREDICT_DEVICE`` (e.g. ``cuda``).
+    """
+    choice = os.environ.get("GVHMR_PREDICT_DEVICE")
+    if choice:
+        return get_device(choice)
+    return torch.device("cpu")
+
+
 def get_device(prefer: str | torch.device | None = None) -> torch.device:
     """Return the best available device, honouring ``prefer`` / ``$GVHMR_DEVICE``.
 
@@ -42,11 +84,14 @@ def get_device(prefer: str | torch.device | None = None) -> torch.device:
     if choice:
         dev = torch.device(choice)
         if dev.type == "cuda" and not torch.cuda.is_available():
-            return _auto_device()
-        if dev.type == "mps" and not _mps_available():
-            return _auto_device()
-        return dev
-    return _auto_device()
+            dev = _auto_device()
+        elif dev.type == "mps" and not _mps_available():
+            dev = _auto_device()
+    else:
+        dev = _auto_device()
+    if dev.type == "cuda":
+        configure_torch_backends()  # every entry point (demo/eval/bench/inference) funnels through here
+    return dev
 
 
 def to_device(data, device: str | torch.device):

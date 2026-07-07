@@ -185,7 +185,9 @@ class GVHMRPipeline:
             with progress_phase("Loading motion data"):
                 data = load_data_dict(cfg, flip_test=resolved_flip)
 
-            self.model.to(self.device).eval()
+            from gvhmr.utils.device import predict_device
+
+            self.model.to(predict_device()).eval()  # network is ~6.7x faster on CPU (launch-bound)
             with progress_phase("Recovering motion"):
                 pred = recover_motion(
                     self.model.pl,
