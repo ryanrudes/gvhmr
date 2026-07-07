@@ -29,6 +29,36 @@ import gradio as gr
 # it doesn't import torch — and torch is only imported later, well after this line.
 import spaces
 
+
+def _patch_torch_dynamo_config() -> None:
+    """ZeroGPU's torch 2.11.0+cu130 has an internal skew: ``torch._dynamo/config.py`` passes
+    ``Config(deprecated=…)`` but ``torch.utils._config_module.Config`` doesn't declare it, so
+    ``import torch._dynamo`` (hence ``import pytorch_lightning``) dies with ``TypeError: Config() got an
+    unexpected keyword argument 'deprecated'``. Wrap Config.__init__ to drop kwargs it doesn't accept —
+    run BEFORE anything imports torch._dynamo. Dropping deprecation metadata is harmless (we never
+    torch.compile); a torch build that already accepts the kwarg is left untouched."""
+    try:
+        import functools
+        import inspect
+
+        import torch.utils._config_module as cm
+
+        accepted = set(inspect.signature(cm.Config).parameters)
+        if "deprecated" in accepted:
+            return  # already-fixed torch — nothing to do
+        _orig = cm.Config  # a factory FUNCTION (not a class), so wrap the callable
+
+        @functools.wraps(_orig)
+        def _wrapped(*args, **kwargs):
+            return _orig(*args, **{k: v for k, v in kwargs.items() if k in accepted})
+
+        cm.Config = _wrapped
+    except Exception as exc:  # noqa: BLE001 — diagnostic only; never block startup on the shim
+        print(f"[gvhmr] torch _dynamo Config shim skipped ({type(exc).__name__}: {exc})")
+
+
+_patch_torch_dynamo_config()
+
 # The moderngl overlay renderer needs a GL context; on a GPU-less Space (cpu-basic) there's no hardware
 # GL ("libEGL.so not loaded"), so force Mesa's software rasterizer (llvmpipe) — with the EGL libs from
 # packages.txt this gives a headless context so rendering works instead of failing to pytorch3d (absent).
@@ -627,6 +657,42 @@ def _probe_gl() -> None:
 
 
 _probe_gl()
+
+
+def _probe_torch() -> None:
+    """Diagnostic: on ZeroGPU the platform preinstalls torch 2.11 and importing pytorch_lightning failed with
+    `torch._dynamo ... Config() got an unexpected keyword argument 'deprecated'` (a torch/_config_module vs
+    _dynamo skew). Log the exact versions + Config signature + the dynamo/PL import results so we can pin the
+    right thing. Runs after the bootstrap so the installed (not platform-preinstall) versions are shown."""
+    import importlib
+    import inspect
+
+    try:
+        import torch
+
+        print(f"[gvhmr] torch {torch.__version__}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[gvhmr] torch import FAIL: {type(exc).__name__}: {exc}")
+        return
+    for mod in ("torchvision", "pytorch_lightning", "lightning"):
+        try:
+            print(f"[gvhmr] {mod} {importlib.import_module(mod).__version__} import OK")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[gvhmr] {mod} import FAIL: {type(exc).__name__}: {exc}")
+    try:
+        from torch.utils._config_module import Config
+
+        print(f"[gvhmr] _config_module.Config params: {list(inspect.signature(Config).parameters)}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[gvhmr] Config introspect FAIL: {type(exc).__name__}: {exc}")
+    try:
+        importlib.import_module("torch._dynamo")
+        print("[gvhmr] torch._dynamo import OK")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[gvhmr] torch._dynamo import FAIL: {type(exc).__name__}: {exc}")
+
+
+_probe_torch()
 
 
 with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:

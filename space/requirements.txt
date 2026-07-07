@@ -1,5 +1,12 @@
-# Gradio SDK Space (ZeroGPU). HF pins gradio + spaces + torch==2.11.0 on the builder.
+# Gradio SDK Space (ZeroGPU). HF pins gradio + spaces + torch==2.11.0+cu130 on the builder.
 # Do NOT list gradio, spaces, or torch here — the platform manages those.
+#
+# torchvision IS pinned: the ZeroGPU image ships torch 2.11.0+cu130 but a torchvision whose C++ ABI
+# doesn't match it ("operator torchvision::nms does not exist"), which breaks YOLO's NMS. Install the
+# matching cu130 build (torch 2.11.0 pairs with torchvision 0.26.0) so the ops register. Must come from
+# the cu130 index (the plain PyPI 0.26.0 is built against a different torch).
+--extra-index-url https://download.pytorch.org/whl/cu130
+torchvision==0.26.0+cu130
 #
 # Do NOT list gvhmr or chumpy here — chumpy's legacy setup.py imports pip at build time and
 # fails under PEP 517 isolation during the Space build. app.py bootstraps both at runtime
