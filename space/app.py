@@ -323,11 +323,14 @@ def run(
     progress: gr.Progress = gr.Progress(track_tqdm=True),  # noqa: B008
 ) -> tuple[str, str, dict]:
     """Run GVHMR on the uploaded video and return (overlay_mp4, npz_path, summary)."""
-    from gvhmr.utils.console import progress_hook, progress_phase
-
     video_path = _video_path(video_path)
     if not video_path:
         raise gr.Error("Please upload a video first.")
+    if video_path.startswith(("http://", "https://")):
+        raise gr.Error(
+            "The uploaded video could not be read as a local file. Hard-refresh the page, "
+            "upload the clip again, and click Recover motion immediately — do not reuse a stale tab."
+        )
 
     def _hook(frac: float, desc: str) -> None:
         progress(max(0.0, min(1.0, frac)), desc=desc)
@@ -337,7 +340,11 @@ def run(
         _hook(0.05 + max(0.0, min(1.0, frac)) * 0.88, desc)
 
     try:
-        progress(0.0, desc="Starting…")
+        progress(0.0, desc="Preparing environment…")
+        _ensure_bootstrapped()
+        from gvhmr.utils.console import progress_hook, progress_phase
+
+        progress(0.01, desc="Starting…")
         with progress_hook(_hook):
             with progress_phase(0.0, 0.05, "Loading model"):
                 try:
@@ -413,7 +420,7 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
 
     with gr.Row():
         with gr.Column():
-            video_in = gr.Video(label="Input video", sources=["upload"])
+            video_in = gr.Video(label="Input video", sources=["upload"], format="mp4")
             static_in = gr.Checkbox(value=False, label="Static camera")
             camera_in = gr.Dropdown(
                 choices=CAMERA_CHOICES,
