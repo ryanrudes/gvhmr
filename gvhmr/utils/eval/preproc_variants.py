@@ -220,6 +220,16 @@ class _LazyStages:
         self._overrides = list(overrides or [])
         self._built: dict = {}
 
+    def override_tag(self, *groups: str) -> str:
+        """Filesystem-safe tag of the ``--set`` overrides addressing any of ``groups`` — folded into the
+        shared per-stage cache keys so two knob sets on the SAME stage NAME (e.g. ``pose2d.flip_test=true``
+        vs ``=false``) don't collide on ``_stages/`` and silently reuse each other's artifacts. Mirrors how
+        ``variant_slug`` tags the combo dir. Empty string when no override targets these groups."""
+        matching = sorted(o for o in self._overrides if o.split("=", 1)[0].split(".", 1)[0] in groups)
+        if not matching:
+            return ""
+        return "__" + ",".join(matching).replace("/", "_").replace(" ", "")
+
     def get(self, stage: str):
         if stage not in self._built:
             from gvhmr.utils.preproc.base import make_backbone, make_detector, make_pose2d
@@ -298,7 +308,7 @@ def _stage_boxes(
         )
     if detector is None:
         return {"bbx_xys": canonical_xys.clone().float(), "identity_fallback": False}
-    cache = support_dir / "preproc_variants/_stages/boxes" / detector / f"{vid}.pt"
+    cache = support_dir / "preproc_variants/_stages/boxes" / (detector + stages.override_tag("detector")) / f"{vid}.pt"
     if cache.exists() and not overwrite:
         return torch.load(cache, weights_only=False)
     with _locked(cache):
@@ -325,7 +335,8 @@ def _stage_kp2d(
     overwrite: bool,
 ) -> torch.Tensor:
     """Per-(detector, pose2d) keypoints — the only genuinely per-combo model pass."""
-    key = f"{detector or 'canonical'}-{pose2d or 'vitpose'}"
+    # kp2d depends on the pose2d model AND the boxes it runs on (detector), so both groups' overrides key it.
+    key = f"{detector or 'canonical'}-{pose2d or 'vitpose'}" + stages.override_tag("detector", "pose2d")
     cache = support_dir / "preproc_variants/_stages/kp2d" / key / f"{vid}.pt"
     if cache.exists() and not overwrite:
         return torch.load(cache, weights_only=False)
@@ -352,7 +363,8 @@ def _stage_feats(
     from gvhmr.utils.geo.flip_utils import flip_bbx_xys
     from gvhmr.utils.video_io_utils import get_video_lwh
 
-    key = f"{detector or 'canonical'}-{backbone or 'hmr2'}"
+    # feats depend on the backbone AND the boxes it runs on (detector), so both groups' overrides key it.
+    key = f"{detector or 'canonical'}-{backbone or 'hmr2'}" + stages.override_tag("detector", "backbone")
     cache = support_dir / "preproc_variants/_stages/feats" / key / f"{vid}.pt"
     if cache.exists() and not overwrite:
         return torch.load(cache, weights_only=False)
