@@ -151,6 +151,25 @@ def body_models_push(
     ensure_ca_bundle()
     api = HfApi(token=resolve_hf_token(token))
     api.create_repo(repo, repo_type="model", private=private, exist_ok=True)
+    # create_repo(exist_ok=True) does NOT change the visibility of a repo that already exists — so a
+    # pre-existing PUBLIC repo would silently receive the MPI-licensed files despite the --private default.
+    # Verify (and, when private was requested, flip it) before uploading anything.
+    if private:
+        try:
+            is_public = api.repo_info(repo, repo_type="model").private is False
+        except Exception:  # noqa: BLE001 — if we can't confirm, treat as unsafe
+            is_public = True
+        if is_public:
+            try:
+                api.update_repo_settings(repo_id=repo, repo_type="model", private=True)
+                console.print(f"[warn]made existing repo private[/] [muted]{repo}[/]")
+            except Exception as e:  # noqa: BLE001
+                console.print(
+                    f"[err]{repo} already exists as PUBLIC and could not be made private[/] ([muted]{e}[/]).\n"
+                    "Uploading SMPL/SMPL-X to a public repo would violate the MPI license — aborting. "
+                    "Make the repo private in its HF settings, or push to a new private repo id."
+                )
+                raise typer.Exit(1) from e
     for path, rel in uploads:
         with console.status(f"Uploading {rel}…"):
             api.upload_file(path_or_fileobj=str(path), path_in_repo=rel, repo_id=repo, repo_type="model")
@@ -256,7 +275,9 @@ def publish_space(
     try:
         from huggingface_hub import HfApi
 
-        HfApi(token=token).add_space_variable(space_id, "GRADIO_SSR_MODE", "false")
+        from gvhmr.utils.hf_token import resolve_hf_token
+
+        HfApi(token=resolve_hf_token(token)).add_space_variable(space_id, "GRADIO_SSR_MODE", "false")
         console.print("[ok]Space variable[/] GRADIO_SSR_MODE=false (disables SSR file re-fetch)")
     except Exception as exc:  # noqa: BLE001
         console.print(f"[warn]Could not set GRADIO_SSR_MODE[/]: {exc}")

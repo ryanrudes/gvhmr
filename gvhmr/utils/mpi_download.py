@@ -65,6 +65,14 @@ def _site(dataset: str) -> str:
     return SITES.get(dataset, f"{dataset}.is.tue.mpg.de")
 
 
+#: Branded, human-facing dataset name for messages (``.upper()`` would render "SMPLX", not "SMPL-X").
+BRAND = {"smplx": "SMPL-X", "smpl": "SMPL"}
+
+
+def _brand(dataset: str) -> str:
+    return BRAND.get(dataset.lower(), dataset.upper())
+
+
 def _toml_str(s: str) -> str:
     """A TOML basic string (double-quoted, minimal escaping) — safe for arbitrary passwords."""
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
@@ -126,15 +134,19 @@ def save_credentials(username: str, password: str, dataset: str = "smplx") -> Pa
     body = "\n".join(
         f"[auth.{ds}]\nusername = {_toml_str(u)}\npassword = {_toml_str(p)}\n" for ds, (u, p) in sections.items()
     )
-    CRED_PATH.write_text(body)
-    CRED_PATH.chmod(stat.S_IRUSR | stat.S_IWUSR)  # 0600 — owner read/write only
+    # Create the file 0600 *before* writing, so the plaintext passwords are never briefly world-readable
+    # (a plain write_text + chmod leaves a umask-0644 window). O_TRUNC replaces any prior content.
+    fd = os.open(CRED_PATH, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, stat.S_IRUSR | stat.S_IWUSR)
+    with os.fdopen(fd, "w") as fh:
+        fh.write(body)
+    CRED_PATH.chmod(stat.S_IRUSR | stat.S_IWUSR)  # 0600 — also fixes an older file created pre-patch
     return CRED_PATH
 
 
 def _missing_creds_msg(dataset: str) -> str:
     user_var, pw_vars = _ENV_VARS[dataset]
     return (
-        f"No MPI credentials for the {dataset.upper()} account. SMPL and SMPL-X are separate "
+        f"No MPI credentials for the {_brand(dataset)} account. SMPL and SMPL-X are separate "
         f"registrations — set ${user_var}/${pw_vars[0]} or run `gvhmr auth smpl` "
         f"(register at https://{_site(dataset)}/)."
     )
@@ -190,8 +202,8 @@ def _download_archive(domain: str, sfile: str, dest: Path, user: str, pw: str) -
         r = s.post(url, data={"username": user, "password": pw}, stream=True, allow_redirects=True, timeout=60)
         if r.status_code in (401, 403):  # authenticated, but this account isn't authorized for `domain`
             raise PermissionError(
-                f"MPI refused the {domain.upper()} download (HTTP {r.status_code}). SMPL and SMPL-X are "
-                f"separate accounts: this login isn't registered for {domain.upper()} or hasn't accepted "
+                f"MPI refused the {_brand(domain)} download (HTTP {r.status_code}). SMPL and SMPL-X are "
+                f"separate accounts: this login isn't registered for {_brand(domain)} or hasn't accepted "
                 f"its license. Register + accept it at https://{_site(domain)}/ with this account, then "
                 f"retry (`gvhmr auth smpl`)."
             )
@@ -199,7 +211,7 @@ def _download_archive(domain: str, sfile: str, dest: Path, user: str, pw: str) -
         ctype = r.headers.get("Content-Type", "")
         if "text/html" in ctype:  # the portal returns its login page (200) on bad credentials
             raise PermissionError(
-                f"MPI login failed for the {domain.upper()} account — check its credentials "
+                f"MPI login failed for the {_brand(domain)} account — check its credentials "
                 f"(`gvhmr auth smpl`; register at https://{_site(domain)}/)."
             )
         _stream_to_file(r, dest, f"Downloading {domain.upper()} body model")

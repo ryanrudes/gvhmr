@@ -195,9 +195,10 @@ def ensure_body_models(smpl: bool = False, auto: bool = True) -> None:
                     Log.info(f"[ok]Body models fetched[/] from mirror [muted]{mirror}[/] ({len(placed)} file(s))")
                 have_smplx = (BODY_MODEL_ROOT / "smplx/SMPLX_NEUTRAL.npz").exists()
                 have_smpl = (BODY_MODEL_ROOT / "smpl/SMPL_NEUTRAL.pkl").exists()
-            except PermissionError:
-                raise
-            except Exception as e:  # noqa: BLE001 — any other mirror failure just falls through to MPI
+            except Exception as e:  # noqa: BLE001 — a bad token / any mirror failure falls through to MPI
+                # The mirror is the *fast* path, not the only one — so a stale HF token (401/403) or any
+                # other mirror error must not abort: fall back to the official MPI source (and, failing
+                # that, the actionable gated-error below), exactly as the docstring promises.
                 Log.warning(f"[warn]Mirror fetch failed[/] ([muted]{mirror}: {e}[/]) — falling back to MPI.")
 
         # 2) The official MPI source for whatever's still missing. SMPL and SMPL-X are separate accounts —
