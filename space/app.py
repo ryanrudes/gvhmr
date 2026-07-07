@@ -25,6 +25,25 @@ from typing import Any
 import spaces
 import gradio as gr
 
+
+def _patch_gradio_file_whitelist() -> None:
+    """SSR mode re-fetches uploads over HTTP; HF xethub bridge hosts must be allow-listed."""
+    try:
+        from gradio import processing_utils as pu
+
+        for host in (
+            "cas-bridge-direct.xethub.hf.co",
+            "cas-bridge.xethub.hf.co",
+            "xethub.hf.co",
+        ):
+            if host not in pu.PUBLIC_HOSTNAME_WHITELIST:
+                pu.PUBLIC_HOSTNAME_WHITELIST.append(host)
+    except Exception:  # noqa: BLE001 — gradio internals differ across versions
+        pass
+
+
+_patch_gradio_file_whitelist()
+
 REPO_URL = "https://github.com/ryanrudes/gvhmr"
 
 DEFAULT_HUB_REPO = os.getenv("GVHMR_HUB_REPO", "ryanrudes/gvhmr")
@@ -493,4 +512,5 @@ if __name__ == "__main__":
     demo.launch(
         server_name=os.getenv("GRADIO_SERVER_NAME", "0.0.0.0"),
         server_port=int(os.getenv("GRADIO_SERVER_PORT", "7860")),
+        show_error=True,
     )

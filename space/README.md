@@ -37,7 +37,9 @@ a fixed viewpoint.
 > image build (PEP 517 isolation). `app.py` installs `chumpy` with `--no-build-isolation`, then
 > `gvhmr[preproc]`, on the first inference request.
 >
-> **Body models** are registration-gated and never bundled. **Recommended — private mirror:** on your
+> **SSR / uploads:** Gradio 6 SSR re-fetches uploads over HTTP and often returns **403** on Spaces.
+> `gvhmr publish-space` sets Space variable **`GRADIO_SSR_MODE=false`** (HF ignores `launch(ssr_mode=…)`).
+> After changing it, republish or restart the Space so the runtime picks it up.
 > laptop, register at [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de) +
 > [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de), run `gvhmr auth smpl`, then
 > `gvhmr body-models push you/gvhmr-body-models`. Set Space **Secrets**:

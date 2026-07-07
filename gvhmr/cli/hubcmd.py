@@ -252,4 +252,12 @@ def publish_space(
         console.print(f"[err]Space folder not found:[/] {space_dir}")
         raise typer.Exit(1)
     url = hub.publish_space(space_id, space_dir, token=token)
+    # SSR re-fetches uploads via HTTP and often 403s on Spaces; HF ignores launch(ssr_mode=…).
+    try:
+        from huggingface_hub import HfApi
+
+        HfApi(token=token).add_space_variable(space_id, "GRADIO_SSR_MODE", "false")
+        console.print("[ok]Space variable[/] GRADIO_SSR_MODE=false (disables SSR file re-fetch)")
+    except Exception as exc:  # noqa: BLE001
+        console.print(f"[warn]Could not set GRADIO_SSR_MODE[/]: {exc}")
     console.print(f"[ok]Space published[/] → [muted]{url}[/]")
