@@ -24,13 +24,17 @@ DEFAULT_YOLO_CKPT = YOLO_CKPT
 class Tracker:
     """Person detector/tracker (ultralytics YOLO). Satisfies the ``Detector`` protocol (base.py)."""
 
-    def __init__(self, ckpt=None, conf: float = 0.5) -> None:
+    def __init__(self, ckpt=None, conf: float = 0.5, tracker: str = "botsort.yaml") -> None:
         # https://docs.ultralytics.com/modes/predict/
         ckpt = ckpt or DEFAULT_YOLO_CKPT
         # Progress label from the actual checkpoint (e.g. "yolo11x") — don't hard-code a version.
         self.name = Path(str(ckpt)).stem or "yolo"
         self.yolo = YOLO(ckpt)
         self.conf = conf  # default 0.25, wham/gvhmr 0.5
+        # Tracker association: botsort.yaml (default, with GMC — robust to camera motion / multi-person) vs
+        # bytetrack.yaml (no GMC — faster; fine for a single dominant subject). `--fast` picks bytetrack;
+        # keep botsort the default (accuracy-first). YOLO tracking is now the preproc bottleneck.
+        self.tracker = tracker
         # ultralytics device convention: 0 for cuda:0, else the type string ("mps"/"cpu").
         device = get_device()
         self.device = 0 if device.type == "cuda" else device.type
@@ -44,6 +48,7 @@ class Tracker:
             "verbose": False,
             "stream": True,
             "half": self.device == 0,  # fp16 on CUDA (~1.5-2x, negligible detection change at conf=0.5)
+            "tracker": self.tracker,
         }
         results = self.yolo.track(video_path, **cfg)
         # frame-by-frame tracking

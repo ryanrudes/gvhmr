@@ -7,3 +7,5 @@
 # SimpleVO overlap, staging skip) are always on — they don't need this recipe.
 pose2d:
   flip_test: false
+detector:
+  tracker: bytetrack.yaml # no GMC — faster association for a single dominant subject (YOLO is the bottleneck)

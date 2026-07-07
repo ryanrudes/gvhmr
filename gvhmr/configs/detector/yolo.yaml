@@ -4,3 +4,4 @@
 name: yolo
 ckpt: null # null → the released yolov8x.pt (assets.YOLO_CKPT); or a path / an ultralytics weight name
 conf: 0.5 # detection confidence (ultralytics default 0.25; GVHMR/WHAM use 0.5)
+tracker: botsort.yaml # association: botsort (GMC, robust) default; `--fast` uses bytetrack.yaml (faster, no GMC)

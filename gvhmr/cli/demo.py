@@ -778,8 +778,9 @@ def run(
         config_overrides.append(f"pose2d.ckpt_path={pose2d_ckpt}")
     if flip_test:  # the CLI flag forces flip-test on; a recipe/--set can also set cfg.flip_test
         config_overrides.append("flip_test=true")
-    if fast:  # opt-in accuracy-for-speed trade: turn off ViTPose's internal flip-test TTA (~2.2x 2D-pose)
+    if fast:  # opt-in accuracy-for-speed trades: ViTPose flip-test off (~2.2x 2D-pose) + ByteTrack (faster YOLO)
         config_overrides.append("pose2d.flip_test=false")
+        config_overrides.append("detector.tracker=bytetrack.yaml")
     config_overrides += list(set_overrides or [])
 
     console.print(Panel.fit("[gvhmr]GVHMR[/] · world-grounded human motion recovery", border_style="gvhmr"))
