@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gvhmr"
-version = "1.2.0"
+version = "1.3.0"
 description = "GVHMR: World-Grounded Human Motion Recovery via Gravity-View Coordinates (training & inference)"
 readme = "README.md"
 license = { file = "LICENSE" }
