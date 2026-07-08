@@ -21,6 +21,8 @@ def main() -> None:
     p.add_argument("-s", "--static_cam", action="store_true", help="Camera is static (skip visual odometry).")
     p.add_argument("--use_dpvo", action="store_true", help="Use DPVO (CUDA-only).")
     p.add_argument("--f_mm", type=int, default=None, help="Full-frame focal length in mm.")
+    p.add_argument("--f_px", type=float, default=None, help="Focal length in pixels (bypasses --f_mm).")
+    p.add_argument("--intrinsics", type=str, default=None, help="Intrinsics sidecar (JSON/NPZ: fx/fy/cx/cy or K).")
     p.add_argument("--render_scale", type=float, default=None, help="Overlay resolution fraction (0.5 default).")
     p.add_argument("--no_render", action="store_true", help="Skip overlay videos.")
     p.add_argument("--flip_test", action="store_true", help="Flip-test TTA (accuracy; +1 feature pass).")
@@ -32,6 +34,8 @@ def main() -> None:
         static_cam=a.static_cam,
         use_dpvo=a.use_dpvo,
         f_mm=a.f_mm,
+        f_px=a.f_px,
+        intrinsics=a.intrinsics,
         verbose=a.verbose,
         render_scale=a.render_scale,
         no_render=a.no_render,

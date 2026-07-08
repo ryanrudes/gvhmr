@@ -96,6 +96,8 @@ class GVHMRPipeline:
         pose2d: str | None = None,
         backbone: str | None = None,
         f_mm: int | None = None,
+        f_px: float | None = None,
+        intrinsics=None,
         flip_test: bool = False,
         world_from_incam: bool = True,
         render: bool = False,
@@ -115,6 +117,10 @@ class GVHMRPipeline:
             camera: moving-camera backend (``simplevo`` / ``dpvo`` / ``dust3r`` / ``vggt``); overrides the default.
             detector / pose2d / backbone: per-call stage overrides (else the pipeline / config defaults).
             f_mm: full-frame focal length in mm (else read from metadata, else a FOV heuristic).
+            f_px: focal length in **pixels** — the faithful route (bypasses the mm→px conversion; overrides f_mm).
+            intrinsics: measured camera intrinsics — a sidecar path (JSON/NPZ), a dict with fx/fy/cx/cy
+                (each a scalar or per-frame list) or K, or a 3x3 / (L,3,3) K array/tensor. Highest
+                precedence; carries a true principal point and per-frame values. See docs/ACCURACY.md.
             flip_test: mirror-averaging test-time augmentation (the benchmark setting; +1 feature pass).
             world_from_incam: for a static camera, take the world trajectory from the in-cam motion.
             render: also render the overlay videos now (else call ``result.render()`` later).
@@ -169,6 +175,8 @@ class GVHMRPipeline:
                     static_cam=static_camera,
                     use_dpvo=False,
                     f_mm=f_mm,
+                    f_px=f_px,
+                    intrinsics=intrinsics,
                     verbose=False,
                     render_scale=render_scale,
                     config_overrides=config_overrides,
@@ -257,6 +265,8 @@ def recover(video, *, model: str = hub.DEFAULT_REPO, device=None, **kwargs) -> M
         "pose2d",
         "backbone",
         "f_mm",
+        "f_px",
+        "intrinsics",
         "flip_test",
         "world_from_incam",
         "render",

@@ -6,11 +6,13 @@ preproc models), so the Typer command in :mod:`gvhmr.cli` lazy-imports it.
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
 import cv2
 import hydra
+import numpy as np
 import torch
 from einops import einsum
 from hydra import compose, initialize_config_module
@@ -23,9 +25,16 @@ from gvhmr.configs import register_store_gvhmr
 from gvhmr.model.gvhmr.gvhmr_pl_demo import DemoPL
 from gvhmr.utils.console import console, progress_phase, rule, status, track
 from gvhmr.utils.device import device_name, get_device, predict_device, to_device
-from gvhmr.utils.geo.hmr_cam import convert_K_to_K4, create_camera_sensor, estimate_K, get_bbx_xys_from_xyxy
+from gvhmr.utils.geo.hmr_cam import (
+    convert_f_to_K,
+    convert_K_to_K4,
+    create_camera_sensor,
+    estimate_K,
+    get_bbx_xys_from_xyxy,
+)
 from gvhmr.utils.geo.rotations import quaternion_to_matrix
 from gvhmr.utils.geo_transform import apply_T_on_points, compute_cam_angvel, compute_T_ayfz2ay
+from gvhmr.utils.intrinsics import load_intrinsics_file
 from gvhmr.utils.net_utils import detach_to_cpu
 from gvhmr.utils.postproc_world import compose_world_from_dust3r
 from gvhmr.utils.preproc.base import make_backbone, make_detector, make_pose2d, missing_requirements
@@ -112,6 +121,60 @@ def focal_mm_from_metadata(video_path) -> int | None:
     return None
 
 
+def _find_intrinsics_sidecar(video: Path) -> Path | None:
+    """A ``<video-stem>.intrinsics.{json,npz}`` next to the input video, if present (auto-detected)."""
+    for ext in (".intrinsics.json", ".intrinsics.npz"):
+        cand = video.parent / (video.stem + ext)
+        if cand.exists():
+            return cand
+    return None
+
+
+def _stage_intrinsics(src, dest_dir: Path) -> Path:
+    """Normalize a user-supplied intrinsics source into a file :func:`load_intrinsics_file` can read.
+
+    Accepts a path (used in place), a ``dict`` (→ ``intrinsics.json``), or a 3x3 / (L,3,3) array/tensor
+    treated as ``K`` (→ ``intrinsics.npz``). Returns the resolved path."""
+    if isinstance(src, (str, Path)):
+        p = Path(src)
+        if not p.exists():
+            raise FileNotFoundError(f"intrinsics file not found: {p}")
+        return p
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    if isinstance(src, dict):
+
+        def _jsonable(v):
+            if torch.is_tensor(v):
+                v = v.detach().cpu().numpy()
+            return v.tolist() if isinstance(v, np.ndarray) else v
+
+        p = dest_dir / "intrinsics.json"
+        p.write_text(json.dumps({k: _jsonable(v) for k, v in src.items()}))
+        return p
+    arr = src.detach().cpu().numpy() if torch.is_tensor(src) else np.asarray(src)
+    p = dest_dir / "intrinsics.npz"
+    np.savez(p, K=arr)
+    return p
+
+
+def resolve_intrinsics(cfg, length: int, width: int, height: int) -> torch.Tensor:
+    """Build the per-frame ``(L, 3, 3)`` full-image ``K`` for the clip.
+
+    Precedence (high→low): an intrinsics sidecar (``cfg.intrinsics_path`` — fx/fy/cx/cy or K, per-frame
+    ok) > ``cfg.f_px`` (focal in pixels) > ``cfg.f_mm`` (focal in mm) > the diagonal-FOV heuristic. The
+    last two branches reproduce the historical construction byte-for-byte, so the default path stays
+    golden-identical (see docs/ACCURACY.md)."""
+    path = getattr(cfg, "intrinsics_path", None)
+    if path:
+        return load_intrinsics_file(path, length=length, width=width, height=height)
+    f_px = getattr(cfg, "f_px", None)
+    if f_px is not None:
+        return convert_f_to_K(float(f_px), width, height).repeat(length, 1, 1)
+    if cfg.f_mm is not None:
+        return create_camera_sensor(width, height, cfg.f_mm)[2].repeat(length, 1, 1)
+    return estimate_K(width, height).repeat(length, 1, 1)
+
+
 def ensure_deps(cfg) -> None:
     """Fail fast — before any download or compute — when a chosen backend's dependency is missing,
     with the exact install command (instead of a mid-run ImportError traceback)."""
@@ -191,24 +254,38 @@ def build_demo_cfg(
     f_mm: int | None,
     verbose: bool,
     render_scale: float | None,
+    f_px: float | None = None,
+    intrinsics=None,
     config_overrides: list[str] | None = None,
 ):
     """Compose the demo ``DictConfig`` from typed CLI args and stage the input video.
 
-    ``config_overrides`` are extra raw Hydra overrides (the pluggable-stage selections, ``--recipe``,
-    and ``--set`` passthrough) assembled by :func:`run`; they are applied *after* the base options so a
-    ``--set`` can override anything, and a name selector (``detector=yolo11x``) overrides a ``--recipe``."""
+    ``f_px`` (focal in pixels) and ``intrinsics`` (a sidecar path, a dict, or a 3x3 / (L,3,3) ``K``
+    array/tensor) are the faithful camera-intrinsics inputs — see :func:`resolve_intrinsics` for the
+    precedence. ``config_overrides`` are extra raw Hydra overrides (the pluggable-stage selections,
+    ``--recipe``, and ``--set`` passthrough) assembled by :func:`run`; they are applied *after* the base
+    options so a ``--set`` can override anything, and a name selector (``detector=yolo11x``) a
+    ``--recipe``."""
     video = Path(video)
     assert video.exists(), f"Video not found at {video}"
     length, width, height = get_video_lwh(video)
     Log.info(f"Input: [muted]{video}[/]  (L,W,H) = ({length}, {width}, {height})")
 
-    # When no focal is given, try to read the true one from the video metadata (improves the
-    # world-frame scale); falls back to the diagonal-FOV heuristic in load_data_dict if absent.
-    if f_mm is None:
-        f_mm = focal_mm_from_metadata(video)
-        if f_mm is not None:
-            Log.info(f"Focal length [ok]{f_mm}mm[/] (35mm-equiv) read from video metadata")
+    # Resolve the camera-intrinsics source. Precedence (high→low): explicit --intrinsics sidecar >
+    # --f_px (pixels) > --f_mm (mm) > an auto-detected <video>.intrinsics.json next to the input >
+    # 35mm-equiv focal from video metadata > the diagonal-FOV heuristic (in load_data_dict). Pixels and
+    # the sidecar are the faithful routes — the mm path round-trips through a full-frame assumption and
+    # can carry neither a real principal point nor per-frame values. See docs/ACCURACY.md.
+    intrinsics_src = intrinsics
+    if intrinsics is None and f_px is None and f_mm is None:
+        auto = _find_intrinsics_sidecar(video)
+        if auto is not None:
+            intrinsics_src = auto
+            Log.info(f"Camera intrinsics from sidecar [ok]{auto.name}[/]")
+        else:
+            f_mm = focal_mm_from_metadata(video)
+            if f_mm is not None:
+                Log.info(f"Focal length [ok]{f_mm}mm[/] (35mm-equiv) read from video metadata")
 
     with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):
         overrides = [
@@ -219,6 +296,8 @@ def build_demo_cfg(
         ]
         if f_mm is not None:
             overrides.append(f"f_mm={f_mm}")
+        if f_px is not None:
+            overrides.append(f"f_px={f_px}")
         if render_scale is not None:
             overrides.append(f"render_scale={render_scale}")
         if output_root is not None:
@@ -231,6 +310,11 @@ def build_demo_cfg(
     Log.info(f"Output dir: [muted]{cfg.output_dir}[/]")
     Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
     Path(cfg.preprocess_dir).mkdir(parents=True, exist_ok=True)
+
+    # Stage the intrinsics source (a path is used in place; a dict / array is normalized into the
+    # preprocess dir). load_data_dict then reads it against the *staged* frame size via resolve_intrinsics.
+    if intrinsics_src is not None:
+        cfg.intrinsics_path = str(_stage_intrinsics(intrinsics_src, Path(cfg.preprocess_dir)))
 
     # Stage the input into the output dir: re-encode at the model's 30fps (resampling if the
     # source differs — GVHMR integrates per-frame velocities, so a 60fps clip fed as-is would
@@ -469,10 +553,7 @@ def load_data_dict(cfg, flip_test: bool = False) -> dict:
             R_w2c = quaternion_to_matrix(torch.from_numpy(traj[:, [6, 3, 4, 5]])).mT
         else:  # simplevo / dust3r: (L, 4, 4) T_w2c (dust3r's is metric)
             R_w2c = torch.from_numpy(traj[:, :3, :3])
-    if cfg.f_mm is not None:
-        K_fullimg = create_camera_sensor(width, height, cfg.f_mm)[2].repeat(length, 1, 1)
-    else:
-        K_fullimg = estimate_K(width, height).repeat(length, 1, 1)
+    K_fullimg = resolve_intrinsics(cfg, length, width, height)
     cam_angvel = compute_cam_angvel(R_w2c)
     bbx_xys = torch.load(paths.bbx, weights_only=False)["bbx_xys"]
     kp2d = torch.load(paths.vitpose, weights_only=False)
@@ -726,6 +807,8 @@ def run(
     slam: str | None = None,
     camera: str | None = None,
     f_mm: int | None = None,
+    f_px: float | None = None,
+    intrinsics=None,
     verbose: bool = False,
     render_scale: float | None = None,
     no_render: bool = False,
@@ -794,6 +877,8 @@ def run(
         static_cam=static_cam,
         use_dpvo=use_dpvo,
         f_mm=f_mm,
+        f_px=f_px,
+        intrinsics=intrinsics,
         verbose=verbose,
         render_scale=render_scale,
         config_overrides=config_overrides,

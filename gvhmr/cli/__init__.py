@@ -85,6 +85,22 @@ def demo(
     f_mm: Annotated[
         int | None, typer.Option(help="Full-frame focal length in mm [dim](iPhone 1x≈24, 2x≈48)[/].")
     ] = None,
+    f_px: Annotated[
+        float | None,
+        typer.Option(
+            help="Focal length in [bold]pixels[/] [dim](bypasses --f_mm's mm→px conversion; overrides it)[/]."
+        ),
+    ] = None,
+    intrinsics: Annotated[
+        Path | None,
+        typer.Option(
+            "--intrinsics",
+            help="Camera-intrinsics sidecar [dim](JSON/NPZ with fx/fy/cx/cy or K, per-frame ok — overrides "
+            "--f_px/--f_mm; else auto-detected as [gvhmr]<video>.intrinsics.json[/])[/].",
+            exists=True,
+            dir_okay=False,
+        ),
+    ] = None,
     render_scale: Annotated[
         float | None, typer.Option(help="Overlay resolution fraction [dim](0.5 default; 1.0 = full)[/].")
     ] = None,
@@ -181,6 +197,8 @@ def demo(
         slam=slam,
         camera=camera,
         f_mm=f_mm,
+        f_px=f_px,
+        intrinsics=intrinsics,
         verbose=verbose,
         render_scale=render_scale,
         no_render=no_render,
@@ -211,13 +229,19 @@ def demo_folder(
     ] = None,
     use_dpvo: Annotated[bool, typer.Option(help="[dim]Deprecated alias for [/][gvhmr]--camera dpvo[/].")] = False,
     f_mm: Annotated[int | None, typer.Option(help="Focal length in mm.")] = None,
+    f_px: Annotated[
+        float | None,
+        typer.Option(help="Focal length in pixels for every video [dim](overrides --f_mm)[/]."),
+    ] = None,
     render_scale: Annotated[float | None, typer.Option(help="Overlay resolution fraction.")] = None,
     no_render: Annotated[bool, typer.Option("--no-render", help="Skip overlays.")] = False,
     smplx: Annotated[
         bool, typer.Option("--smplx", help="Render the native ~10475-vertex SMPL-X surface (→ _smplx videos).")
     ] = False,
 ) -> None:
-    """Run the demo over [bold]every video in a folder[/]."""
+    """Run the demo over [bold]every video in a folder[/].
+
+    A per-video [gvhmr]<name>.intrinsics.json[/] sidecar next to each clip is auto-detected (no flag needed)."""
     from gvhmr.cli.demo_folder import run
 
     run(
@@ -227,6 +251,7 @@ def demo_folder(
         camera=camera,
         use_dpvo=use_dpvo,
         f_mm=f_mm,
+        f_px=f_px,
         render_scale=render_scale,
         no_render=no_render,
         smplx=smplx,

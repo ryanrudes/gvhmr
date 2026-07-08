@@ -39,6 +39,8 @@ verbose: False
 use_dpvo: False
 flip_test: False  # mirror-averaging TTA (benchmark accuracy; +1 feature pass). A recipe can turn it on.
 f_mm: null  # focal length of fullframe camera in mm
+f_px: null  # focal length in pixels (bypasses the mm→px conversion; overrides f_mm)
+intrinsics_path: null  # JSON/NPZ intrinsics sidecar (fx/fy/cx/cy or K; per-frame ok) — highest precedence
 render_scale: 0.5  # rasterize the overlay videos at this fraction of full resolution (speed vs. quality)
 
 paths:
