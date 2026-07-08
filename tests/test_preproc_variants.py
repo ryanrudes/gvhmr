@@ -3,7 +3,7 @@
 The generator itself (real detector/pose/backbone over videos) is exercised out-of-band; these tests pin
 what must never drift: the slug naming, the multi-person identity guard's geometry, the raw-dataset
 layout mapping, and — critically — that the `preproc_variant` config key actually reaches every test
-dataset node while defaulting to None (the canonical paper protocol) everywhere else.
+dataset node while defaulting to None (the released baseline / paper protocol) everywhere else.
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ from gvhmr.utils.eval.preproc_variants import (
 
 def test_variant_slug_spells_out_defaults():
     assert variant_slug("yolo26x", None) == "yolo26x-vitpose"
-    assert variant_slug(None, "rtmpose") == "yolo-rtmpose"
-    assert variant_slug(None, None) == "yolo-vitpose"
+    assert variant_slug(None, "rtmpose") == "yolov8x-rtmpose"
+    assert variant_slug(None, None) == "yolov8x-vitpose"
     assert variant_slug("yolo26x", "rtmpose", "hmr2") == "yolo26x-rtmpose"  # default backbone omitted
     assert variant_slug("yolo26x", None, "dinov2") == "yolo26x-vitpose-dinov2"
 
@@ -80,7 +80,7 @@ def test_preproc_variant_key_reaches_every_test_dataset_node():
         cfg = compose(config_name="train", overrides=["global/task=gvhmr/test_3dpw_emdb_rich", *base])
         nodes = cfg.data.dataset_opts.test
         for key in ("3dpw", "emdb1", "emdb2"):
-            assert OmegaConf.to_container(nodes[key], resolve=True)["preproc_variant"] is None  # canonical default
+            assert OmegaConf.to_container(nodes[key], resolve=True)["preproc_variant"] is None  # baseline default
     with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):
         cfg = compose(
             config_name="train", overrides=["global/task=gvhmr/test_emdb", *base, "preproc_variant=yolo26x-vitpose"]

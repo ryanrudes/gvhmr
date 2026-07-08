@@ -1,6 +1,6 @@
 """``gvhmr eval`` — the paper benchmarks (3DPW / EMDB / RICH) as one friendly command.
 
-Wraps the canonical Lightning test tasks (``global/task=gvhmr/test_*`` — flip-test TTA + test-time
+Wraps the standard Lightning test tasks (``global/task=gvhmr/test_*`` — flip-test TTA + test-time
 postprocessing, exactly the paper's protocol) with everything around them handled: the preprocessed
 data packs and the released checkpoint auto-fetch, the registration-gated body models are checked up
 front with the exact files/sign-up needed, and the run ends in one consolidated table with the paper's
@@ -157,8 +157,9 @@ def print_summary(metrics: dict[str, dict[str, float]], variant: str | None = No
         )
     else:
         console.print(
-            "[dim]paper = arXiv 2409.06662 with the CANONICAL preprocessing — the Δ column shows what the "
-            "swapped stage(s) change relative to it. Run without stage flags for the canonical baseline.[/]"
+            "[dim]paper = arXiv 2409.06662 with the released [gvhmr]yolov8x + vitpose[/] preprocessing — the Δ "
+            "column shows what the swapped stage(s) change relative to it. Run without stage flags for that "
+            "baseline.[/]"
         )
 
 
@@ -248,7 +249,7 @@ def run_benchmarks(
     """Run the Lightning test task(s) for the given datasets and return {dataset_id: {metric: value}}.
 
     The shared engine under both ``gvhmr eval`` and ``gvhmr sweep``: one combined run for all three
-    canonical datasets, else one task per dataset sequentially in-process; a ``slug`` applies a
+    standard datasets, else one task per dataset sequentially in-process; a ``slug`` applies a
     regenerated preprocessing variant via the root ``preproc_variant`` config key.
 
     With ``collect_detailed`` (used by ``--diagnostics``), returns ``(results, detailed, raw)`` where

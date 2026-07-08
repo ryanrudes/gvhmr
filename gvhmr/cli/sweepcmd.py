@@ -1,8 +1,9 @@
 """``gvhmr sweep`` — compare benchmark evals across preprocessing combinations with a real W&B sweep.
 
 **What is swept, exactly:** the grid is ``detector × pose2d`` (the two preprocessing stages that swap
-freely at inference), with ``canonical`` — the pack's frozen paper preprocessing — as a first-class
-value so every sweep contains its baseline. The other two stages are deliberately **not** swept:
+freely at inference); the released **yolov8x + vitpose** preprocessing — the pack's frozen paper baseline
+— is the default value, so a sweep contains it unless you override ``--detectors``/``--pose2ds``. The
+other two stages are deliberately **not** swept:
 
 - **backbone** — the features are *learned conditioning*; swapping them under the released checkpoint
   produces meaningless numbers (a swap requires a retrain — docs/EXTENSIBILITY.md Tier B). Sweep it
@@ -19,13 +20,13 @@ automatically (wandb-workspaces); the sweep page's own table/parallel-coordinate
 
 This is the standard W&B sweep workflow (https://docs.wandb.ai/guides/sweeps), not a homegrown loop:
 
-    gvhmr sweep run 3dpw --detectors canonical,yolov8x,yolo26x --raw-dir ~/ds/3DPW
+    gvhmr sweep run 3dpw --detectors yolov8x,yolo26x --raw-dir ~/ds/3DPW    # yolov8x = the frozen baseline
     gvhmr sweep create 3dpw --detectors all                            # → sweep id (grid over presets)
     gvhmr sweep agent <sweep_id> --raw-dir ~/ds/3DPW                   # any machine, many agents
     gvhmr sweep report <sweep_id>                                      # (re)build the comparison report
 
 Requirements: ``wandb login`` once (sweeps are scheduled by the W&B service — offline mode can't run
-them), the ``train`` extra (wandb + wandb-workspaces), and — for any non-canonical combo — the raw
+them), the ``train`` extra (wandb + wandb-workspaces), and — for any regenerated (non-baseline) combo — the raw
 videos (3DPW auto-downloads; EMDB needs ``--raw-dir``; checked ONCE up front, not per trial).
 Generation caches per STAGE, not per combo (boxes and the heavy feature pass are per-detector; only
 keypoints are per-combo — see docs/EVAL.md "Grid economics"), so a full ``--detectors all`` grid is
@@ -46,22 +47,35 @@ app = typer.Typer(help="W&B sweeps comparing benchmark evals across preprocessin
 
 DEFAULT_PROJECT = "gvhmr-eval"
 
+# The released ("paper") preprocessing = these models per stage. In the grid a baseline value maps to the
+# pack's frozen preprocessing (no regeneration); the legacy "canonical" is accepted as an alias for it.
+BASELINE = {"detector": "yolov8x", "pose2d": "vitpose"}
+BASELINE_ALIASES = {"detector": {"canonical", "yolov8x"}, "pose2d": {"canonical", "vitpose"}}
+
+
+def combo_label(detector: str | None, pose2d: str | None) -> str:
+    """Human label for a (detector, pose2d) combo, spelling out the baseline models (None → baseline)."""
+    return f"{detector or BASELINE['detector']}+{pose2d or BASELINE['pose2d']}"
+
 
 def _group_values(group: str, spec: str | None, default: list[str]) -> list[str]:
-    """Expand a --detectors/--pose2ds spec: None → default, 'all' → canonical + every config-group
-    preset, else a validated CSV. 'canonical' (the pack's frozen preprocessing) is always allowed."""
+    """Expand a --detectors/--pose2ds spec: None → default, 'all' → every config-group preset, else a
+    validated CSV. The baseline model (``yolov8x``/``vitpose`` — the pack's frozen paper preprocessing)
+    is a normal preset here; the legacy ``canonical`` is accepted as an alias for it."""
     from gvhmr.cli.config import _group_options
 
     options = _group_options(group)
+    base = BASELINE[group]
     if spec is None:
-        values = default
+        values = list(default)
     elif spec.strip().lower() == "all":
-        values = ["canonical", *options]
+        values = list(options)
     else:
         values = [s.strip() for s in spec.split(",") if s.strip()]
-    unknown = [v for v in values if v != "canonical" and v not in options]
+    values = [base if v in BASELINE_ALIASES[group] else v for v in values]  # legacy 'canonical' → model name
+    unknown = [v for v in values if v not in options]
     if unknown:
-        raise KeyError(f"unknown {group}(s) {unknown}; choose from ['canonical', *{options}]")
+        raise KeyError(f"unknown {group}(s) {unknown}; choose from {options} (or 'all')")
     return list(dict.fromkeys(values))
 
 
@@ -76,19 +90,20 @@ def build_sweep_config(
 ) -> dict:
     """The W&B sweep config (pure dict — pass to ``wandb.sweep`` or dump as YAML).
 
-    Defaults: {canonical} detectors × {canonical, rtmpose} pose2d; grid search; the sweep metric is
+    Defaults: {yolov8x} detector × {vitpose, rtmpose} pose2d; grid search; the sweep metric is
     the first dataset's PA-MPJPE (drives bayes/random; informational for grid)."""
     from gvhmr.cli.evalcmd import DATASETS, VARIANT_GROUPS, parse_datasets
 
     names = parse_datasets(datasets)
-    detector_values = _group_values("detector", detectors, ["canonical"])
-    pose2d_values = _group_values("pose2d", pose2ds, ["canonical", "rtmpose"])
-    non_canonical = [v for v in detector_values + pose2d_values if v != "canonical"]
+    detector_values = _group_values("detector", detectors, [BASELINE["detector"]])
+    pose2d_values = _group_values("pose2d", pose2ds, [BASELINE["pose2d"], "rtmpose"])
+    regenerated = [v for v in detector_values if v != BASELINE["detector"]]
+    regenerated += [v for v in pose2d_values if v != BASELINE["pose2d"]]
     unsupported = [n for n in names if n not in VARIANT_GROUPS]
-    if non_canonical and unsupported:
+    if regenerated and unsupported:
         raise KeyError(
             f"preproc variants aren't supported for {unsupported} (see docs/EVAL.md) — "
-            f"sweep 3dpw/emdb, or restrict to canonical values"
+            f"sweep 3dpw/emdb, or restrict to the baseline ({BASELINE['detector']}/{BASELINE['pose2d']})"
         )
     first_id = DATASETS[names[0]][2][0]
     return {
@@ -105,14 +120,15 @@ def build_sweep_config(
 
 
 def resolve_combo(config: dict) -> tuple[str | None, str | None, str | None]:
-    """A trial's wandb.config → (detector, pose2d, variant slug). canonical/absent → None; a fully
-    canonical combo has slug None (the unmodified paper protocol)."""
+    """A trial's wandb.config → (detector, pose2d, variant slug). A baseline value (yolov8x/vitpose, the
+    legacy 'canonical', or absent) → None; a fully-baseline combo has slug None (the pack's frozen paper
+    preprocessing, run unmodified)."""
     from gvhmr.utils.eval.preproc_variants import variant_slug
 
     detector = config.get("detector")
     pose2d = config.get("pose2d")
-    detector = None if detector in (None, "canonical") else str(detector)
-    pose2d = None if pose2d in (None, "canonical") else str(pose2d)
+    detector = None if detector in (None, *BASELINE_ALIASES["detector"]) else str(detector)
+    pose2d = None if pose2d in (None, *BASELINE_ALIASES["pose2d"]) else str(pose2d)
     slug = variant_slug(detector, pose2d) if (detector or pose2d) else None
     return detector, pose2d, slug
 
@@ -135,8 +151,10 @@ def print_dimensions(cfg: dict) -> None:
     table.add_column("dimension")
     table.add_column("values / setting")
     table.add_column("", style="muted")
-    table.add_row("detector", ", ".join(det), "swept (person boxes; canonical = the pack's YOLOv8x)")
-    table.add_row("pose2d", ", ".join(pose), "swept (2D keypoints; canonical = the pack's ViTPose)")
+    table.add_row(
+        "detector", ", ".join(det), f"swept (person boxes; {BASELINE['detector']} = the pack's frozen preproc)"
+    )
+    table.add_row("pose2d", ", ".join(pose), f"swept (2D keypoints; {BASELINE['pose2d']} = the pack's frozen preproc)")
     table.add_row("datasets", p["datasets"]["value"], "fixed — every trial runs the same benchmarks")
     table.add_row("backbone", "hmr2 (fixed)", "learned conditioning — a swap needs a retrained --ckpt")
     table.add_row("camera", "GT rotation (fixed)", "benchmark protocol; no VO runs — see docs/EVAL.md")
@@ -159,7 +177,7 @@ def _require_wandb():
 
 
 def _preflight_variants(sweep_cfg: dict, raw_dir: Path | None) -> None:
-    """Fail ONCE, up front, when non-canonical combos can't be generated (missing videos / stage
+    """Fail ONCE, up front, when regenerated (non-baseline) combos can't be generated (missing videos / stage
     deps) — instead of crashing trial after trial. Composes the videos here when --raw-dir is given.
     Fully-cached combos need no videos, so re-sweeping a generated grid works on any box."""
     from itertools import product
@@ -172,8 +190,8 @@ def _preflight_variants(sweep_cfg: dict, raw_dir: Path | None) -> None:
     det_values, pose_values = list(p["detector"]["values"]), list(p["pose2d"]["values"])
     names = parse_datasets(p["datasets"]["value"])
     ensure_stage_deps(
-        [d for d in det_values if d != "canonical"],
-        [v for v in pose_values if v != "canonical"] or ["vitpose"],
+        [d for d in det_values if d != BASELINE["detector"]],
+        [v for v in pose_values if v != BASELINE["pose2d"]] or [BASELINE["pose2d"]],
         ["hmr2"],
     )
     needs_videos = []
@@ -204,8 +222,10 @@ def _trial(raw_dir: Path | None, ckpt: str | None) -> None:
     with wandb.init() as run:
         detector, pose2d, slug = resolve_combo(dict(run.config))
         names = parse_datasets(run.config["datasets"])
-        run.name = f"{slug or 'canonical'} · {','.join(names)}"
-        Log.info(f"[gvhmr]sweep trial[/] detector={detector or 'canonical'} pose2d={pose2d or 'canonical'}")
+        run.name = f"{combo_label(detector, pose2d)} · {','.join(names)}"
+        Log.info(
+            f"[gvhmr]sweep trial[/] detector={detector or BASELINE['detector']} pose2d={pose2d or BASELINE['pose2d']}"
+        )
 
         ensure_inputs(names)
         if slug is not None:
@@ -236,7 +256,7 @@ def _trial(raw_dir: Path | None, ckpt: str | None) -> None:
                 if k in ref:
                     flat[f"{ds}/{k}_vs_paper"] = v - ref[k]
         run.log(flat)
-        run.summary["preproc_variant"] = slug or "canonical"
+        run.summary["preproc_variant"] = slug or combo_label(detector, pose2d)
         if diagnostics:
             _log_diagnostics_to_wandb(run, wandb, detailed, raw, _provenance(ckpt_str, slug, names, detailed))
         print_summary(results, variant=slug)
@@ -342,11 +362,11 @@ def build_report(entity: str, project: str, sweep_id: str, names: list[str]) -> 
             wr.H1(text=f"GVHMR preprocessing sweep · {', '.join(names)}"),
             wr.MarkdownBlock(
                 text=(
-                    "**Swept:** detector × pose2d ('canonical' = the pack's frozen paper preprocessing — "
-                    "the baseline every combo is compared against). **Fixed:** backbone (hmr2 — a swap needs "
-                    "a retrain), camera (the protocol feeds GT rotation; no VO runs), flip-test + postproc.\n\n"
-                    "Every metric is logged as `DATASET/metric` with a `_vs_paper` delta against the "
-                    "published numbers (arXiv 2409.06662). All metrics: lower is better; a canonical run's "
+                    "**Swept:** detector × pose2d (`yolov8x` + `vitpose` = the pack's frozen paper "
+                    "preprocessing — the baseline every combo is compared against). **Fixed:** backbone (hmr2 — "
+                    "a swap needs a retrain), camera (the protocol feeds GT rotation; no VO runs), flip-test + "
+                    "postproc.\n\nEvery metric is logged as `DATASET/metric` with a `_vs_paper` delta against the "
+                    "published numbers (arXiv 2409.06662). All metrics: lower is better; the baseline run's "
                     "deltas sit at ≈0 by construction."
                 )
             ),
@@ -368,10 +388,10 @@ def create(
     detectors: str | None = typer.Option(
         None,
         "--detectors",
-        help="CSV of detector presets, or 'all'; 'canonical' = pack preproc. [dim](default: canonical)[/]",
+        help="CSV of detector presets, or 'all'; yolov8x = the frozen baseline. [dim](default: yolov8x — see gvhmr list)[/]",
     ),
     pose2ds: str | None = typer.Option(
-        None, "--pose2ds", help="CSV of 2D-pose backends, or 'all'. [dim](default: canonical,rtmpose)[/]"
+        None, "--pose2ds", help="CSV of 2D-pose backends, or 'all'. [dim](default: vitpose,rtmpose)[/]"
     ),
     method: str = typer.Option("grid", "--method", help="W&B sweep method (grid/random/bayes)."),
     metric: str | None = typer.Option(
@@ -414,7 +434,7 @@ def create(
     console.print(
         f"\n[ok]sweep created[/]: [gvhmr]{sweep_id}[/]   [ok]report[/]: [muted]{url}[/]\nrun trials with:\n"
         f"  [gvhmr]gvhmr sweep agent {sweep_id} --project {project}{ent}[/]  "
-        f"[dim](add --raw-dir for non-canonical combos; run on any/multiple GPU boxes)[/]"
+        f"[dim](add --raw-dir for regenerated combos; run on any/multiple GPU boxes)[/]"
     )
 
 
@@ -434,7 +454,7 @@ def agent(
     """Run sweep trials on this machine [dim](launch on several GPU boxes to parallelize)[/]."""
     wandb = _require_wandb()
     ent = _entity_or_default(entity)
-    try:  # preflight ONCE (videos/deps) instead of crashing every non-canonical trial
+    try:  # preflight ONCE (videos/deps) instead of crashing every regenerated trial
         sweep_cfg = dict(wandb.Api().sweep(f"{ent}/{project}/{sweep_id}").config)
         _preflight_variants(sweep_cfg, raw_dir)
     except SystemExit:

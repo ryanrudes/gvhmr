@@ -43,7 +43,7 @@ ckpt_path: null
 resume_mode: null
 seed: 42
 # Benchmark preprocessing variant (a regenerated cache from swapped detector/pose2d stages — see
-# gvhmr eval --detector/--pose2d). The test dataset nodes interpolate this; null = canonical (paper).
+# gvhmr eval --detector/--pose2d). The test dataset nodes interpolate this; null = released baseline (paper).
 preproc_variant: null
 
 # lightning default settings

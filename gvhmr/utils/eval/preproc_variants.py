@@ -1,17 +1,17 @@
 """Regenerate the benchmark preprocessing with swapped stages — so `gvhmr eval` can measure them.
 
-The canonical benchmark packs ship *frozen* preprocessing (YOLOv8x boxes, ViTPose keypoints, HMR2
-features — computed once upstream), which is what makes the paper numbers reproducible but also makes a
-detector/2D-pose swap invisible to `gvhmr eval`. This module rebuilds those artifacts with **your chosen
-stages** into a *variant cache* next to the canonical files (never overwriting them):
+The released benchmark packs ship *frozen* baseline preprocessing (yolov8x boxes, vitpose keypoints,
+hmr2 features — computed once upstream), which is what makes the paper numbers reproducible but also
+makes a detector/2D-pose swap invisible to `gvhmr eval`. This module rebuilds those artifacts with
+**your chosen stages** into a *variant cache* next to the baseline files (never overwriting them):
 
     <DS>/hmr4d_support/preproc_variants/<slug>/     # slug e.g. "yolo26x-vitpose"
         3DPW:  preproc_test_bbx.pt · preproc_test_kp2d.pt · imgfeats/3dpw_test{,_flip}/<vid>.pt
         EMDB:  emdb_preproc.pt (vid → {bbx_xys, kp2d, features}) · imgfeats/emdb_flip/<vid>.pt
 
 The test dataset loaders accept ``preproc_variant=<slug>`` and read from that cache instead (ground
-truth always stays canonical). RICH is not supported: its pack has no per-sequence videos and the raw
-dataset is registration-gated.
+truth always stays the released baseline). RICH is not supported: its pack has no per-sequence videos
+and the raw dataset is registration-gated.
 
 **Videos are required and not redistributable.** The packs ship an *empty* ``videos/`` dir; the raw
 datasets (3DPW: https://virtualhumans.mpi-inf.mpg.de/3DPW/ · EMDB: https://eth-ait.github.io/emdb/)
@@ -19,9 +19,9 @@ ship image sequences. :func:`build_videos_from_raw` composes the expected ``vide
 from an official raw download — a one-time step, after which any number of variants can be generated.
 
 **Identity guard (3DPW is multi-person).** A fresh detector track on a two-person video may lock onto
-the *other* person than the canonical track did — scoring that would be garbage, not a detector
-comparison. Each regenerated track is IoU-checked against the canonical one; on identity mismatch the
-canonical boxes are kept for that sequence (recorded and reported), so a variant differs from canonical
+the *other* person than the baseline (yolov8x) track did — scoring that would be garbage, not a detector
+comparison. Each regenerated track is IoU-checked against the baseline one; on identity mismatch the
+baseline boxes are kept for that sequence (recorded and reported), so a variant differs from the baseline
 only by the stage under test, never by *who* is being tracked.
 """
 
@@ -43,10 +43,10 @@ IDENTITY_IOU_THR = 0.5
 def variant_slug(
     detector: str | None, pose2d: str | None, backbone: str | None = None, stage_overrides: list[str] | None = None
 ) -> str:
-    """Deterministic cache name for a stage selection (defaults spelled out, e.g. ``yolo26x-vitpose``).
+    """Deterministic cache name for a stage selection (baseline models spelled out, e.g. ``yolo26x-vitpose``).
     Stage ``--set`` knobs (e.g. ``pose2d.flip_test=false``) fold into the slug so different knob sets
-    don't collide in the cache — ``yolo-vitpose__pose2d.flip_test=false``."""
-    parts = [detector or "yolo", pose2d or "vitpose"]
+    don't collide in the cache — ``yolov8x-vitpose__pose2d.flip_test=false``."""
+    parts = [detector or "yolov8x", pose2d or "vitpose"]
     if backbone and backbone != "hmr2":
         parts.append(backbone)
     slug = "-".join(parts)
@@ -67,12 +67,12 @@ def xys_iou(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return inter / union.clamp(min=1e-9)
 
 
-def same_identity(new_xys: torch.Tensor, canonical_xys: torch.Tensor) -> bool:
-    """Whether a regenerated track follows the same person as the canonical one (median IoU)."""
-    n = min(len(new_xys), len(canonical_xys))
+def same_identity(new_xys: torch.Tensor, baseline_xys: torch.Tensor) -> bool:
+    """Whether a regenerated track follows the same person as the baseline one (median IoU)."""
+    n = min(len(new_xys), len(baseline_xys))
     if n == 0:
         return False
-    return xys_iou(new_xys[:n].float(), canonical_xys[:n].float()).median().item() >= IDENTITY_IOU_THR
+    return xys_iou(new_xys[:n].float(), baseline_xys[:n].float()).median().item() >= IDENTITY_IOU_THR
 
 
 # --- video composition from the official raw downloads --------------------------------------------
@@ -193,8 +193,8 @@ class VariantReport:
             Log.info(f"{len(self.cached)} sequence(s) already cached for variant '{self.slug}'")
         if self.identity_fallbacks:
             Log.warning(
-                f"[warn]identity guard[/]: {len(self.identity_fallbacks)} sequence(s) kept the CANONICAL "
-                f"boxes (the new detector locked onto a different person): "
+                f"[warn]identity guard[/]: {len(self.identity_fallbacks)} sequence(s) kept the baseline "
+                f"[gvhmr]yolov8x[/] boxes (the new detector locked onto a different person): "
                 f"{', '.join(self.identity_fallbacks)}"
             )
 
@@ -292,7 +292,7 @@ def _stage_boxes(
     video_path: Path,
     vid: str,
     detector: str | None,
-    canonical_xys: torch.Tensor,
+    baseline_xys: torch.Tensor,
     stages: _LazyStages,
     overwrite: bool,
 ) -> dict:
@@ -301,13 +301,13 @@ def _stage_boxes(
     from gvhmr.utils.video_io_utils import get_video_lwh
 
     length = get_video_lwh(video_path)[0]
-    if length != len(canonical_xys):
+    if length != len(baseline_xys):
         raise ValueError(
-            f"{vid}: video has {length} frames but the canonical preprocessing has {len(canonical_xys)} — "
+            f"{vid}: video has {length} frames but the baseline preprocessing has {len(baseline_xys)} — "
             f"the composed/supplied video doesn't match the benchmark protocol."
         )
     if detector is None:
-        return {"bbx_xys": canonical_xys.clone().float(), "identity_fallback": False}
+        return {"bbx_xys": baseline_xys.clone().float(), "identity_fallback": False}
     cache = support_dir / "preproc_variants/_stages/boxes" / (detector + stages.override_tag("detector")) / f"{vid}.pt"
     if cache.exists() and not overwrite:
         return torch.load(cache, weights_only=False)
@@ -316,9 +316,9 @@ def _stage_boxes(
             return torch.load(cache, weights_only=False)
         bbx_xyxy = stages.get("detector").get_one_track(str(video_path)).float()
         bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy, base_enlarge=1.2).float()
-        fallback = not same_identity(bbx_xys, canonical_xys)
+        fallback = not same_identity(bbx_xys, baseline_xys)
         if fallback:
-            bbx_xys = canonical_xys.clone().float()
+            bbx_xys = baseline_xys.clone().float()
         out = {"bbx_xys": bbx_xys, "identity_fallback": fallback}
         _atomic_save(out, cache)
     return out
@@ -336,7 +336,7 @@ def _stage_kp2d(
 ) -> torch.Tensor:
     """Per-(detector, pose2d) keypoints — the only genuinely per-combo model pass."""
     # kp2d depends on the pose2d model AND the boxes it runs on (detector), so both groups' overrides key it.
-    key = f"{detector or 'canonical'}-{pose2d or 'vitpose'}" + stages.override_tag("detector", "pose2d")
+    key = f"{detector or 'yolov8x'}-{pose2d or 'vitpose'}" + stages.override_tag("detector", "pose2d")
     cache = support_dir / "preproc_variants/_stages/kp2d" / key / f"{vid}.pt"
     if cache.exists() and not overwrite:
         return torch.load(cache, weights_only=False)
@@ -364,7 +364,7 @@ def _stage_feats(
     from gvhmr.utils.video_io_utils import get_video_lwh
 
     # feats depend on the backbone AND the boxes it runs on (detector), so both groups' overrides key it.
-    key = f"{detector or 'canonical'}-{backbone or 'hmr2'}" + stages.override_tag("detector", "backbone")
+    key = f"{detector or 'yolov8x'}-{backbone or 'hmr2'}" + stages.override_tag("detector", "backbone")
     cache = support_dir / "preproc_variants/_stages/feats" / key / f"{vid}.pt"
     if cache.exists() and not overwrite:
         return torch.load(cache, weights_only=False)
@@ -388,7 +388,7 @@ def _stage_feats(
 def _extract_stages(
     support_dir: Path,
     video_path: Path,
-    canonical_xys: torch.Tensor,
+    baseline_xys: torch.Tensor,
     combo: tuple[str | None, str | None, str | None],
     stages: _LazyStages,
     vid: str,
@@ -397,7 +397,7 @@ def _extract_stages(
 ):
     """Assemble one sequence's artifacts from the shared stage caches (computing what's missing)."""
     detector, pose2d, backbone = combo
-    boxes = _stage_boxes(support_dir, video_path, vid, detector, canonical_xys, stages, overwrite)
+    boxes = _stage_boxes(support_dir, video_path, vid, detector, baseline_xys, stages, overwrite)
     if boxes["identity_fallback"]:
         report.identity_fallbacks.append(vid)
     bbx_xys = boxes["bbx_xys"]
@@ -426,7 +426,7 @@ def _resolve_stage(group: str, name: str, extra_overrides: list[str] | None = No
     return impl, {k: v for k, v in conf.items() if v is not None}
 
 
-# --- dataset-specific generation (canonical schema in, canonical schema out) ------------------------
+# --- dataset-specific generation (baseline schema in, baseline schema out) --------------------------
 
 
 def generate_3dpw_variant(
@@ -438,7 +438,7 @@ def generate_3dpw_variant(
     overwrite: bool = False,
     stage_overrides: list[str] | None = None,
 ) -> VariantReport:
-    """Write ``preproc_variants/<slug>/`` for 3DPW (same file schema the canonical loader reads)."""
+    """Write ``preproc_variants/<slug>/`` for 3DPW (same file schema the baseline loader reads)."""
     report = VariantReport(slug=slug)
     labels = torch.load(support_dir / "test_3dpw_gt_labels.pt", weights_only=False)
     vid2bbx = torch.load(support_dir / "preproc_test_bbx.pt", weights_only=False)
@@ -498,7 +498,7 @@ def generate_emdb_variant(
     overwrite: bool = False,
     stage_overrides: list[str] | None = None,
 ) -> VariantReport:
-    """Write ``preproc_variants/<slug>/`` for EMDB (overlay file + flip imgfeats; GT stays canonical)."""
+    """Write ``preproc_variants/<slug>/`` for EMDB (overlay file + flip imgfeats; GT stays the baseline)."""
     report = VariantReport(slug=slug)
     labels = torch.load(support_dir / "emdb_vit_v4.pt", weights_only=False)
 
