@@ -156,7 +156,7 @@ def demo(
         str | None,
         typer.Option(
             "--detector",
-            help="Detector preset [dim](yolo=default; any family×size: [gvhmr]yolo11x[/], [gvhmr]yolo26x[/], … — `gvhmr config` lists them)[/].",
+            help="Detector preset [dim](yolo=default; any family×size: [gvhmr]yolo11x[/], [gvhmr]yolo26x[/], … — [gvhmr]gvhmr list[/] shows all)[/].",
         ),
     ] = None,
     pose2d: Annotated[
@@ -177,7 +177,8 @@ def demo(
     recipe: Annotated[
         str | None,
         typer.Option(
-            "--recipe", help="Apply a bundled config recipe [dim](e.g. [gvhmr]hq[/]; see configs/recipe/)[/]."
+            "--recipe",
+            help="Apply a bundled config recipe [dim](fast/accurate/hq/scene — [gvhmr]gvhmr list recipe[/])[/].",
         ),
     ] = None,
     set_: Annotated[
@@ -258,6 +259,23 @@ def demo_folder(
     )
 
 
+@app.command(name="list")
+def list_(
+    stage: Annotated[
+        str | None,
+        typer.Argument(help="Only this stage [dim](detector/pose2d/backbone/camera/recipe)[/]; omit for all."),
+    ] = None,
+) -> None:
+    """List the available presets for each swappable stage [dim](detector / pose2d / backbone / camera / recipe)[/].
+
+    These are the values the [gvhmr]--detector[/] / [gvhmr]--pose2d[/] / [gvhmr]--backbone[/] /
+    [gvhmr]--camera[/] / [gvhmr]--recipe[/] flags accept on [gvhmr]gvhmr demo[/] and [gvhmr]gvhmr eval[/].
+    """
+    from gvhmr.cli.config import print_options
+
+    print_options(stage)
+
+
 @app.command()
 def bench(
     lengths: Annotated[list[int] | None, typer.Option(help="Sequence lengths (frames) to time.")] = None,
@@ -301,7 +319,8 @@ def eval_(
         typer.Option(
             "--detector",
             help="[bold]Preproc swap:[/] regenerate boxes with this detector (e.g. [gvhmr]yolo26x[/]) and "
-            "benchmark with them [dim](3dpw/emdb only; needs the raw videos once — see --raw-dir)[/].",
+            "benchmark with them [dim](3dpw/emdb only; [gvhmr]gvhmr list[/] shows presets; needs the raw "
+            "videos once — see --raw-dir)[/].",
         ),
     ] = None,
     pose2d: Annotated[

@@ -116,5 +116,20 @@ def test_demo_focal_length_override_propagates() -> None:
     assert cfg.f_mm == 24
 
 
+def test_list_options_renders_every_stage() -> None:
+    """`gvhmr list` (print_options) enumerates each swappable stage from the config groups + recipes."""
+    import typer
+
+    from gvhmr.cli.config import LISTABLE, _group_options, print_options
+
+    assert set(LISTABLE) == {"detector", "pose2d", "backbone", "camera", "recipe"}
+    for stage in LISTABLE:  # config-group presets exist for every listable stage
+        assert _group_options(stage), f"no presets discovered for {stage}"
+    print_options()  # all stages — must not raise
+    print_options("camera")  # a single stage
+    with pytest.raises(typer.Exit):
+        print_options("bogus")
+
+
 # Silence the pervasive autocast FutureWarning during this module's imports.
 warnings.filterwarnings("ignore", category=FutureWarning)

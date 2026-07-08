@@ -49,6 +49,15 @@ OPTION_DOCS = {
         "vggt": "VGGT + Depth-Anything — scene-aware metric, single forward pass",
     },
 }
+# Recipes are a config group too (configs/recipe/) — committable bundles of stage choices.
+RECIPE_DOCS = {
+    "accurate": "benchmark-quality — flip-test TTA + full-resolution overlays (slower, better numbers)",
+    "fast": "opt-in speed at a measured accuracy cost — ViTPose flip-test off + ByteTrack (same as --fast)",
+    "hq": "full-resolution overlays — crisper video, slower render",
+    "scene": "scene-aware metric camera (DUSt3R) — world translation for a moving camera; runs on MPS/CPU",
+}
+#: Stages `gvhmr list` enumerates (the swappable Hydra config groups the CLI flags select) + recipes.
+LISTABLE = ("detector", "pose2d", "backbone", "camera", "recipe")
 ENV_DOCS = {
     "torch": "torch — the torch backend for this box: none (PyPI wheel: macOS/MPS), cpu, or cu124/cu126/cu128",
     "extras": "extras — comma-separated install extras `gvhmr env sync` applies (preproc = the demo's models)",
@@ -103,6 +112,36 @@ def _model_block(key: str) -> list[str]:
     width = max((len(o) for o in opts), default=0)
     lines += [f"  {o.ljust(width)}  {docs.get(o, '')}".rstrip() for o in opts]
     return lines
+
+
+def print_options(stage: str | None = None) -> None:
+    """Print the available presets for each swappable stage (+ recipes). Powers ``gvhmr list``.
+
+    Reuses the same menus the config wizard writes (``_model_block``/``_detector_block``), so the list is
+    always in sync with the config groups under ``gvhmr/configs/{detector,pose2d,backbone,camera,recipe}/``."""
+    if stage is not None and stage not in LISTABLE:
+        console.print(f"[err]unknown stage '{stage}'[/] — choose from: {', '.join(LISTABLE)}")
+        raise typer.Exit(1)
+    stages = [stage] if stage else list(LISTABLE)
+    for i, key in enumerate(stages):
+        if i:
+            console.print()
+        if key == "recipe":
+            opts = _group_options("recipe")
+            width = max((len(o) for o in opts), default=0)
+            console.print("[bold]recipe[/] — committable bundles of stage choices (gvhmr demo VIDEO --recipe <name>):")
+            for o in opts:
+                console.print(f"  [gvhmr]{o.ljust(width)}[/]  {RECIPE_DOCS.get(o, '')}".rstrip())
+        else:
+            block = _model_block(key)
+            console.print(f"[bold]{block[0]}[/]")  # the "<stage> — <desc>. …:" header
+            for line in block[1:]:
+                console.print(line, markup=False)
+    if stage is None:
+        console.print(
+            "\n[dim]select per run with gvhmr demo/eval --detector/--pose2d/--backbone/--camera or --recipe; "
+            "pin a default with gvhmr config set <stage> <name>. Full list of one: gvhmr list <stage>.[/]"
+        )
 
 
 def _options_summary(key: str) -> str:
