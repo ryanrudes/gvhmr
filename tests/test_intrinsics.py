@@ -14,7 +14,11 @@ import pytest
 import torch
 
 from gvhmr.utils.geo.hmr_cam import convert_f_to_K
-from gvhmr.utils.intrinsics import load_intrinsics_file
+from gvhmr.utils.intrinsics import (
+    _distortion_vector,
+    load_intrinsics_file,
+    load_intrinsics_for_undistort,
+)
 
 W, H, L = 1920, 1080, 8
 
@@ -110,3 +114,41 @@ def test_unsupported_suffix_raises(tmp_path):
     p.write_text("nope")
     with pytest.raises(ValueError, match="unsupported"):
         load_intrinsics_file(p, length=L, width=W, height=H)
+
+
+# ------------------------------------------------------------------- distortion (undistort) -------------
+
+
+def test_distortion_vector_from_list_and_dict():
+    assert np.allclose(_distortion_vector({"distortion": [0.1, -0.2, 0.0, 0.0, 0.05]}), [0.1, -0.2, 0.0, 0.0, 0.05])
+    # a dict fills missing coeffs with 0 in OpenCV order [k1, k2, p1, p2, k3]
+    assert np.allclose(_distortion_vector({"distortion": {"k1": 0.1, "k2": -0.2}}), [0.1, -0.2, 0.0, 0.0, 0.0])
+    assert _distortion_vector({"fx": 1000.0}) is None  # no 'distortion' key
+
+
+def test_distortion_vector_bad_length_raises():
+    with pytest.raises(ValueError, match="4, 5, 8"):
+        _distortion_vector({"distortion": [0.1, 0.2, 0.3]})
+
+
+def test_load_for_undistort_none_without_distortion(tmp_path):
+    assert load_intrinsics_for_undistort(_write_json(tmp_path, {"fx": 1000.0}), width=W, height=H) is None
+
+
+def test_load_for_undistort_returns_rescaled_K_and_coeffs(tmp_path):
+    payload = {"width": 3840, "height": 2160, "fx": 1800.0, "cx": 1920.0, "cy": 1080.0,
+               "distortion": [-0.28, 0.1, 0.0, 0.0], "undistort_alpha": 0.5}  # fmt: skip
+    spec = load_intrinsics_for_undistort(_write_json(tmp_path, payload), width=W, height=H)
+    assert spec is not None
+    K, dist, meta = spec
+    assert K.shape == (3, 3) and K.dtype == np.float64
+    assert K[0, 0] == pytest.approx(900.0)  # 1800 rescaled 3840->1920 (half); dist coeffs are NOT rescaled
+    assert K[0, 2] == pytest.approx(960.0)
+    assert np.allclose(dist, [-0.28, 0.1, 0.0, 0.0])
+    assert meta["alpha"] == pytest.approx(0.5)
+
+
+def test_load_for_undistort_rejects_per_frame(tmp_path):
+    payload = {"fx": [1000.0] * L, "distortion": [0.1, 0.0, 0.0, 0.0]}
+    with pytest.raises(ValueError, match="constant intrinsics"):
+        load_intrinsics_for_undistort(_write_json(tmp_path, payload), width=W, height=H)

@@ -34,7 +34,7 @@ from gvhmr.utils.geo.hmr_cam import (
 )
 from gvhmr.utils.geo.rotations import quaternion_to_matrix
 from gvhmr.utils.geo_transform import apply_T_on_points, compute_cam_angvel, compute_T_ayfz2ay
-from gvhmr.utils.intrinsics import load_intrinsics_file
+from gvhmr.utils.intrinsics import load_intrinsics_file, load_intrinsics_for_undistort
 from gvhmr.utils.net_utils import detach_to_cpu
 from gvhmr.utils.postproc_world import compose_world_from_dust3r
 from gvhmr.utils.preproc.base import make_backbone, make_detector, make_pose2d, missing_requirements
@@ -173,6 +173,42 @@ def resolve_intrinsics(cfg, length: int, width: int, height: int) -> torch.Tenso
     if cfg.f_mm is not None:
         return create_camera_sensor(width, height, cfg.f_mm)[2].repeat(length, 1, 1)
     return estimate_K(width, height).repeat(length, 1, 1)
+
+
+def _apply_undistortion(cfg) -> None:
+    """If the intrinsics sidecar declares lens ``distortion``, undistort the staged frames **in place** and
+    swap in the corrected pinhole ``K``.
+
+    GVHMR is pinhole-only, so the faithful way to honour a wide-angle/fisheye lens is to rectify the pixels
+    the model sees (YOLO/ViTPose/HMR2 all read the staged video), not to pass coefficients the network never
+    learned. Idempotent + cache-friendly: a prior run's ``intrinsics_undistorted.json`` short-circuits it.
+    See docs/CAMERA_METADATA.md."""
+    path = getattr(cfg, "intrinsics_path", None)
+    if not path:
+        return
+    corrected = Path(cfg.preprocess_dir) / "intrinsics_undistorted.json"
+    if corrected.exists():  # undistorted on a previous run (staged video already rectified) — reuse
+        cfg.intrinsics_path = str(corrected)
+        return
+    length, width, height = get_video_lwh(cfg.video_path)
+    spec = load_intrinsics_for_undistort(path, width=width, height=height)
+    if spec is None:
+        return  # no 'distortion' field → the frames are already pinhole, nothing to rectify
+    K, dist, meta = spec
+    # Corrected pinhole matrix (same output size; alpha 0 crops the invalid border, 1 keeps all source px).
+    new_K, _roi = cv2.getOptimalNewCameraMatrix(K, dist, (width, height), meta["alpha"], (width, height))
+    map1, map2 = cv2.initUndistortRectifyMap(K, dist, None, new_K, (width, height), cv2.CV_16SC2)
+    tmp = Path(cfg.video_path).with_suffix(".undist.mp4")
+    reader = get_video_reader(cfg.video_path)
+    writer = get_writer(str(tmp), fps=MODEL_FPS, crf=CRF)
+    for img in track(reader, total=length, desc="Undistorting frames"):
+        writer.write_frame(cv2.remap(img, map1, map2, cv2.INTER_LINEAR))
+    writer.close()
+    reader.close()
+    os.replace(tmp, cfg.video_path)  # replaces the staged file (or a fast-path symlink) with the rectified one
+    corrected.write_text(json.dumps({"K": new_K.tolist(), "width": width, "height": height}))
+    cfg.intrinsics_path = str(corrected)
+    Log.info(f"Undistorted staged frames [ok]({length}f)[/] → corrected pinhole K [muted](alpha={meta['alpha']})[/]")
 
 
 def ensure_deps(cfg) -> None:
@@ -337,6 +373,7 @@ def build_demo_cfg(
 
                 shutil.copyfile(video, cfg.video_path)
             Log.info(f"Staging skipped: input already ~{MODEL_FPS}fps and upright [muted](linked in place)[/]")
+            _apply_undistortion(cfg)  # rectifies the linked file in place if the sidecar has lens distortion
             return cfg
         keep = None
         if resample:
@@ -356,6 +393,7 @@ def build_demo_cfg(
                     ptr += 1
         writer.close()
         reader.close()
+    _apply_undistortion(cfg)  # no-op unless the sidecar declares lens distortion (also handles the cached case)
     return cfg
 
 
