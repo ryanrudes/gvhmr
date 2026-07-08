@@ -120,35 +120,65 @@ def test_unsupported_suffix_raises(tmp_path):
 
 
 def test_distortion_vector_from_list_and_dict():
-    assert np.allclose(_distortion_vector({"distortion": [0.1, -0.2, 0.0, 0.0, 0.05]}), [0.1, -0.2, 0.0, 0.0, 0.05])
+    assert np.allclose(_distortion_vector({"distortion": [0.1, -0.2, 0.0, 0.0, 0.05]}, L), [0.1, -0.2, 0.0, 0.0, 0.05])
     # a dict fills missing coeffs with 0 in OpenCV order [k1, k2, p1, p2, k3]
-    assert np.allclose(_distortion_vector({"distortion": {"k1": 0.1, "k2": -0.2}}), [0.1, -0.2, 0.0, 0.0, 0.0])
-    assert _distortion_vector({"fx": 1000.0}) is None  # no 'distortion' key
+    assert np.allclose(_distortion_vector({"distortion": {"k1": 0.1, "k2": -0.2}}, L), [0.1, -0.2, 0.0, 0.0, 0.0])
+    assert _distortion_vector({"fx": 1000.0}, L) is None  # no 'distortion' key
 
 
 def test_distortion_vector_bad_length_raises():
-    with pytest.raises(ValueError, match="4, 5, 8"):
-        _distortion_vector({"distortion": [0.1, 0.2, 0.3]})
+    with pytest.raises(ValueError, match="4 / 5 / 8"):
+        _distortion_vector({"distortion": [0.1, 0.2, 0.3]}, L)
+
+
+def test_distortion_vector_per_frame_2d_and_dict():
+    # a (L, N) array → per-frame; row t is the coefficients for frame t
+    rows = [[-0.30 + 0.01 * t, 0.1, 0.0, 0.0] for t in range(L)]
+    pf = _distortion_vector({"distortion": rows}, L)
+    assert (
+        pf.shape == (L, 4) and pf[0, 0] == pytest.approx(-0.30) and pf[-1, 0] == pytest.approx(-0.30 + 0.01 * (L - 1))
+    )
+    # a dict with a per-frame list for one coeff (scalars broadcast) → (L, 5)
+    dpf = _distortion_vector({"distortion": {"k1": [-0.3] * L, "k2": 0.05}}, L)
+    assert dpf.shape == (L, 5) and np.allclose(dpf[:, 1], 0.05)
+
+
+def test_distortion_vector_per_frame_wrong_length_raises():
+    with pytest.raises(ValueError, match="expected 8"):  # 8 staged frames (L)
+        _distortion_vector({"distortion": [[0.1, 0.0, 0.0, 0.0]] * 3}, L)
 
 
 def test_load_for_undistort_none_without_distortion(tmp_path):
-    assert load_intrinsics_for_undistort(_write_json(tmp_path, {"fx": 1000.0}), width=W, height=H) is None
+    assert load_intrinsics_for_undistort(_write_json(tmp_path, {"fx": 1000.0}), length=L, width=W, height=H) is None
 
 
 def test_load_for_undistort_returns_rescaled_K_and_coeffs(tmp_path):
     payload = {"width": 3840, "height": 2160, "fx": 1800.0, "cx": 1920.0, "cy": 1080.0,
                "distortion": [-0.28, 0.1, 0.0, 0.0], "undistort_alpha": 0.5}  # fmt: skip
-    spec = load_intrinsics_for_undistort(_write_json(tmp_path, payload), width=W, height=H)
+    spec = load_intrinsics_for_undistort(_write_json(tmp_path, payload), length=L, width=W, height=H)
     assert spec is not None
     K, dist, meta = spec
-    assert K.shape == (3, 3) and K.dtype == np.float64
+    assert K.shape == (3, 3) and K.dtype == np.float64 and meta["per_frame"] is False
     assert K[0, 0] == pytest.approx(900.0)  # 1800 rescaled 3840->1920 (half); dist coeffs are NOT rescaled
     assert K[0, 2] == pytest.approx(960.0)
     assert np.allclose(dist, [-0.28, 0.1, 0.0, 0.0])
     assert meta["alpha"] == pytest.approx(0.5)
 
 
-def test_load_for_undistort_rejects_per_frame(tmp_path):
-    payload = {"fx": [1000.0] * L, "distortion": [0.1, 0.0, 0.0, 0.0]}
-    with pytest.raises(ValueError, match="constant intrinsics"):
-        load_intrinsics_for_undistort(_write_json(tmp_path, payload), width=W, height=H)
+def test_load_for_undistort_per_frame_zoom(tmp_path):
+    """A zoom: per-frame focal + per-frame distortion → per-frame K (L,3,3) and coeffs (L,N)."""
+    payload = {"fx": [900.0 + t for t in range(L)], "fy": [900.0 + t for t in range(L)], "cx": 960.0, "cy": 540.0,
+               "distortion": [[-0.30 + 0.02 * t, 0.1, 0.0, 0.0] for t in range(L)]}  # fmt: skip
+    K, dist, meta = load_intrinsics_for_undistort(_write_json(tmp_path, payload), length=L, width=W, height=H)
+    assert meta["per_frame"] is True
+    assert K.shape == (L, 3, 3) and dist.shape == (L, 4)
+    assert K[0, 0, 0] == pytest.approx(900.0) and K[-1, 0, 0] == pytest.approx(900.0 + L - 1)
+    assert dist[0, 0] == pytest.approx(-0.30) and dist[-1, 0] == pytest.approx(-0.30 + 0.02 * (L - 1))
+
+
+def test_load_for_undistort_per_frame_focal_constant_distortion_broadcasts(tmp_path):
+    """Per-frame focal with a single distortion set → distortion broadcast to every frame."""
+    payload = {"fx": [900.0 + t for t in range(L)], "cx": 960.0, "cy": 540.0, "distortion": [-0.28, 0.1, 0.0, 0.0]}
+    K, dist, meta = load_intrinsics_for_undistort(_write_json(tmp_path, payload), length=L, width=W, height=H)
+    assert meta["per_frame"] is True and K.shape == (L, 3, 3) and dist.shape == (L, 4)
+    assert np.allclose(dist, np.broadcast_to([-0.28, 0.1, 0.0, 0.0], (L, 4)))

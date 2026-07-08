@@ -116,10 +116,29 @@ order or a dict:
   border so the rectified frame fills the image cleanly — the corrected `fx` comes out a bit smaller and
   some FOV is lost at the edges; raise toward **`1.0`** to keep all source pixels, at the cost of black
   borders where no pixel maps.
-- Distortion needs a **single (constant) `K`** — per-frame focal + distortion is rejected (a fixed lens
-  has fixed distortion).
 - This only matters for meaningfully-distorted lenses (GoPro/action cams, ultrawide/fisheye). For a
   normal lens the distortion is a few pixels at the edges — skip it.
+
+#### Per-frame distortion (a zoom)
+
+A zoom changes the focal length **and** the distortion profile together (typically barrel at the wide
+end → ~zero mid-range → pincushion at the long end). Supply per-frame distortion — a `(L, N)` array (one
+coefficient row per staged frame), or a dict whose coefficients are length-`L` lists — alongside per-frame
+`fx`/`fy`; GVHMR rebuilds the rectification map each frame and emits a per-frame corrected `K`:
+
+```json
+{ "fx": [900, 902, "…L…"], "fy": [900, 902, "…L…"], "cx": 960, "cy": 540,
+  "distortion": [[-0.28, 0.10, 0.0, 0.0], "…one row per staged frame…"] }
+```
+
+- You need a **zoom-aware calibration** to produce those rows — coefficients measured at several focal
+  lengths, interpolated per frame by the frame's focal (from lens metadata / a zoom encoder). Cinema/
+  broadcast lens data (Cooke /i, Zeiss eXtended, a hand-built LUT) has this; consumer clips usually don't.
+- If you only have per-frame **focal**, use that alone (it captures most of a zoom's geometric error); a
+  single distortion set is broadcast to every frame, and a constant `distortion` with per-frame `fx` works.
+- Keep the per-frame coefficients **smooth** — a noisy, jittery warp injects temporal noise into the frames
+  the model sees (GVHMR integrates per-frame velocities and is jitter-sensitive).
+- Rows must match the **staged** frame count (the clip is resampled to 30 fps first), same as per-frame focal.
 - Only for `.MOV`/`.mp4` with a **rotation flag**: express `distortion`/`K` in the displayed (post-rotation)
   frame, since GVHMR undistorts the staged (rotation-baked) video.
 

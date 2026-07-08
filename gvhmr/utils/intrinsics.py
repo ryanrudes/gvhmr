@@ -24,8 +24,10 @@ Optional lens distortion (wide-angle / fisheye)::
 
 GVHMR is a pinhole-only model, so distortion isn't fed to the network — instead the demo **undistorts
 the staged frames** (``gvhmr.cli.demo._apply_undistortion``) and swaps in the corrected pinhole ``K``.
-Distortion requires a single (constant) ``K``. Distortion parsing lives here
-(:func:`load_intrinsics_for_undistort`); the actual pixel remap is in the demo (it needs the staged video).
+``distortion`` may be **per-frame** too (a ``(L, N)`` array, or a dict whose coefficients are length-``L``
+lists) — for a zoom, which changes focal *and* distortion together; pair it with per-frame ``fx/fy``.
+Distortion parsing lives here (:func:`load_intrinsics_for_undistort`); the actual pixel remap is in the
+demo (it needs the staged video).
 
 Notes / landmines (see ``docs/ACCURACY.md``, ``docs/CAMERA_METADATA.md``):
   * The model reads only ``K[0,0]`` (fx) as "the" focal, plus the principal point ``K[0,2]/K[1,2]``.
@@ -129,21 +131,50 @@ def load_intrinsics_file(path, *, length: int, width: int, height: int) -> torch
     return _build_K_from_dict(_read_sidecar(path), length=length, width=width, height=height)
 
 
-def _distortion_vector(data: dict) -> np.ndarray | None:
+_DIST_SIZES = (4, 5, 8, 12, 14)  # OpenCV distortion-coefficient counts
+
+
+def _distortion_vector(data: dict, length: int) -> np.ndarray | None:
     """The OpenCV distortion coefficients from the sidecar's optional ``distortion`` entry, or ``None``.
 
-    Accepts a list/array in OpenCV order ``[k1, k2, p1, p2, k3, …]`` (length 4/5/8/12/14) or a dict with
-    any of ``{k1, k2, p1, p2, k3}`` (missing → 0). Distortion coefficients are dimensionless (defined in
-    normalized image coordinates), so they need no resolution rescale."""
+    Returns a **constant** ``(N,)`` vector or, for a zoom / lens change, a **per-frame** ``(length, N)``
+    array (one coefficient row per staged frame). Accepts:
+      * a flat list/array ``[k1, k2, p1, p2, k3, …]`` (length 4/5/8/12/14) → constant;
+      * a 2-D list/array of shape ``(length, N)`` → per-frame;
+      * a dict ``{k1, k2, p1, p2, k3}`` where each value is a scalar **or** a length-``length`` list — any
+        per-frame value makes the whole thing per-frame (missing coeff → 0).
+    Distortion coefficients are dimensionless (defined in normalized image coordinates), so — unlike
+    ``fx/fy/cx/cy`` — they need no resolution rescale."""
     d = data.get("distortion")
     if d is None:
         return None
     if isinstance(d, dict):
-        return np.asarray([float(d.get(k) or 0.0) for k in ("k1", "k2", "p1", "p2", "k3")], dtype=np.float64)
-    arr = np.asarray(d, dtype=np.float64).reshape(-1)
-    if arr.size not in (4, 5, 8, 12, 14):
-        raise ValueError(f"'distortion' must have 4, 5, 8, 12, or 14 OpenCV coefficients; got {arr.size}")
-    return arr
+        cols, per_frame = [], False
+        for k in ("k1", "k2", "p1", "p2", "k3"):
+            arr = np.asarray(d[k] if d.get(k) is not None else 0.0, dtype=np.float64).reshape(-1)
+            if arr.size not in (1, length):
+                raise ValueError(f"distortion '{k}' has {arr.size} value(s); expected 1 (constant) or {length}")
+            per_frame = per_frame or arr.size == length
+            cols.append(arr)
+        if not per_frame:
+            return np.asarray([c.item() for c in cols], dtype=np.float64)  # (5,)
+        return np.stack([np.broadcast_to(c, (length,)) for c in cols], axis=1)  # (length, 5)
+    arr = np.asarray(d, dtype=np.float64)
+    if arr.ndim == 1:
+        if arr.size not in _DIST_SIZES:
+            raise ValueError(
+                f"'distortion' must have {' / '.join(map(str, _DIST_SIZES))} OpenCV coeffs; got {arr.size}"
+            )
+        return arr  # (N,) constant
+    if arr.ndim == 2:
+        if arr.shape[0] != length:
+            raise ValueError(
+                f"per-frame 'distortion' has {arr.shape[0]} row(s); expected {length} (one per staged frame)"
+            )
+        if arr.shape[1] not in _DIST_SIZES:
+            raise ValueError(f"per-frame 'distortion' rows must have {' / '.join(map(str, _DIST_SIZES))} coeffs")
+        return arr  # (length, N) per-frame
+    raise ValueError("'distortion' must be 1-D (constant) or 2-D (length, N) (per-frame)")
 
 
 def _has_per_frame(data: dict) -> bool:
@@ -158,19 +189,28 @@ def _has_per_frame(data: dict) -> bool:
     return K is not None and np.asarray(K).ndim == 3 and np.asarray(K).shape[0] > 1
 
 
-def load_intrinsics_for_undistort(path, *, width: int, height: int):
-    """If the sidecar declares lens ``distortion``, return ``(K_3x3, dist_vec, meta)`` for undistorting the
-    frames; else ``None``.
+def load_intrinsics_for_undistort(path, *, length: int, width: int, height: int):
+    """If the sidecar declares lens ``distortion``, return ``(K, dist, meta)`` for undistorting the frames;
+    else ``None``.
 
-    ``K_3x3`` is the (distorted) camera matrix as float64, rescaled to ``width``/``height``; ``dist_vec`` is
-    the OpenCV coefficient array; ``meta`` carries ``alpha`` (the ``getOptimalNewCameraMatrix`` free-scaling,
-    from the optional ``undistort_alpha`` key, default 0.0). Requires a single **constant** ``K`` — per-frame
-    intrinsics + distortion is unsupported (a fixed lens has fixed distortion)."""
+    Handles both **constant** and **per-frame** lenses (a zoom changes focal *and* distortion). When either
+    the focal/principal point (``fx/fy/cx/cy``/``K``) or the distortion is per-frame, both are returned as
+    length-``length`` arrays (the constant one broadcast) and ``meta["per_frame"]`` is ``True``:
+      * constant → ``K`` ``(3,3)`` float64, ``dist`` ``(N,)``;
+      * per-frame → ``K`` ``(length,3,3)`` float64, ``dist`` ``(length,N)``.
+    ``K`` is rescaled to ``width``/``height``; ``dist`` is not (coefficients are dimensionless). ``meta`` also
+    carries ``alpha`` (the ``getOptimalNewCameraMatrix`` free-scaling; optional ``undistort_alpha`` key,
+    default 0.0). Per-frame distortion needs a zoom-aware calibration — see docs/CAMERA_METADATA.md."""
     data = _read_sidecar(path)
-    dist = _distortion_vector(data)
+    dist = _distortion_vector(data, length)
     if dist is None:
         return None
-    if _has_per_frame(data):
-        raise ValueError("lens 'distortion' requires constant intrinsics (per-frame fx/cx/cy/K is unsupported)")
-    K = _build_K_from_dict(data, length=1, width=width, height=height)[0].numpy().astype(np.float64)
-    return K, dist, {"alpha": float(data.get("undistort_alpha") or 0.0)}
+    per_frame = dist.ndim == 2 or _has_per_frame(data)
+    K = _build_K_from_dict(data, length=length if per_frame else 1, width=width, height=height)
+    K = K.numpy().astype(np.float64)  # (length,3,3) or (1,3,3)
+    meta = {"alpha": float(data.get("undistort_alpha") or 0.0), "per_frame": per_frame}
+    if not per_frame:
+        return K[0], dist, meta  # (3,3), (N,)
+    if dist.ndim == 1:  # per-frame K but constant distortion → broadcast the coefficients across frames
+        dist = np.broadcast_to(dist, (length, dist.shape[0])).copy()
+    return K, dist, meta  # (length,3,3), (length,N)

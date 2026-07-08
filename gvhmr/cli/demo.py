@@ -191,24 +191,42 @@ def _apply_undistortion(cfg) -> None:
         cfg.intrinsics_path = str(corrected)
         return
     length, width, height = get_video_lwh(cfg.video_path)
-    spec = load_intrinsics_for_undistort(path, width=width, height=height)
+    spec = load_intrinsics_for_undistort(path, length=length, width=width, height=height)
     if spec is None:
         return  # no 'distortion' field → the frames are already pinhole, nothing to rectify
     K, dist, meta = spec
-    # Corrected pinhole matrix (same output size; alpha 0 crops the invalid border, 1 keeps all source px).
-    new_K, _roi = cv2.getOptimalNewCameraMatrix(K, dist, (width, height), meta["alpha"], (width, height))
-    map1, map2 = cv2.initUndistortRectifyMap(K, dist, None, new_K, (width, height), cv2.CV_16SC2)
+    alpha, per_frame = meta["alpha"], meta["per_frame"]
+
+    def _maps(k, d):
+        # Corrected pinhole matrix (same output size; alpha 0 crops the invalid border, 1 keeps all source px).
+        new_k, _roi = cv2.getOptimalNewCameraMatrix(k, d, (width, height), alpha, (width, height))
+        m1, m2 = cv2.initUndistortRectifyMap(k, d, None, new_k, (width, height), cv2.CV_16SC2)
+        return new_k, m1, m2
+
     tmp = Path(cfg.video_path).with_suffix(".undist.mp4")
     reader = get_video_reader(cfg.video_path)
     writer = get_writer(str(tmp), fps=MODEL_FPS, crf=CRF)
-    for img in track(reader, total=length, desc="Undistorting frames"):
-        writer.write_frame(cv2.remap(img, map1, map2, cv2.INTER_LINEAR))
+    if per_frame:
+        # A zoom changes focal AND distortion per frame — rebuild the rectification map each frame and emit a
+        # per-frame corrected K (needs zoom-aware calibration; see docs/CAMERA_METADATA.md).
+        new_ks = []
+        for t, img in enumerate(track(reader, total=length, desc="Undistorting frames (per-frame)")):
+            new_k, m1, m2 = _maps(np.ascontiguousarray(K[t]), np.ascontiguousarray(dist[t]))
+            writer.write_frame(cv2.remap(img, m1, m2, cv2.INTER_LINEAR))
+            new_ks.append(new_k.tolist())
+        corrected_K = new_ks  # (L, 3, 3)
+    else:
+        new_k, m1, m2 = _maps(K, dist)  # one map, reused for every frame (the common, fixed-lens case)
+        for img in track(reader, total=length, desc="Undistorting frames"):
+            writer.write_frame(cv2.remap(img, m1, m2, cv2.INTER_LINEAR))
+        corrected_K = new_k.tolist()  # (3, 3)
     writer.close()
     reader.close()
     os.replace(tmp, cfg.video_path)  # replaces the staged file (or a fast-path symlink) with the rectified one
-    corrected.write_text(json.dumps({"K": new_K.tolist(), "width": width, "height": height}))
+    corrected.write_text(json.dumps({"K": corrected_K, "width": width, "height": height}))
     cfg.intrinsics_path = str(corrected)
-    Log.info(f"Undistorted staged frames [ok]({length}f)[/] → corrected pinhole K [muted](alpha={meta['alpha']})[/]")
+    tag = "per-frame " if per_frame else ""
+    Log.info(f"Undistorted staged frames [ok]({length}f)[/] → {tag}corrected pinhole K [muted](alpha={alpha})[/]")
 
 
 def ensure_deps(cfg) -> None:
