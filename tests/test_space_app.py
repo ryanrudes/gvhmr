@@ -84,6 +84,22 @@ def test_video_path_normalization(video, expected) -> None:
     assert app._video_path(video) == expected
 
 
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (None, None),
+        ("", None),
+        ("/tmp/cam.intrinsics.json", "/tmp/cam.intrinsics.json"),
+        ({"path": "/data/cam.npz"}, "/data/cam.npz"),
+        ({"name": "/data/cam.json"}, "/data/cam.json"),
+    ],
+)
+def test_intrinsics_path_normalization(value, expected) -> None:
+    """The optional intrinsics upload normalizes to a path, or None (→ metadata/heuristic fallback)."""
+    app = _load_space_app()
+    assert app._intrinsics_path(value) == expected
+
+
 def test_preflight_rejects_unavailable_camera() -> None:
     app = _load_space_app()
     import gradio as gr

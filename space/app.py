@@ -428,6 +428,21 @@ def _video_path(video) -> str | None:
     return str(path) if path else str(video)
 
 
+def _intrinsics_path(f) -> str | None:
+    """Normalize an optional Gradio File value (path str / FileData dict / temp obj) to a path, or None.
+
+    The intrinsics upload is optional — an empty field returns None and the pipeline falls back to video
+    metadata / the FOV heuristic (see docs/CAMERA_METADATA.md)."""
+    if not f:
+        return None
+    if isinstance(f, str):
+        return f or None
+    if isinstance(f, dict):
+        return f.get("path") or f.get("name")
+    path = getattr(f, "path", None) or getattr(f, "name", None)
+    return str(path) if path else None
+
+
 def _zero_gpu_duration_cap() -> int:
     """Max seconds requested per ``@spaces.GPU`` call (HF free tier default: 60)."""
     return int(os.getenv("ZERO_GPU_DURATION", "60"))
@@ -483,6 +498,7 @@ def _recover_gpu(
     detector: str,
     pose2d: str,
     backbone: str,
+    intrinsics_path: str | None,
     out_dir: str,
     progress: gr.Progress,
 ):
@@ -506,6 +522,7 @@ def _recover_gpu(
             static_camera=static_camera,
             camera=camera,
             flip_test=flip_test,
+            intrinsics=intrinsics_path,  # optional user sidecar; None → metadata / FOV heuristic fallback
             render=False,
             progress=False,
             progress_callback=_hook,
@@ -526,6 +543,7 @@ def run(
     backbone: str,
     native_smplx: bool = False,
     render_overlay: bool = False,
+    intrinsics_file=None,
     progress: gr.Progress = gr.Progress(),  # noqa: B008 — gvhmr uses Rich track(), not tqdm; we drive it via progress(...)
 ) -> tuple[str, str, dict]:
     """Gradio handler: validate + bootstrap + preflight (CPU), run inference under @spaces.GPU, then render
@@ -556,11 +574,12 @@ def run(
             backbone=backbone,
         )
         out_dir = Path(tempfile.mkdtemp(prefix="gvhmr_"))
+        intrinsics_path = _intrinsics_path(intrinsics_file)  # optional; None → metadata / FOV heuristic
 
         try:  # GPU window: preproc models + network only
             result = _recover_gpu(
                 video_path, static_camera, camera_backend, flip_test, hub_repo, hub_revision,
-                detector, pose2d, backbone, str(out_dir), progress,
+                detector, pose2d, backbone, intrinsics_path, str(out_dir), progress,
             )  # fmt: skip
         except RuntimeError as exc:
             raise gr.Error(f"The GVHMR pipeline failed, so inference is unavailable. Details: {exc}") from exc
@@ -597,6 +616,7 @@ def run(
             "camera": result.camera,
             "seconds_of_motion": _seconds_of_motion(result.num_frames, result.fps),
             "mesh": "SMPL-X (native)" if native_smplx else "SMPL topology",
+            "intrinsics": "custom sidecar" if intrinsics_path else "auto (metadata / FOV heuristic)",
             "overlay": render_status,  # 'ok', or why the overlay was skipped (the .npz is always returned)
             "weights_repo": hub_repo.strip(),
             "weights_revision": (hub_revision or "").strip() or "default",
@@ -728,6 +748,20 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
                 "Tick to also rasterize the mesh overlay in software (llvmpipe) — adds minutes for a short clip.",
             )
 
+            with gr.Accordion("Camera intrinsics (optional)", open=False):
+                gr.Markdown(
+                    "Upload a **`.json`/`.npz`** sidecar with real intrinsics — `fx`/`fy`/`cx`/`cy` in "
+                    "**pixels** (each a scalar or a per-frame list) or a full `K`; optional `width`/`height` "
+                    "give the calibration resolution. Fixes world-frame depth/scale + principal point. "
+                    "**Leave empty** to auto-detect from video metadata, else fall back to the FOV heuristic. "
+                    f"Format: [{REPO_URL}/blob/main/docs/CAMERA_METADATA.md]({REPO_URL}/blob/main/docs/CAMERA_METADATA.md)."
+                )
+                intrinsics_in = gr.File(
+                    label="Intrinsics sidecar (JSON/NPZ) — optional",
+                    file_types=[".json", ".npz", ".npy"],
+                    file_count="single",
+                )
+
             with gr.Accordion("Model settings", open=False):
                 hub_repo_in = gr.Dropdown(
                     choices=_hub_repo_choices(),
@@ -782,6 +816,7 @@ with gr.Blocks(title="GVHMR — Human Motion Recovery") as demo:
             backbone_in,
             smplx_in,
             render_in,
+            intrinsics_in,
         ],
         outputs=[overlay_out, npz_out, summary_out],
         show_progress="full",
