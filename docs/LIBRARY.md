@@ -180,7 +180,9 @@ result = pipe(
     detector=None,           # per-call stage overrides (else pipeline/config defaults)
     pose2d=None,
     backbone=None,
-    f_mm=35,                 # true full-frame focal in mm (else metadata, else a FOV heuristic)
+    f_mm=35,                 # full-frame focal in mm (else metadata, else a FOV heuristic)
+    f_px=None,               # focal in pixels — faithful, bypasses the mm→px conversion (overrides f_mm)
+    intrinsics=None,         # measured intrinsics: sidecar path | dict(fx/fy/cx/cy or K) | K array/tensor
     flip_test=True,          # mirror-averaging TTA — the benchmark setting (+1 feature pass)
     world_from_incam=True,   # static camera: take the world trajectory from in-cam motion
     render=False,            # render overlays now, else call result.render() later
@@ -201,8 +203,10 @@ camera's **translation** (e.g. a following/tracking shot):
 - `camera="dpvo"` — classic DPVO SLAM, **CUDA-only** (`scripts/setup_dpvo.sh`).
 
 **Accuracy levers** (byte-identical default path stays golden; these are opt-in):
-`flip_test=True` (mirror-averaging TTA, the benchmark-time setting) and `f_mm=<mm>` (pass the true focal
-length if you know it; phone metadata is read automatically). Evidence: [docs/ACCURACY.md](ACCURACY.md).
+`flip_test=True` (mirror-averaging TTA, the benchmark-time setting) and camera intrinsics — `f_px=<px>`
+(pixel focal, the faithful route), `intrinsics=<sidecar|dict|K>` (a true principal point and/or per-frame
+values), or `f_mm=<mm>` (phone metadata is read automatically). Evidence: [docs/ACCURACY.md](ACCURACY.md);
+intrinsics sidecar format + conversions: [docs/CAMERA_METADATA.md](CAMERA_METADATA.md).
 
 Stage/backbone swaps mirror the CLI's config groups — see [docs/CONFIGURATION.md](CONFIGURATION.md).
 

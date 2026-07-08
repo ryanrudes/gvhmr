@@ -198,6 +198,7 @@ The test suite is a CPU/MPS characterization net — no GPU, checkpoints, or dat
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | code map: data flow, packages, the 151-dim latent |
 | [docs/TRAINING.md](docs/TRAINING.md) | training/eval on any device, dataset packs, backbone retrains |
 | [docs/ACCURACY.md](docs/ACCURACY.md) | test-time accuracy levers + how they're measured |
+| [docs/CAMERA_METADATA.md](docs/CAMERA_METADATA.md) | supplying real camera intrinsics (`--f_px` / `--intrinsics` sidecar / `--f_mm`) |
 | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | profiling & latency notes (CPU vs MPS, render scale) |
 | [docs/EXTENSIBILITY.md](docs/EXTENSIBILITY.md) | the swappable-everything roadmap & rationale |
 | [docs/BEHAVIOR.md](docs/BEHAVIOR.md) / [docs/PROVENANCE.md](docs/PROVENANCE.md) | behaviour-preservation contract; what was vendored/renamed vs upstream |

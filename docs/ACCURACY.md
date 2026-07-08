@@ -9,7 +9,7 @@ techniques and better-conditioned inputs.
 | Lever | How | Effect | Status |
 |---|---|---|---|
 | **Flip-test TTA** | `gvhmr demo VIDEO --flip-test` | **−0.66 mm PA-MPJPE on 3DPW** (ground-truth, full test set) | **implemented (opt-in)** |
-| **Correct focal length** | `--f_mm <mm>`, or auto-read from metadata | Fixes world-frame depth/scale | **implemented** (`--f_mm` + best-effort metadata) |
+| **Correct camera intrinsics** | `--f_px <px>` / `--intrinsics <file>` / `--f_mm <mm>` / metadata | Fixes world-frame depth/scale (+ true principal point, per-frame) | **implemented** |
 | **DPVO camera** (moving cam) | `--use-dpvo` | More accurate camera trajectory than SimpleVO | available |
 | **VO carry-forward** | automatic | Degenerate frame-pairs continue the last motion instead of freezing | **implemented** |
 | **Static-cam trajectory** | `--incam-world-traj` (default on for `-s`) | Recovers scene traversal (gliding/skateboarding) the velocity prior misses | **implemented** |
@@ -75,13 +75,34 @@ a second, cheap transformer forward. The default path is **byte-identical** when
 off (guarded by `tests/test_golden_inference.py`). Implementation:
 `DemoPL.predict(..., flip_test_data=...)` in `gvhmr/model/gvhmr/gvhmr_pl_demo.py`.
 
-### Camera focal length (`--f_mm`, + metadata)
-`estimate_K` assumes focal = image diagonal (≈53° diagonal FOV) — a guess. The true focal
-pins world-frame depth/scale. Pass `--f_mm` for a known camera (iPhone 1×≈24, 2×≈48). When
-omitted, the demo makes a **best-effort read of the 35mm-equivalent focal from the video
-metadata** (ffprobe); most consumer mp4s lack it, in which case it falls back to the
-heuristic. (We verified RE cannot validate this lever — it's depth-ambiguous — so prefer a
-known `--f_mm` when world-frame accuracy matters.)
+### Camera intrinsics (`--f_px` / `--intrinsics`, `--f_mm`, + metadata)
+`estimate_K` assumes focal = image diagonal (≈53° diagonal FOV) with a centred principal point
+— a guess. The true focal pins world-frame depth/scale; a true principal point also nudges the
+recovered translation/orientation. The model reads intrinsics **per-frame** in two places — the
+CLIFF-cam network input `[(bcx−cx)/f, (bcy−cy)/f, b/f]` and the metric depth `tz = 2f/(s·b)` —
+but consumes only `K[0,0]` (fx) as "the" focal (it assumes **square pixels**, so a separate `fy`
+is stored faithfully yet unused) and `K[0,2]/K[1,2]` as the principal point.
+
+Ways to supply intrinsics, **highest precedence first**:
+
+- **`--intrinsics <file>`** — a JSON/NPZ sidecar: `fx`/`fy`/`cx`/`cy` (each a scalar **or a
+  per-frame list**, for a zoom/lens-switch) or a full `K` (`(3,3)` or `(L,3,3)`). Optional
+  `width`/`height` declare the calibration resolution (auto-rescaled to the staged frames). The
+  faithful, fully-general path — the only one carrying a real principal point or per-frame
+  values. Auto-detected as `<video>.intrinsics.json` next to the input. (Library: `intrinsics=`
+  also accepts a dict or a `K` array/tensor.)
+- **`--f_px <px>`** — focal length in **pixels**, straight into `K`. Prefer this over `--f_mm`
+  when you know your camera's pixel focal (no lossy mm round-trip).
+- **`--f_mm <mm>`** — a full-frame (35mm-equiv) focal, mapped to pixels by the diagonal ratio
+  `f_px = √(W²+H²)/√(24²+36²)·f_mm`. Convenient for phones (iPhone 1×≈24, 2×≈48).
+- **metadata** — when nothing is passed, a best-effort 35mm-equiv read (exiftool/ffprobe).
+- else the diagonal-FOV **heuristic**.
+
+Per-frame arrays must have one value per *staged* 30fps frame (resample them if the source fps
+differed). GVHMR is a pure pinhole model — lens-distortion coefficients are ignored (undistort
+first if the lens distorts noticeably). (We verified RE cannot validate this lever — it's
+depth-ambiguous — so prefer measured intrinsics when world-frame accuracy matters; it won't
+visibly change the 2D overlay.) **Full sidecar format + conversions: [CAMERA_METADATA.md](CAMERA_METADATA.md).**
 
 ### VO carry-forward (automatic)
 For non-static cameras, SimpleVO solves a relative pose per adjacent frame-pair. Degenerate
@@ -104,8 +125,9 @@ Phone clips (iPhone `.MOV`) need two bits of metadata the raw decoder ignores:
   already accounts for the lens and zoom in use (iPhone: ~15mm on the 0.5× ultrawide, ~24mm at
   1×, ~48mm at 2×) — in QuickTime metadata that `ffprobe` doesn't surface. `focal_mm_from_metadata`
   prefers **`exiftool`** (`FocalLengthIn35mmFormat`) and feeds it in as `--f_mm` automatically.
-  Install `exiftool` (`brew install exiftool`) to enable this; otherwise pass `--f_mm`. (One
-  value per clip — a mid-clip zoom change isn't tracked, since the demo uses one intrinsics.)
+  Install `exiftool` (`brew install exiftool`) to enable this; otherwise pass `--f_mm`/`--f_px`.
+  (This feeds one value for the clip; for a mid-clip zoom, supply **per-frame** focal via
+  `--intrinsics` — see *Camera intrinsics* above.)
 - **Frame rate.** GVHMR is a **30fps model** — the training motion is downsampled to 30fps and
   the network integrates *per-frame* velocities, so frame spacing (1/30 s) is baked into the
   dynamics. Phones often shoot **60fps**; fed as-is, the motion comes out at half speed and

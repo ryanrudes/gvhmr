@@ -156,7 +156,7 @@ code paths** (`gvhmr/cli/demo.py`: `build_demo_cfg`/`run_preprocess`/`load_data_
 `gvhmr.pipeline(task, *, model, device)` (task aliases in `pipelines.TASKS`) → `GVHMRPipeline`;
 `gvhmr.recover(video, **call_kwargs)` one-liner (caches a pipeline per `(model, device)`);
 `gvhmr.GVHMR`/`GVHMRPipeline`/`MotionResult`. `GVHMRPipeline.__call__(video, *, static_camera, camera,
-detector/pose2d/backbone, f_mm, flip_test, world_from_incam, render, output_dir, recipe, set_overrides,
+detector/pose2d/backbone, f_mm/f_px/intrinsics, flip_test, world_from_incam, render, output_dir, recipe, set_overrides,
 progress, …)` returns a `MotionResult` (`result.py`) — `smpl_params_world`/`_camera`, `intrinsics`, and
 **lazy** `vertices_*`/`joints_*`/`faces` (need body models via `_smpl.py` → `smplx2smpl` map + J
 regressor, byte-identical to the renderer); `.save()`/`.save_npz()`/`.render(view=…)`. The "power path"
@@ -202,10 +202,14 @@ latent by name), `nan_hooks(model)` (locate non-finite outputs), `count_paramete
 
 Test-time accuracy levers (no retraining) live behind opt-in flags so the default
 `predict` path stays **byte-identical** (golden-guarded): `--flip-test` (mirror-averaging
-TTA, ported from the eval into `DemoPL.predict`), `--f_mm` / metadata focal, and the
+TTA, ported from the eval into `DemoPL.predict`), camera intrinsics (`--f_px` pixels / `--intrinsics`
+JSON-NPZ sidecar with fx/fy/cx/cy or K, per-frame ok, auto-detected as `<video>.intrinsics.json` /
+`--f_mm` mm / metadata focal — all resolved in `demo.py::resolve_intrinsics`, loader in
+`gvhmr/utils/intrinsics.py`; the model consumes only `K[0,0]`+principal point, `fy` unused), and the
 automatic SimpleVO carry-forward. Iterate with the 2D-reprojection + jitter proxies (no GT
 needed) — but reprojection is in-cam/depth-ambiguous and **gameable** (drop-imgseq, SMPLify
-refinement), so always pair it with jitter. Full evidence + rejected ideas in `docs/ACCURACY.md`.
+refinement), so always pair it with jitter. Full evidence + rejected ideas in `docs/ACCURACY.md`;
+intrinsics format in `docs/CAMERA_METADATA.md`.
 
 **The paper benchmarks are `gvhmr eval`** (`gvhmr/cli/evalcmd.py` → the Lightning test tasks
 `configs/global/task/gvhmr/test_*` → `callbacks/metric_{3dpw,emdb,rich}.py` →
