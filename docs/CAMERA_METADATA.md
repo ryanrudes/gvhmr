@@ -52,6 +52,8 @@ Fields:
 | `cy` | no | image centre (`height/2`) | Principal-point y, pixels. |
 | `width`, `height` | no | the video's size | The resolution the intrinsics were **calibrated at**. If it differs from the frames GVHMR processes, all values are rescaled to match. |
 | `K` | no | — | A full 3×3 matrix instead of `fx/fy/cx/cy` — see below. |
+| `distortion` | no | none | Lens distortion → GVHMR **undistorts the frames** (see below). List `[k1,k2,p1,p2,k3]` or dict. Constant `K` only. |
+| `undistort_alpha` | no | `0.0` | Undistort free-scaling: `0` crops the invalid border (fills frame), `1` keeps all source pixels (black borders). |
 
 ### Auto-detection
 
@@ -88,6 +90,39 @@ a 30 fps clip). A mismatched length is a hard error.
 `K` may be `(3, 3)` (constant) or `(L, 3, 3)` (per-frame). With `width`/`height` present it is rescaled
 like the scalar fields.
 
+### Lens distortion (wide-angle / fisheye)
+
+GVHMR is a **pinhole-only** model, so it can't consume distortion coefficients directly — a wide lens
+that bows straight limbs corrupts the 2D keypoints and the geometry. The fix is to **rectify the pixels
+the model sees**: add a `distortion` entry and GVHMR undistorts the staged frames (`cv2.undistort`) and
+swaps in the corrected pinhole `K` automatically. You provide OpenCV coefficients — a list in OpenCV
+order or a dict:
+
+```json
+{ "width": 1920, "height": 1080,
+  "fx": 900.0, "fy": 900.0, "cx": 960.0, "cy": 540.0,
+  "distortion": [-0.28, 0.10, 0.0, 0.0, 0.0],
+  "undistort_alpha": 0.0 }
+```
+
+```json
+{ "fx": 900, "fy": 900, "cx": 960, "cy": 540,
+  "distortion": {"k1": -0.28, "k2": 0.10, "p1": 0.0, "p2": 0.0, "k3": 0.0} }
+```
+
+- Coefficients are OpenCV's `[k1, k2, p1, p2, k3, …]` (length 4/5/8/12/14). They're dimensionless, so they
+  need **no** resolution rescale (only `fx/fy/cx/cy` do).
+- `undistort_alpha` controls `cv2.getOptimalNewCameraMatrix`: **`0.0`** (default) crops the invalid
+  border so the rectified frame fills the image cleanly — the corrected `fx` comes out a bit smaller and
+  some FOV is lost at the edges; raise toward **`1.0`** to keep all source pixels, at the cost of black
+  borders where no pixel maps.
+- Distortion needs a **single (constant) `K`** — per-frame focal + distortion is rejected (a fixed lens
+  has fixed distortion).
+- This only matters for meaningfully-distorted lenses (GoPro/action cams, ultrawide/fisheye). For a
+  normal lens the distortion is a few pixels at the edges — skip it.
+- Only for `.MOV`/`.mp4` with a **rotation flag**: express `distortion`/`K` in the displayed (post-rotation)
+  frame, since GVHMR undistorts the staged (rotation-baked) video.
+
 ### NPZ / NPY
 
 - **`.npz`** — an archive with the same keys (`fx`, `fy`, `cx`, `cy`, `width`, `height`) and/or `K`:
@@ -109,8 +144,8 @@ like the scalar fields.
 - **35mm-equivalent focal (phones)** → just use `--f_mm` (or let metadata provide it).
 - **Principal point** → if your calibration gives a real `(cx, cy)`, include it; otherwise omit it and the
   image centre is assumed.
-- **Distortion coefficients** → **ignored.** GVHMR is a pure pinhole model. If your lens distorts
-  noticeably, undistort the frames *before* running GVHMR.
+- **Distortion coefficients** → put them in `distortion` (see *Lens distortion* above) and GVHMR
+  undistorts the frames for you. Worth it only for wide-angle/fisheye lenses; negligible for normal ones.
 
 ---
 

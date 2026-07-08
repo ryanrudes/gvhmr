@@ -99,8 +99,9 @@ Ways to supply intrinsics, **highest precedence first**:
 - else the diagonal-FOV **heuristic**.
 
 Per-frame arrays must have one value per *staged* 30fps frame (resample them if the source fps
-differed). GVHMR is a pure pinhole model — lens-distortion coefficients are ignored (undistort
-first if the lens distorts noticeably). (We verified RE cannot validate this lever — it's
+differed). GVHMR is a pure pinhole model, so a `distortion` entry in the sidecar makes the demo
+**undistort the staged frames** and swap in the corrected pinhole `K` (for wide-angle/fisheye lenses).
+(We verified RE cannot validate the focal lever — it's
 depth-ambiguous — so prefer measured intrinsics when world-frame accuracy matters; it won't
 visibly change the 2D overlay.) **Full sidecar format + conversions: [CAMERA_METADATA.md](CAMERA_METADATA.md).**
 

@@ -205,7 +205,9 @@ Test-time accuracy levers (no retraining) live behind opt-in flags so the defaul
 TTA, ported from the eval into `DemoPL.predict`), camera intrinsics (`--f_px` pixels / `--intrinsics`
 JSON-NPZ sidecar with fx/fy/cx/cy or K, per-frame ok, auto-detected as `<video>.intrinsics.json` /
 `--f_mm` mm / metadata focal — all resolved in `demo.py::resolve_intrinsics`, loader in
-`gvhmr/utils/intrinsics.py`; the model consumes only `K[0,0]`+principal point, `fy` unused), and the
+`gvhmr/utils/intrinsics.py`; the model consumes only `K[0,0]`+principal point, `fy` unused; a `distortion`
+sidecar field makes `demo._apply_undistortion` rectify the staged frames + swap in a corrected pinhole K,
+since the model is pinhole-only), and the
 automatic SimpleVO carry-forward. Iterate with the 2D-reprojection + jitter proxies (no GT
 needed) — but reprojection is in-cam/depth-ambiguous and **gameable** (drop-imgseq, SMPLify
 refinement), so always pair it with jitter. Full evidence + rejected ideas in `docs/ACCURACY.md`;
