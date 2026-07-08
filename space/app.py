@@ -517,17 +517,21 @@ def _recover_gpu(
                 model_repo=hub_repo, revision=hub_revision, detector=detector, pose2d=pose2d, backbone=backbone
             )
         camera = None if static_camera else camera_backend
+        # Pass `intrinsics=` ONLY when the user uploaded a sidecar — so a default run never depends on the
+        # gvhmr version the Space bootstrapped (the kwarg exists in >=1.1.0; omitting it keeps default runs
+        # working if a cold boot lands an older wheel before the release propagates to PyPI).
+        extra = {"intrinsics": intrinsics_path} if intrinsics_path else {}
         return pipe(
             video_path,
             static_camera=static_camera,
             camera=camera,
             flip_test=flip_test,
-            intrinsics=intrinsics_path,  # optional user sidecar; None → metadata / FOV heuristic fallback
             render=False,
             progress=False,
             progress_callback=_hook,
             output_dir=str(out_dir),
             set_overrides=_cpu_preproc_overrides(pose2d, backbone),  # small CPU batch → don't OOM cpu-basic
+            **extra,
         )
 
 
