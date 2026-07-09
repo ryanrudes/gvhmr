@@ -27,6 +27,7 @@ only by the stage under test, never by *who* is being tracked.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -38,6 +39,22 @@ from gvhmr.utils.pylogger import Log
 
 #: Median-IoU threshold under which a regenerated track is considered a different person.
 IDENTITY_IOU_THR = 0.5
+
+#: The frozen baseline model per swappable stage — spelling one of these (or the legacy ``canonical``)
+#: means "the pack", not a fresh regeneration, so it normalizes to None (see :func:`normalize_stage`).
+BASELINE_STAGES: dict[str, str] = {"detector": "yolov8x", "pose2d": "vitpose", "backbone": "hmr2"}
+
+
+def normalize_stage(group: str, value: str | None) -> str | None:
+    """Map a baseline spelling (the frozen model name, the legacy ``canonical``, or None) to None.
+
+    An explicit ``--detector yolov8x`` must mean the frozen pack (not a regeneration from the re-encoded
+    video), and must share ONE cache key / slug with the None form so the two can't diverge or collide in
+    the shared ``_stages`` cache. Mirrors ``sweepcmd.resolve_combo`` for the ``gvhmr eval`` entry point,
+    which (unlike a sweep trial) does not otherwise normalize its stage flags."""
+    if value is None or value == BASELINE_STAGES.get(group) or value == "canonical":
+        return None
+    return value
 
 
 def variant_slug(
@@ -357,11 +374,22 @@ def _stage_feats(
     bbx_xys: torch.Tensor,
     stages: _LazyStages,
     overwrite: bool,
+    baseline_feats: Callable[[str], dict | None] | None = None,
 ) -> dict:
     """Per-(detector, backbone) features incl. the flip-test pass — shared by every pose2d choice:
     ``{"features", "flip_features", "flip_bbx_xys"}``."""
     from gvhmr.utils.geo.flip_utils import flip_bbx_xys
     from gvhmr.utils.video_io_utils import get_video_lwh
+
+    # When NEITHER feature-producing stage is swapped (baseline boxes AND baseline backbone), reuse the
+    # frozen pack features instead of re-running the ViT on the re-encoded composed video. Recomputing
+    # would fold a video re-encode difference into the features — a stage the swap (pose2d) never touches
+    # — silently biasing the baseline-vs-variant delta the sweep measures. (The swapped pose2d keypoints
+    # ARE still computed on the composed video; only the untouched feature stream is held at baseline.)
+    if baseline_feats is not None and detector is None and backbone in (None, "hmr2"):
+        reused = baseline_feats(vid)
+        if reused is not None:
+            return reused
 
     # feats depend on the backbone AND the boxes it runs on (detector), so both groups' overrides key it.
     key = f"{detector or 'yolov8x'}-{backbone or 'hmr2'}" + stages.override_tag("detector", "backbone")
@@ -394,6 +422,7 @@ def _extract_stages(
     vid: str,
     report: VariantReport,
     overwrite: bool,
+    baseline_feats: Callable[[str], dict | None] | None = None,
 ):
     """Assemble one sequence's artifacts from the shared stage caches (computing what's missing)."""
     detector, pose2d, backbone = combo
@@ -402,7 +431,9 @@ def _extract_stages(
         report.identity_fallbacks.append(vid)
     bbx_xys = boxes["bbx_xys"]
     kp2d = _stage_kp2d(support_dir, video_path, vid, detector, pose2d, bbx_xys, stages, overwrite)
-    feats = _stage_feats(support_dir, video_path, vid, detector, backbone, bbx_xys, stages, overwrite)
+    feats = _stage_feats(
+        support_dir, video_path, vid, detector, backbone, bbx_xys, stages, overwrite, baseline_feats=baseline_feats
+    )
     return {"bbx_xys": bbx_xys, "kp2d": kp2d, **feats}
 
 
@@ -449,15 +480,28 @@ def generate_3dpw_variant(
     flip_dir.mkdir(parents=True, exist_ok=True)
 
     stages = _LazyStages(detector, pose2d, backbone, stage_overrides)
-    new_bbx: dict = {}
-    new_kp2d: dict = {}
     bbx_pt, kp2d_pt = out / "preproc_test_bbx.pt", out / "preproc_test_kp2d.pt"
-    if bbx_pt.exists() and not overwrite:
-        new_bbx = torch.load(bbx_pt, weights_only=False)
-        new_kp2d = torch.load(kp2d_pt, weights_only=False)
+    # Resume: load each checkpoint independently (they're separate files, so after an interrupt one may
+    # exist without the other). A vid counts as done only when it's in BOTH plus its feats — see the
+    # skip-gate below and variant_complete(); a straggler present in only one is regenerated.
+    new_bbx: dict = torch.load(bbx_pt, weights_only=False) if bbx_pt.exists() and not overwrite else {}
+    new_kp2d: dict = torch.load(kp2d_pt, weights_only=False) if kp2d_pt.exists() and not overwrite else {}
+
+    def _baseline_feats(vid: str) -> dict | None:
+        """Frozen pack features for a pose2d-only swap (no re-encode confound) — None if the pack lacks them."""
+        try:
+            feat = torch.load(support_dir / f"imgfeats/3dpw_test/{vid}.pt", weights_only=False)
+            flip = torch.load(support_dir / f"imgfeats/3dpw_test_flip/{vid}.pt", weights_only=False)
+        except FileNotFoundError:
+            return None
+        return {
+            "features": feat["features"].float().cpu(),
+            "flip_features": flip["features"].float().cpu(),
+            "flip_bbx_xys": flip["bbx_xys"].float(),
+        }
 
     for vid in labels:
-        if vid in new_bbx and (feat_dir / f"{vid}.pt").exists() and not overwrite:
+        if vid in new_bbx and vid in new_kp2d and (feat_dir / f"{vid}.pt").exists() and not overwrite:
             report.cached.append(vid)
             continue
         vname = labels[vid]["vname"]
@@ -476,14 +520,18 @@ def generate_3dpw_variant(
             vid,
             report,
             overwrite,
+            baseline_feats=_baseline_feats,
         )
         new_bbx[vid] = {"bbx_xys": r["bbx_xys"]}
         new_kp2d[vid] = r["kp2d"]
         img_wh = labels[vid]["img_wh"]
-        torch.save({"features": r["features"], "bbx_xys": r["bbx_xys"], "img_wh": img_wh}, feat_dir / f"{vid}.pt")
-        torch.save({"features": r["flip_features"], "bbx_xys": r["flip_bbx_xys"]}, flip_dir / f"{vid}.pt")
-        torch.save(new_bbx, bbx_pt)  # checkpoint progress after every sequence (resumable)
-        torch.save(new_kp2d, kp2d_pt)
+        # Persist atomically and commit in an order the resume/completeness gate can trust: per-vid feats
+        # first, then kp2d, then bbx LAST. bbx is the marker the skip-gate & variant_complete key on, so
+        # writing it after kp2d guarantees "vid in bbx" ⇒ kp2d + feats are already durably on disk.
+        _atomic_save({"features": r["features"], "bbx_xys": r["bbx_xys"], "img_wh": img_wh}, feat_dir / f"{vid}.pt")
+        _atomic_save({"features": r["flip_features"], "bbx_xys": r["flip_bbx_xys"]}, flip_dir / f"{vid}.pt")
+        _atomic_save(new_kp2d, kp2d_pt)  # checkpoint progress after every sequence (resumable)
+        _atomic_save(new_bbx, bbx_pt)  # written LAST — the per-vid commit marker
         report.generated.append(vid)
         Log.info(f"[ok]{vid}[/] assembled ({len(report.generated) + len(report.cached)}/{len(labels)})")
     return report
@@ -510,6 +558,18 @@ def generate_emdb_variant(
     if overlay_pt.exists() and not overwrite:
         overlay = torch.load(overlay_pt, weights_only=False)
 
+    def _baseline_feats(vid: str) -> dict | None:
+        """Frozen pack features for a pose2d-only swap (no re-encode confound) — None if the pack lacks them."""
+        try:
+            flip = torch.load(support_dir / f"imgfeats/emdb_flip/{vid}.pt", weights_only=False)
+        except FileNotFoundError:
+            return None
+        return {
+            "features": labels[vid]["features"].float().cpu(),
+            "flip_features": flip["features"].float().cpu(),
+            "flip_bbx_xys": flip["bbx_xys"].float(),
+        }
+
     stages = _LazyStages(detector, pose2d, backbone, stage_overrides)
     for vid in labels:
         if vid in overlay and (flip_dir / f"{vid}.pt").exists() and not overwrite:
@@ -530,10 +590,13 @@ def generate_emdb_variant(
             vid,
             report,
             overwrite,
+            baseline_feats=_baseline_feats,
         )
         overlay[vid] = {"bbx_xys": r["bbx_xys"], "kp2d": r["kp2d"], "features": r["features"]}
-        torch.save({"features": r["flip_features"], "bbx_xys": r["flip_bbx_xys"]}, flip_dir / f"{vid}.pt")
-        torch.save(overlay, overlay_pt)  # checkpoint progress after every sequence (resumable)
+        # Atomic writes; the overlay (bbx+kp2d+features) is the per-vid commit marker, written after the
+        # flip file, so the skip-gate's `vid in overlay and flip exists` can never see a half-written vid.
+        _atomic_save({"features": r["flip_features"], "bbx_xys": r["flip_bbx_xys"]}, flip_dir / f"{vid}.pt")
+        _atomic_save(overlay, overlay_pt)  # written LAST — the per-vid commit marker
         report.generated.append(vid)
         Log.info(f"[ok]{vid}[/] assembled ({len(report.generated) + len(report.cached)}/{len(labels)})")
     return report
@@ -551,11 +614,14 @@ def variant_complete(dataset: str, support_dir: Path, slug: str) -> bool:
     """Whether a variant cache covers every sequence of the dataset (cheap check, no stage imports)."""
     out = support_dir / "preproc_variants" / slug
     if dataset == "3dpw":
-        if not (out / "preproc_test_bbx.pt").exists():
+        bbx_pt, kp2d_pt = out / "preproc_test_bbx.pt", out / "preproc_test_kp2d.pt"
+        if not bbx_pt.exists() or not kp2d_pt.exists():
             return False
         labels = torch.load(support_dir / "test_3dpw_gt_labels.pt", weights_only=False)
-        done = torch.load(out / "preproc_test_bbx.pt", weights_only=False)
-        return all(v in done and (out / f"imgfeats/3dpw_test/{v}.pt").exists() for v in labels)
+        done_bbx = torch.load(bbx_pt, weights_only=False)
+        done_kp2d = torch.load(kp2d_pt, weights_only=False)
+        # bbx AND kp2d membership (they're separate files — a resume can leave one behind) + feats.
+        return all(v in done_bbx and v in done_kp2d and (out / f"imgfeats/3dpw_test/{v}.pt").exists() for v in labels)
     if dataset == "emdb":
         if not (out / "emdb_preproc.pt").exists():
             return False

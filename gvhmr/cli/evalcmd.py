@@ -341,8 +341,16 @@ def run(
     import torch
 
     from gvhmr.utils import assets
+    from gvhmr.utils.eval.preproc_variants import normalize_stage
 
     names = parse_datasets(datasets)
+    # Normalize a baseline spelling (`--detector yolov8x` / `--pose2d vitpose` / `--backbone hmr2`, or the
+    # legacy `canonical`) to None: it means the FROZEN pack, not a regeneration from the re-encoded video,
+    # and must share ONE slug / stage-cache key with the None form (matching sweep's resolve_combo) so the
+    # two can't diverge or collide. Without this, `--detector yolov8x` silently regenerates a fresh track.
+    detector = normalize_stage("detector", detector)
+    pose2d = normalize_stage("pose2d", pose2d)
+    backbone = normalize_stage("backbone", backbone)
     # Split --set overrides: stage-scoped ones (detector./pose2d./backbone.) drive the preproc REGEN
     # (e.g. `--set pose2d.flip_test=false` to certify --fast); the rest tune the eval/model phase.
     _STAGE_GROUPS = ("detector", "pose2d", "backbone")
