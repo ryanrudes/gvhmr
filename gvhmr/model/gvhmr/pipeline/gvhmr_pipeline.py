@@ -316,6 +316,20 @@ def compute_extra_global_loss(inputs: dict, outputs: dict, ppl: Pipeline) -> tup
         extra_loss += static_conf_loss * weights.static_conf_bce
         extra_loss_dict["static_conf_loss"] = static_conf_loss
 
+    # Opt-in physics: world-root acceleration (jitter) penalty (docs/ROADMAP.md A3). Default-off — no key /
+    # weight 0 skips it entirely, so released training is byte-identical.
+    if weights.get("transl_w_accel", 0) > 0:
+        from gvhmr.model.gvhmr.physics_losses import velocity_smoothness_loss
+
+        gt_transl_w = inputs["smpl_params_w"]["transl"]
+        gt_global_orient_w = inputs["smpl_params_w"]["global_orient"]
+        pred_transl_w = rollout_local_transl_vel(
+            decode_dict["local_transl_vel"], gt_global_orient_w, gt_transl_w[:, [0]]
+        )
+        accel_loss = velocity_smoothness_loss(pred_transl_w, mask)
+        extra_loss += accel_loss * weights.transl_w_accel
+        extra_loss_dict["transl_w_accel_loss"] = accel_loss
+
     return extra_loss, extra_loss_dict
 
 

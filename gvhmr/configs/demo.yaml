@@ -37,6 +37,7 @@ video_path: "${output_dir}/0_input_video.mp4"
 static_cam: False
 verbose: False
 use_dpvo: False
+box_adapt: null  # detector box-distribution adapter (A4): {scale, dx, dy} to match the released framing; null = identity
 flip_test: False  # mirror-averaging TTA (benchmark accuracy; +1 feature pass). A recipe can turn it on.
 f_mm: null  # focal length of fullframe camera in mm
 f_px: null  # focal length in pixels (bypasses the mm→px conversion; overrides f_mm)

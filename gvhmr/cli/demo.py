@@ -38,6 +38,7 @@ from gvhmr.utils.intrinsics import load_intrinsics_file, load_intrinsics_for_und
 from gvhmr.utils.net_utils import detach_to_cpu
 from gvhmr.utils.postproc_world import compose_world_from_dust3r
 from gvhmr.utils.preproc.base import make_backbone, make_detector, make_pose2d, missing_requirements
+from gvhmr.utils.preproc.box_adapter import BoxAdapter
 from gvhmr.utils.pylogger import Log
 from gvhmr.utils.smplx_utils import make_smplx
 from gvhmr.utils.video_io_utils import (
@@ -468,6 +469,12 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
             tracker = make_detector(cfg.detector.name, **_ctor_kwargs(cfg.detector))
             bbx_xyxy = tracker.get_one_track(video_path).float()  # (L, 4)
             bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy, base_enlarge=1.2).float()  # (L, 3)
+            # Optional box-distribution adapter (A4): renormalize a swapped detector's framing toward the
+            # released distribution the pipeline expects. Default null → identity → skipped (byte-identical).
+            adapter = BoxAdapter.from_config(cfg.get("box_adapt", None))
+            if not adapter.is_identity:
+                bbx_xys = adapter.apply(bbx_xys).float()
+                Log.info(f"box adapter: scale {adapter.scale:.3f}, shift ({adapter.dx:+.3f}, {adapter.dy:+.3f})·size")
             torch.save({"bbx_xyxy": bbx_xyxy, "bbx_xys": bbx_xys}, paths.bbx)
             del tracker
         else:

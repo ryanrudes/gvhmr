@@ -67,7 +67,8 @@ The network only consumes rotation, so this is entirely preproc + the compose:
 
 Wire the existing `static_conf` foot/wrist contact prediction (joints `[7,10,8,11,20,21]`,
 `static_conf_bce`) into a contact-consistency + non-penetration + velocity loss. Targets `fs`, `jitter`,
-world realism.
+world realism. *Loss functions are written + tested (`model/gvhmr/physics_losses.py`); the velocity term
+is wired (default-off). See "Status" for the contact/penetration wiring blocker.*
 
 ### A4 — Inference-only levers (no retrain)
 
@@ -142,3 +143,26 @@ network.imgseq_dim=<D>` on the new feature dirs; (5) `gvhmr eval` / `gvhmr sweep
 **To add a modern metric-depth model:** implement a `MetricDepth` class (emit metres-valued depth), add a
 `make_metric_depth` branch, set `camera.depth_model=<name>`, and A/B with `tools/eval/eval_world.py`
 (`gt-cam` vs `dust3r`).
+
+**A3 physics losses + A4 box-adapter landed** (CI-green, behavior-preserving):
+
+- **A3** — `gvhmr/model/gvhmr/physics_losses.py`: `velocity_smoothness_loss` (wired into
+  `compute_extra_global_loss`, `weights.transl_w_accel` default-off → training byte-identical),
+  `foot_contact_loss` + `ground_penetration_loss` (written + tested, **not yet wired**: they need predicted
+  **world** joints, which the pipeline FKs only at inference via the slow for-loop `get_smpl_params_w_Rt_v2`
+  — the concrete A3 follow-on is a fast, differentiable training-time world-joint FK). Enable the physics
+  retrain by adding weights and, once wired, the contact/penetration terms; validate on `fs`/`jitter`.
+- **A4** — `gvhmr/utils/preproc/box_adapter.py`: `BoxAdapter` (normalized affine on `(cx,cy,size)`, default
+  identity) + `fit_box_adapter` (calibrate new→baseline from paired boxes). Wired into the demo behind
+  `box_adapt` (default null → skipped → golden-identical). **Empirical validation pending:** calibrate on a
+  detector's eval-pack boxes vs baseline, regenerate the variant with adapted boxes, and `gvhmr eval` to
+  measure how much of the framing penalty (e.g. yolo26x's −19% PA-MPJPE) it recovers.
+
+## Regime B status
+
+B is a research program, not a scaffold — its value is a multi-week training effort (joint backbone
+fine-tuning, a metric-camera conditioning stream, whole-clip context, physics), not code that can be
+"stubbed". The migration path above is the concrete entry: land the A-series (backbone + world stack +
+physics), then take B one measurable rung at a time (backbone LoRA → camera conditioning → full joint
+training), each gated on `gvhmr eval` / `eval_world.py`. The additive-fusion architecture means the new
+conditioning streams B needs are one-embedder changes, and the seams from A1/A2 are the plug points.
