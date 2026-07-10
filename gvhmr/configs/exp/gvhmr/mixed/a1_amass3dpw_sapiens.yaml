@@ -1,0 +1,67 @@
+# @package _global_
+# ROADMAP A1 real backbone A/B — the SAPIENS arm. Trains on AMASS (motion) + 3DPW-train with Sapiens
+# (0.3b, 1024-d) image features, identical recipe to a1_amass3dpw_hmr2 except the backbone. A reduced,
+# finishable run (BEDLAM/H36M are blocked — they ship features, not frames). Validation is OFF: a Sapiens
+# model can't validate on the pack's HMR2 test features; the proper 3DPW eval (Sapiens test features) is
+# run separately after training. See docs/ROADMAP.md A1.
+defaults:
+    - override /data: mocap/trainX_testY
+    - override /model: gvhmr/gvhmr_pl
+    - override /endecoder: gvhmr/v1_amass_local_bedlam_cam
+    - override /optimizer: adamw_2e-4
+    - override /scheduler_cfg: epoch_half_200_350
+    - override /train_datasets:
+          - pure_motion_amass/v11
+          - imgfeat_3dpw/sapiens
+    - override /test_datasets:
+          - 3dpw/fliptest
+    - override /callbacks:
+          - simple_ckpt_saver/every10e_top100
+          - prog_bar/prog_reporter_every0.1
+          - train_speed_timer/base
+    - override /network: gvhmr/relative_transformer
+
+exp_name_base: a1_amass3dpw_sapiens
+exp_name_var: ""
+exp_name: ${exp_name_base}${exp_name_var}
+data_name: a1_amass3dpw_sapiens
+
+network:
+    imgseq_dim: 1024 # sapiens 0.3b
+
+pipeline:
+    _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline
+    args_denoiser3d: ${network}
+    args:
+        endecoder_opt: ${endecoder}
+        normalize_cam_angvel: True
+        weights:
+            cr_j3d: 500.
+            transl_c: 1.
+            cr_verts: 500.
+            j2d: 1000.
+            verts2d: 1000.
+            transl_w: 1.
+            static_conf_bce: 1.
+        static_conf:
+            vel_thr: 0.15
+
+data:
+    limit_each_trainset: 3000 # cap AMASS for a finishable run (3DPW's 16 seqs are unaffected)
+    loader_opts:
+        train:
+            batch_size: 128
+            num_workers: 8
+        val:
+            batch_size: 1
+            num_workers: 2
+
+pl_trainer:
+    precision: 16-mixed
+    log_every_n_steps: 20
+    gradient_clip_val: 0.5
+    max_epochs: 200
+    limit_val_batches: 0 # validation off (see header) — eval Sapiens separately after training
+    num_sanity_val_steps: 0
+    check_val_every_n_epoch: 1000
+    devices: 2
