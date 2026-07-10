@@ -1,0 +1,11 @@
+# Image-feature backbone — Sapiens (Meta's human-centric ViT, 2024). Pretrained on 300M+ human images at
+# high resolution, so its features are far more human-specialized than HMR2's 2023 ViT — the top backbone
+# candidate for the retrain bake-off (docs/ROADMAP.md, Plan A1).
+#
+# NOT usable with the released 1024-d checkpoint at inference: extract features with it
+# (`gvhmr extract-features --backbone sapiens`), set network.imgseq_dim to the new width, then RETRAIN.
+# See docs/EXTENSIBILITY.md Tier B. Needs a downloaded 'sapiens-lite' TorchScript encoder — set `checkpoint`.
+name: sapiens
+model_name: sapiens_0.6b # 0.3b/0.6b/1b/2b → 1024/1280/1536/1920-d (verified at first forward)
+checkpoint: null # path to a sapiens-lite TorchScript encoder (*_torchscript.pt2); abs or under checkpoints root
+input_hw: [1024, 768] # Sapiens pretrain resolution (H, W); match your export if it's a fixed size

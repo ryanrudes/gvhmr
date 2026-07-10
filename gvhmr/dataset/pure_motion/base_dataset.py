@@ -15,10 +15,14 @@ from .utils import *
 
 
 class BaseDataset(Dataset):
-    def __init__(self, cam_augmentation, limit_size=None):
+    def __init__(self, cam_augmentation, limit_size=None, imgseq_dim: int = 1024):
         super().__init__()
         self.cam_augmentation = cam_augmentation
         self.limit_size = limit_size
+        # Motion-only datasets have no image features — f_imgseq is a masked-off zeros PLACEHOLDER, but its
+        # width must still match the network's imgseq_dim so batches collate with the feature datasets. 1024
+        # (HMR2) by default; set to the backbone's feat_dim when retraining on a different backbone.
+        self.imgseq_dim = imgseq_dim
         self.smplx = make_smplx("supermotion")
         self.smplx_lite = make_smplx("supermotion_smpl24")
 
@@ -157,7 +161,7 @@ class BaseDataset(Dataset):
             "gravity_vec": gravity_vec,  # (3)
             "bbx_xys": torch.zeros((length, 3)),  # (F, 3)  # NOTE: a placeholder
             "K_fullimg": K_fullimg,  # (F, 3, 3)
-            "f_imgseq": torch.zeros((length, 1024)),  # (F, D)  # NOTE: a placeholder
+            "f_imgseq": torch.zeros((length, self.imgseq_dim)),  # (F, D)  # NOTE: masked-off placeholder
             "kp2d": torch.zeros(length, 17, 3),  # (F, 17, 3)
             "cam_angvel": cam_angvel,  # (F, 6)
             "mask": {

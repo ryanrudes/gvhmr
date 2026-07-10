@@ -168,3 +168,8 @@ MainStore.store(  # re-extracted DINOv2 features (Tier B backbone swap)
     node=builds(ThreedpwSmplDataset, imgfeat_subdir="imgfeats/3dpw_train_dinov2"),
     group="train_datasets/imgfeat_3dpw",
 )
+MainStore.store(  # re-extracted Sapiens features (Tier B backbone swap) — see docs/ROADMAP.md A1
+    name="sapiens",
+    node=builds(ThreedpwSmplDataset, imgfeat_subdir="imgfeats/3dpw_train_sapiens"),
+    group="train_datasets/imgfeat_3dpw",
+)

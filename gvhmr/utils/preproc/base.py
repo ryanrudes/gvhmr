@@ -54,7 +54,7 @@ class FeatureBackbone(Protocol):
 # Registered backend names (kept here so callers/tests can enumerate without importing the heavy impls).
 DETECTORS = ("yolo",)
 POSE2D = ("vitpose", "rtmpose")
-BACKBONES = ("hmr2", "dinov2")
+BACKBONES = ("hmr2", "dinov2", "sapiens")
 
 #: What each selectable backend needs beyond the base install: ``stage:backend`` → (probe module, how to
 #: install it). Lets the demo fail fast with the exact command instead of a mid-run ImportError traceback.
@@ -170,6 +170,14 @@ def make_backbone(name: str = "hmr2", **kwargs) -> FeatureBackbone:
             from gvhmr.utils.preproc.dinov2_backbone import DINOv2Backbone
 
             return DINOv2Backbone(**kwargs)
+
+        return _resident("backbone", name, kwargs, build)
+    if name == "sapiens":
+
+        def build():
+            from gvhmr.utils.preproc.sapiens_backbone import SapiensBackbone
+
+            return SapiensBackbone(**kwargs)
 
         return _resident("backbone", name, kwargs, build)
     raise KeyError(f"unknown backbone {name!r}; registered: {BACKBONES}")

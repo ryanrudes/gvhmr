@@ -19,6 +19,7 @@ class AmassDataset(BaseDataset):
         cam_augmentation="v11",
         random1024=False,  # DEBUG
         limit_size=None,
+        imgseq_dim=1024,  # width of the masked-off f_imgseq placeholder; match network.imgseq_dim on a retrain
     ):
         self.root = DATA_ROOT / "AMASS/hmr4d_support"  # honours $GVHMR_DATA_ROOT (default inputs/)
         self.motion_frames = motion_frames
@@ -26,7 +27,7 @@ class AmassDataset(BaseDataset):
         self.random1024 = random1024
         self.skip_moyo = skip_moyo
         self.dataset_name = "AMASS"
-        super().__init__(cam_augmentation, limit_size)
+        super().__init__(cam_augmentation, limit_size, imgseq_dim=imgseq_dim)
 
     def _load_dataset(self):
         filename = self.root / "smplxpose_v2.pth"
@@ -113,4 +114,10 @@ class AmassDataset(BaseDataset):
 
 
 group_name = "train_datasets/pure_motion_amass"
-MainStore.store(name="v11", node=builds(AmassDataset, cam_augmentation="v11"), group=group_name)
+# imgseq_dim follows the network's width (interpolated) so the masked-off f_imgseq placeholder collates
+# with the feature datasets under ANY backbone — 1024 for the released HMR2 default, D for a retrain.
+MainStore.store(
+    name="v11",
+    node=builds(AmassDataset, cam_augmentation="v11", imgseq_dim="${network.imgseq_dim}"),
+    group=group_name,
+)
