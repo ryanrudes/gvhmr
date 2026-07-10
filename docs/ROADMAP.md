@@ -151,9 +151,17 @@ exp=gvhmr/mixed/mixed network.imgseq_dim=<D>` on the new feature dirs; (3) `gvhm
   demo threads it.
 - `tests/test_metric_depth.py` pins the registry, the seam, and the scale math.
 
-**To add a modern metric-depth model:** implement a `MetricDepth` class (emit metres-valued depth), add a
-`make_metric_depth` branch, set `camera.depth_model=<name>`, and A/B with `tools/eval/eval_world.py`
-(`gt-cam` vs `dust3r`).
+**UniDepth-V2 landed + validated with real weights (a big win).** `UniDepthMetric` (2024, predicts metric
+depth + intrinsics) is implemented behind the seam (`make_metric_depth("unidepth")`; cloned into
+`third-party/UniDepth`, sys.path-imported like dust3r/vggt — no env changes). Real A/B on 3DPW, both models
+through the seam, metric depth at the tracked person (n=18): **DA-V2 MAE 6.82 m (bias +6.8), UniDepth MAE
+1.31 m — 5× better.** The released DA-V2 is the *VKITTI outdoor-driving* model (`max_depth=80`), badly
+miscalibrated for human-scale depth — exactly the range that fixes the world scale. Set
+`camera.depth_model=unidepth` on dust3r/vggt to use it. Confirmatory next step: run the full scale-fix A/B
+(VGGT reconstruction → each model's `metric_scale_from_depths` → vs 3DPW GT scale) and the world metrics.
+
+**To add another metric-depth model:** implement a `MetricDepth` class (emit metres-valued depth), add a
+`make_metric_depth` branch, set `camera.depth_model=<name>`, and A/B with `tools/eval/eval_world.py`.
 
 **A3 physics losses + A4 box-adapter landed** (CI-green, behavior-preserving):
 

@@ -21,7 +21,7 @@ from typing import Protocol, runtime_checkable
 import numpy as np
 
 #: Implemented metric-depth backends (add a branch in ``make_metric_depth`` + list it here to register one).
-METRIC_DEPTH_MODELS = ("depth_anything_v2",)
+METRIC_DEPTH_MODELS = ("depth_anything_v2", "unidepth")
 
 
 @runtime_checkable
@@ -60,6 +60,48 @@ class DepthAnythingV2Metric:
             return self.model.infer_image(cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR), input_size=self.input_size)
 
 
+class UniDepthMetric:
+    """UniDepth-V2 (2024) metric depth — a modern alternative to DA-V2, behind the same A2 seam.
+
+    Unlike DA-V2 (relative depth + a learned metric head), UniDepth predicts metric depth AND camera
+    intrinsics directly from a single image, which tends to give a cleaner global scale. Cloned into
+    ``third-party/UniDepth`` (the dust3r/vggt convention) and imported via sys.path — no env changes. Ignores
+    ``max_depth`` (UniDepth needs no clamp). Backbone weights auto-download from the HF hub on first use.
+    """
+
+    def __init__(self, backbone: str = "vitl14", device: str | None = None):
+        import json
+        import sys
+
+        import huggingface_hub
+        import torch
+
+        from gvhmr.utils.device import get_device
+
+        repo = Path(__file__).resolve().parents[3] / "third-party" / "UniDepth"
+        if not repo.exists():
+            raise FileNotFoundError(
+                f"UniDepth not found at {repo} — clone it there "
+                "(git clone https://github.com/lpiccinelli-eth/UniDepth third-party/UniDepth), same as dust3r/vggt."
+            )
+        sys.path.insert(0, str(repo))
+        from unidepth.models import UniDepthV2
+
+        with open(repo / "configs" / f"config_v2_{backbone}.json") as f:
+            config = json.load(f)
+        model = UniDepthV2(config)  # from_pretrained's hub-mixin path is version-fragile; load weights manually
+        ckpt = huggingface_hub.hf_hub_download(f"lpiccinelli/unidepth-v2-{backbone}", "pytorch_model.bin")
+        model.load_state_dict(torch.load(ckpt, map_location="cpu"), strict=False)
+        self.model = model.to(device or str(get_device())).eval()
+
+    def infer(self, frame_rgb: np.ndarray) -> np.ndarray:
+        import torch
+
+        rgb = torch.from_numpy(np.ascontiguousarray(frame_rgb)).permute(2, 0, 1)  # (3, H, W) uint8 RGB
+        with torch.no_grad():
+            return self.model.infer(rgb)["depth"].squeeze().float().cpu().numpy()
+
+
 def make_metric_depth(
     name: str = "depth_anything_v2", *, ckpt: Path | None = None, max_depth: float = 80.0, device: str | None = None
 ) -> MetricDepth:
@@ -70,10 +112,12 @@ def make_metric_depth(
 
             ckpt = _DA_CKPT
         return DepthAnythingV2Metric(ckpt, max_depth=max_depth, device=device)
-    if name in ("unidepth", "metric3d"):  # the A2 seam — implement mirroring DepthAnythingV2Metric
+    if name == "unidepth":
+        return UniDepthMetric(device=device)
+    if name == "metric3d":  # A2 seam — needs mmcv (absent); add a class mirroring UniDepthMetric to enable
         raise NotImplementedError(
-            f"metric-depth model {name!r} is a ROADMAP A2 stub — add a class emitting metres-valued depth "
-            f"(the MetricDepth protocol) and a branch here, then A/B it with tools/eval/eval_world.py."
+            "metric-depth model 'metric3d' is a ROADMAP A2 stub — add a class emitting metres-valued depth "
+            "(the MetricDepth protocol) and a branch here, then A/B it with tools/eval/eval_world.py."
         )
     raise KeyError(f"unknown metric-depth model {name!r}; registered: {METRIC_DEPTH_MODELS}")
 

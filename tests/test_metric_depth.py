@@ -29,15 +29,16 @@ class _ConstDepth:
         return np.full(frame_rgb.shape[:2], self.metres, dtype="f4")
 
 
-def test_registry_protocol_and_unimplemented_seam():
-    assert "depth_anything_v2" in METRIC_DEPTH_MODELS
+def test_registry_protocol_and_seam():
+    assert "depth_anything_v2" in METRIC_DEPTH_MODELS and "unidepth" in METRIC_DEPTH_MODELS
     assert isinstance(_ConstDepth(1.0), MetricDepth)  # protocol is structural — any conformer drops in
     assert not isinstance(object(), MetricDepth)
     with pytest.raises(KeyError):
         make_metric_depth("nope")
-    for stub in ("unidepth", "metric3d"):  # the A2 alternatives: declared, not yet built → loud, not silent
-        with pytest.raises(NotImplementedError):
-            make_metric_depth(stub)
+    with pytest.raises(NotImplementedError):  # metric3d needs mmcv (absent) — still a stub
+        make_metric_depth("metric3d")
+    # unidepth is implemented (UniDepthMetric); constructing it needs the third-party/UniDepth clone + a
+    # GPU, so it's not built here — the A2 A/B validates it out-of-band.
 
 
 def test_scale_is_median_metric_over_recon_ratio():
