@@ -62,13 +62,20 @@ def variant_slug(
 ) -> str:
     """Deterministic cache name for a stage selection (baseline models spelled out, e.g. ``yolo26x-vitpose``).
     Stage ``--set`` knobs (e.g. ``pose2d.flip_test=false``) fold into the slug so different knob sets
-    don't collide in the cache — ``yolov8x-vitpose__pose2d.flip_test=false``."""
+    don't collide in the cache — ``yolov8x-vitpose__pose2d.flip_test-false``.
+
+    The knob tag is sanitized to be BOTH filesystem- and hydra-override-safe: ``=``/``,`` are stripped
+    because the slug is later passed as ``preproc_variant=<slug>`` to the eval task, and a ``=`` inside the
+    value breaks hydra's override parser (this silently broke a ``--backbone sapiens --set backbone.checkpoint=…``
+    eval)."""
     parts = [detector or "yolov8x", pose2d or "vitpose"]
     if backbone and backbone != "hmr2":
         parts.append(backbone)
     slug = "-".join(parts)
     if stage_overrides:
-        tag = ",".join(sorted(stage_overrides)).replace("/", "").replace(" ", "")
+        tag = ",".join(sorted(stage_overrides))
+        for a, b in (("/", ""), (" ", ""), ("=", "-"), (",", "_")):  # override-value-safe (no '=' or ',')
+            tag = tag.replace(a, b)
         slug = f"{slug}__{tag}"
     return slug
 

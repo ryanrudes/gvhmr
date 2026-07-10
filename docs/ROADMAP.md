@@ -137,9 +137,30 @@ assumptions: the pretrain encoders are traced at a **fixed 1024²** (not 1024×7
 **1-tuple** wrapping the `(B, C, 64, 64)` feature map (both fixed in `sapiens_backbone.py`). So the extractor
 works end-to-end; the retrain is now just compute:
 
-**To make it a full run:** (1) `gvhmr extract-features --backbone sapiens --set backbone.checkpoint=<pt2>`
-over BEDLAM/H36M/3DPW-train (note: 1024² ViT is heavy — plan the GPU-days); (2) `gvhmr train
-exp=gvhmr/mixed/mixed network.imgseq_dim=<D>` on the new feature dirs; (3) `gvhmr eval` / `gvhmr sweep`.
+**Real A/B run (reduced) — Sapiens LOST, refuting the "backbone is the biggest win" hypothesis.** Trained the
+motion head on AMASS(capped)+3DPW-train with Sapiens-0.3b vs HMR2 features, identical recipe, evaluated on
+3DPW-test:
+
+| 3DPW-test | HMR2 | Sapiens-0.3b |
+|---|---|---|
+| **PA-MPJPE** | **42.8** | **74.5** |
+| MPJPE | 69.6 | 121.2 |
+| PVE | 82.0 | 145.2 |
+| Accel | 9.8 | 7.9 |
+
+Sapiens is **~2× worse**. The reason is real: HMR2's feature is the **SMPL-head token — task-trained for mesh
+recovery**; Sapiens's is a *generic* MAE-pretrain feature, and I fed it naively. This refutes "Sapiens is a
+drop-in win" but NOT "Sapiens can't help" — the integration was weak in three ways that likely each cost a
+lot: (1) smallest model (0.3b), (2) **global-average-pooling** the `(C,64,64)` map to one vector (throwing away
+spatial structure HMR2's learned token keeps — probably the biggest culprit), (3) the pretrain encoder, not
+Sapiens's pose head. Matches this session's theme: a "better" generic model doesn't beat task-specific
+features without careful integration. Both numbers are low (vs the released 36.2) because it's a reduced
+AMASS+3DPW train — the A/B is controlled, so the relative verdict holds.
+
+**A fair Sapiens test would need:** a larger variant, a *learned* pooling / the pose-head features (not GAP),
+possibly fine-tuning — i.e. a real feature-design effort, not a drop-in. **To retry the full run:**
+`gvhmr extract-features --backbone sapiens …` over BEDLAM/H36M/3DPW-train (1024² ViT — GPU-days) then
+`gvhmr train … network.imgseq_dim=<D>`.
 
 **A2 metric-depth seam landed** (Plan A2.1), CI-green, behavior-preserving:
 

@@ -27,6 +27,14 @@ def test_variant_slug_spells_out_defaults():
     assert variant_slug("yolo26x", None, "dinov2") == "yolo26x-vitpose-dinov2"
 
 
+def test_variant_slug_is_hydra_override_safe():
+    # --set knobs fold into the slug, but the slug is later passed as `preproc_variant=<slug>`, so the tag
+    # must contain no '=' or ',' — they break hydra's override parser (this once broke a real sapiens eval).
+    slug = variant_slug(None, None, "sapiens", ["backbone.checkpoint=/data/x.pt2", "backbone.model_name=sapiens"])
+    assert "=" not in slug and "," not in slug and "/" not in slug
+    assert slug.startswith("yolov8x-vitpose-sapiens__")
+
+
 def test_xys_iou_geometry():
     a = torch.tensor([[100.0, 100.0, 50.0]])
     assert xys_iou(a, a.clone()).item() == 1.0  # identical squares
