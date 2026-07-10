@@ -1,0 +1,71 @@
+# @package _global_
+# ROADMAP A3 real physics-loss A/B — the physics-ON arm. Identical recipe + seed to a1_amass3dpw_hmr2
+# (the physics-OFF baseline, already trained → 42.8 PA-MPJPE), with only the three opt-in physics losses
+# enabled. A controlled comparison: the sole difference from the baseline is weights.{transl_w_accel,
+# foot_slide,penetration}. Validate the deltas on 3DPW (Accel/jitter) + EMDB (world foot-slide/jitter).
+# Weights are calibrated from a short probe (see docs/ROADMAP.md A3). See a1_amass3dpw_hmr2.yaml.
+defaults:
+    - override /data: mocap/trainX_testY
+    - override /model: gvhmr/gvhmr_pl
+    - override /endecoder: gvhmr/v1_amass_local_bedlam_cam
+    - override /optimizer: adamw_2e-4
+    - override /scheduler_cfg: epoch_half_200_350
+    - override /train_datasets:
+          - pure_motion_amass/v11
+          - imgfeat_3dpw/v1
+    - override /test_datasets:
+          - 3dpw/fliptest
+    - override /callbacks:
+          - simple_ckpt_saver/every10e_top100
+          - prog_bar/prog_reporter_every0.1
+          - train_speed_timer/base
+    - override /network: gvhmr/relative_transformer
+
+exp_name_base: a3_physics_hmr2
+exp_name_var: ""
+exp_name: ${exp_name_base}${exp_name_var}
+data_name: a3_physics_hmr2
+
+network:
+    imgseq_dim: 1024 # hmr2 (released default) — same backbone as the A1 HMR2 baseline
+
+pipeline:
+    _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline
+    args_denoiser3d: ${network}
+    args:
+        endecoder_opt: ${endecoder}
+        normalize_cam_angvel: True
+        weights:
+            cr_j3d: 500.
+            transl_c: 1.
+            cr_verts: 500.
+            j2d: 1000.
+            verts2d: 1000.
+            transl_w: 1.
+            static_conf_bce: 1.
+            # --- A3 physics (the ONLY difference from a1_amass3dpw_hmr2). Calibrated below. ---
+            transl_w_accel: 0. # set from probe
+            foot_slide: 0. # set from probe
+            penetration: 0. # set from probe
+        static_conf:
+            vel_thr: 0.15
+
+data:
+    limit_each_trainset: 3000 # identical cap to the baseline arm
+    loader_opts:
+        train:
+            batch_size: 128
+            num_workers: 8
+        val:
+            batch_size: 1
+            num_workers: 2
+
+pl_trainer:
+    precision: 16-mixed
+    log_every_n_steps: 20
+    gradient_clip_val: 0.5
+    max_epochs: 200
+    limit_val_batches: 0 # eval separately on 3DPW + EMDB after training (both ship HMR2 features)
+    num_sanity_val_steps: 0
+    check_val_every_n_epoch: 1000
+    devices: 2

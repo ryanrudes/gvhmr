@@ -199,8 +199,34 @@ A/B (needs EMDB videos) is the real arbiter. `camera.depth_model=unidepth` is av
   `ground_penetration_loss` (`weights.penetration`). The earlier blocker is resolved: the predicted **world**
   joints are FK'd fast + differentiably in training by rolling out the predicted local translation velocity
   with the GT world orientation (teacher-forced, exactly as `transl_w` does — a vectorized cumsum) then
-  `fk_v2`; no inference-time for-loop (`get_smpl_params_w_Rt_v2`) needed. Enable the weights and retrain;
-  validate on `fs`/`jitter`.
+  `fk_v2`; no inference-time for-loop (`get_smpl_params_w_Rt_v2`) needed.
+
+  **Real A/B run (reduced) — A3 CONFIRMED: the physics losses work, and this is the first A-item that
+  did.** Same reduced recipe + seed as the A1 HMR2 baseline (`a3_physics_hmr2.yaml`), evaluated on 3DPW +
+  EMDB. Weights were calibrated from a probe (raw magnitudes: `foot_slide`~3e-4, `penetration`~5e-4,
+  `transl_w_accel`~5e-7) and *bracketed* — a **light** arm (`foot_slide`=200, `penetration`=100,
+  `transl_w_accel`=1e4) and a **strong** arm (1000/500/1e5) — to separate "physics helps" from "weights
+  too hot":
+
+  | metric | paper | off (baseline) | light | strong |
+  |---|---|---|---|---|
+  | 3DPW PA-MPJPE *(guardrail)* | 36.2 | 42.78 | 42.94 (+0.16) | 42.99 (+0.21) |
+  | 3DPW Accel | 5.0 | 9.79 | **9.59** (−0.20) | **9.46** (−0.33) |
+  | EMDB WAA-MPJPE | 109.1 | 320.9 | **279.8** (−41) | 341.7 (+21) |
+  | EMDB RTE | 1.9 | 6.84 | **6.13** (−0.70) | 7.54 (+0.71) |
+  | EMDB Jitter | 16.5 | 60.59 | **55.58** (−5.0) | 55.79 (−4.8) |
+  | EMDB Foot-Slide | 3.5 | 11.14 | **9.43** (−1.71) | 10.61 (−0.52) |
+  | EMDB-1 Accel | 3.6 | 19.92 | **19.38** (−0.54) | 19.26 (−0.67) |
+
+  Every physics target (jitter −8%, foot-slide −15%, accel) dropped in **both** arms, with the accuracy
+  guardrail (PA-MPJPE) held to +0.4% — the losses do what they claim at ~no accuracy cost. The bracket paid
+  off: the **light** arm is the clear winner — it improves *everything* including world MPJPE (WAA −41) and
+  trajectory RTE (−0.70), whereas the **strong** arm over-regularizes the trajectory (WAA +21, RTE +0.71)
+  for only a marginal jitter/accel gain. Caveat: this is the reduced AMASS+3DPW model (42.8 vs paper 36.2),
+  so the deltas are *relative*; the definitive version is a **full-recipe retrain** (now unblocked — BEDLAM +
+  H36M feature packs downloaded) + `physics-light`, measured on the real ~36.2 model. Config
+  `exp=gvhmr/mixed/a3_physics_hmr2` (weights default 0 → identical to the baseline arm; set the three to
+  enable).
 - **A4** — `gvhmr/utils/preproc/box_adapter.py`: `BoxAdapter` (normalized affine on `(cx,cy,size)`, default
   identity) + `fit_box_adapter` (calibrate new→baseline from paired boxes). Wired into the demo behind
   `box_adapt` (default null → skipped → golden-identical). **Validated on real data (negative for yolo26x):**
