@@ -53,8 +53,9 @@ Steps:
 ### A2 — World-grounding upgrade (biggest headroom vs paper, no retrain)
 
 The network only consumes rotation, so this is entirely preproc + the compose:
-1. **Modern metric depth** (UniDepth / Metric3D-v2) in the scale step (`dust3r_slam.py:123–140`, shared by
-   `vggt_slam.py`) — directly improves RTE / WA-MPJPE.
+1. **Modern metric depth** (UniDepth / Metric3D-v2) in the scale step — directly improves RTE / WA-MPJPE.
+   *The scale step is now a swappable `MetricDepth` seam (see "Status") — implement a class + a
+   `make_metric_depth` branch, no backend edits.*
 2. **Stronger feed-forward geometry** (VGGT present; add MASt3R-class) behind the same `{T_w2c, scale}`
    contract.
 3. **Replace the heuristic frequency-graft** (`compose_world_from_dust3r:46–47`) with a learned residual or
@@ -127,3 +128,17 @@ order, `weights_only=False` loads, the `imgseq_dim` guard.
 (2) confirm the encoder's input size / feature tap against `sapiens_backbone.py`'s notes; (3)
 `gvhmr extract-features` over BEDLAM/H36M/3DPW-train; (4) `gvhmr train exp=gvhmr/mixed/mixed
 network.imgseq_dim=<D>` on the new feature dirs; (5) `gvhmr eval` / `gvhmr sweep`.
+
+**A2 metric-depth seam landed** (Plan A2.1), CI-green, behavior-preserving:
+
+- `gvhmr/utils/preproc/metric_depth.py` — `MetricDepth` protocol + `make_metric_depth` registry +
+  `metric_scale_from_depths` (the median-ratio scale math, byte-identical). Default `depth_anything_v2`
+  wraps the released DA-V2; `unidepth`/`metric3d` are declared stubs that raise until implemented.
+- `dust3r_slam.py` / `vggt_slam.py` refactored onto the shared seam (dedup'd; the released scale step is
+  unchanged), with a `depth_model` kwarg; `configs/camera/{dust3r,vggt}.yaml` expose `depth_model` and the
+  demo threads it.
+- `tests/test_metric_depth.py` pins the registry, the seam, and the scale math.
+
+**To add a modern metric-depth model:** implement a `MetricDepth` class (emit metres-valued depth), add a
+`make_metric_depth` branch, set `camera.depth_model=<name>`, and A/B with `tools/eval/eval_world.py`
+(`gt-cam` vs `dust3r`).

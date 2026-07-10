@@ -561,7 +561,11 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
                     from gvhmr.utils.preproc.dust3r_slam import run_dust3r_slam
 
                     with status("DUSt3R scene-aware camera tracking"):
-                        result = run_dust3r_slam(cfg.video_path, max_depth=cam.max_depth)
+                        result = run_dust3r_slam(
+                            cfg.video_path,
+                            max_depth=cam.max_depth,
+                            depth_model=cam.get("depth_model", "depth_anything_v2"),
+                        )
                     Log.info(f"DUSt3R camera: scale {result['scale']:.1f}, reconstruction conf {result['conf']:.2f}")
                     torch.save(result["T_w2c"], paths.slam)
                 elif cam.name == "vggt":
@@ -570,7 +574,11 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
                     from gvhmr.utils.preproc.vggt_slam import run_vggt_slam
 
                     with status("VGGT scene-aware camera tracking"):
-                        result = run_vggt_slam(cfg.video_path, max_depth=cam.max_depth)
+                        result = run_vggt_slam(
+                            cfg.video_path,
+                            max_depth=cam.max_depth,
+                            depth_model=cam.get("depth_model", "depth_anything_v2"),
+                        )
                     Log.info(f"VGGT camera: scale {result['scale']:.1f}, depth conf {result['conf']:.2f}")
                     torch.save(result["T_w2c"], paths.slam)
                 elif cam.name == "dpvo":

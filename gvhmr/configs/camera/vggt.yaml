@@ -5,3 +5,4 @@
 # scripts/setup_scene_aware.sh. Writes (L,4,4) metric T_w2c. See gvhmr/utils/preproc/vggt_slam.py.
 name: vggt
 max_depth: 80.0 # clamp (metres) for the Depth-Anything metric-depth scale fit
+depth_model: depth_anything_v2 # metric-depth model that fixes the global scale (swappable — see ROADMAP A2)
