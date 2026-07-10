@@ -65,10 +65,11 @@ The network only consumes rotation, so this is entirely preproc + the compose:
 
 ### A3 — Physics / contact realism (cheap retrain)
 
-Wire the existing `static_conf` foot/wrist contact prediction (joints `[7,10,8,11,20,21]`,
-`static_conf_bce`) into a contact-consistency + non-penetration + velocity loss. Targets `fs`, `jitter`,
-world realism. *Loss functions are written + tested (`model/gvhmr/physics_losses.py`); the velocity term
-is wired (default-off). See "Status" for the contact/penetration wiring blocker.*
+Contact-consistency + non-penetration + velocity losses on the predicted world motion. Targets `fs`,
+`jitter`, world realism. **Done (all three wired, default-off)** — `model/gvhmr/physics_losses.py`, gated by
+`weights.{foot_slide,penetration,transl_w_accel}`. The predicted world joints are FK'd fast + differentiably
+(roll out the predicted translation with the GT world orientation — teacher-forced, as `transl_w` does —
+then `fk_v2`; no inference for-loop). Enable the weights and retrain; validate on `fs`/`jitter`.
 
 ### A4 — Inference-only levers (no retrain)
 

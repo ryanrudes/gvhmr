@@ -3,13 +3,14 @@
 Pure loss functions targeting world-motion realism (foot sliding, ground penetration, jitter). They are
 weight-gated in the pipeline (a weight of 0 skips them), so the released training is byte-identical.
 
-Wiring status:
-- ``velocity_smoothness_loss`` is WIRED into ``compute_extra_global_loss`` (it needs only the rolled-out
-  world translation, already available in training) — enable with ``weights.transl_w_accel > 0``.
-- ``foot_contact_loss`` / ``ground_penetration_loss`` operate on **predicted world joints**, which the
-  current pipeline only FKs at inference (``get_smpl_params_w_Rt_v2``, a slow for-loop). Wiring them needs a
-  fast, differentiable training-time world-joint FK — the concrete A3 follow-on. They are tested here so the
-  math is pinned and ready.
+All three are WIRED into ``compute_extra_global_loss`` (weight-gated, default-off):
+- ``velocity_smoothness_loss`` — ``weights.transl_w_accel`` — world-root jitter.
+- ``foot_contact_loss`` — ``weights.foot_slide`` — no foot sliding while in (GT-derived) contact.
+- ``ground_penetration_loss`` — ``weights.penetration`` — no joints below the (per-sequence GT-foot) floor.
+
+The predicted **world** joints they need are FK'd fast + differentiably in training: roll out the predicted
+local translation velocity with the GT world orientation (teacher-forced, exactly as the ``transl_w`` loss
+does — a vectorized cumsum), then ``fk_v2``. No inference-time for-loop (``get_smpl_params_w_Rt_v2``) needed.
 """
 
 from __future__ import annotations

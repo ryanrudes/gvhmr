@@ -330,6 +330,36 @@ def compute_extra_global_loss(inputs: dict, outputs: dict, ppl: Pipeline) -> tup
         extra_loss += accel_loss * weights.transl_w_accel
         extra_loss_dict["transl_w_accel_loss"] = accel_loss
 
+    # Opt-in physics: foot-contact (no-slide) + ground penetration on PREDICTED world joints (ROADMAP A3).
+    # Default-off (no key / weight 0 → byte-identical). Predicted world joints use the rolled-out predicted
+    # translation + GT world orientation (teacher-forced, exactly as the transl_w loss rolls out), so the FK
+    # is fast + differentiable — no inference-time for-loop needed.
+    if weights.get("foot_slide", 0) > 0 or weights.get("penetration", 0) > 0:
+        from gvhmr.model.gvhmr.physics_losses import foot_contact_loss, ground_penetration_loss
+
+        gt_w = inputs["smpl_params_w"]
+        pred_transl_w = rollout_local_transl_vel(
+            decode_dict["local_transl_vel"], gt_w["global_orient"], gt_w["transl"][:, [0]]
+        )
+        pred_w_j3d = endecoder.fk_v2(
+            body_pose=decode_dict["body_pose"],
+            betas=decode_dict["betas"],
+            global_orient=gt_w["global_orient"],
+            transl=pred_transl_w,
+        )  # (B, L, 22, 3)
+        gt_w_j3d = endecoder.fk_v2(**gt_w)  # (B, L, 22, 3)
+        foot_ids = [7, 8, 10, 11]  # L/R ankle + L/R toe
+        if weights.get("foot_slide", 0) > 0:
+            contact = get_static_joint_mask(gt_w_j3d, vel_thr=args.static_conf.vel_thr, repeat_last=True)
+            fs_loss = foot_contact_loss(pred_w_j3d[:, :, foot_ids], contact[:, :, foot_ids].float(), mask)
+            extra_loss += fs_loss * weights.foot_slide
+            extra_loss_dict["foot_slide_loss"] = fs_loss
+        if weights.get("penetration", 0) > 0:
+            floor = gt_w_j3d[:, :, foot_ids, 1].amin(dim=(1, 2), keepdim=True)  # (B,1,1) per-seq GT floor (y up)
+            pen_loss = ground_penetration_loss(pred_w_j3d, mask, ground_y=floor)
+            extra_loss += pen_loss * weights.penetration
+            extra_loss_dict["penetration_loss"] = pen_loss
+
     return extra_loss, extra_loss_dict
 
 
