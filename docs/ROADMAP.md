@@ -193,12 +193,14 @@ A/B (needs EMDB videos) is the real arbiter. `camera.depth_model=unidepth` is av
 
 **A3 physics losses + A4 box-adapter landed** (CI-green, behavior-preserving):
 
-- **A3** — `gvhmr/model/gvhmr/physics_losses.py`: `velocity_smoothness_loss` (wired into
-  `compute_extra_global_loss`, `weights.transl_w_accel` default-off → training byte-identical),
-  `foot_contact_loss` + `ground_penetration_loss` (written + tested, **not yet wired**: they need predicted
-  **world** joints, which the pipeline FKs only at inference via the slow for-loop `get_smpl_params_w_Rt_v2`
-  — the concrete A3 follow-on is a fast, differentiable training-time world-joint FK). Enable the physics
-  retrain by adding weights and, once wired, the contact/penetration terms; validate on `fs`/`jitter`.
+- **A3** — `gvhmr/model/gvhmr/physics_losses.py`: **all three losses now wired** into
+  `compute_extra_global_loss` (f1b85bf), weight-gated + default-off so released training is byte-identical —
+  `velocity_smoothness_loss` (`weights.transl_w_accel`), `foot_contact_loss` (`weights.foot_slide`),
+  `ground_penetration_loss` (`weights.penetration`). The earlier blocker is resolved: the predicted **world**
+  joints are FK'd fast + differentiably in training by rolling out the predicted local translation velocity
+  with the GT world orientation (teacher-forced, exactly as `transl_w` does — a vectorized cumsum) then
+  `fk_v2`; no inference-time for-loop (`get_smpl_params_w_Rt_v2`) needed. Enable the weights and retrain;
+  validate on `fs`/`jitter`.
 - **A4** — `gvhmr/utils/preproc/box_adapter.py`: `BoxAdapter` (normalized affine on `(cx,cy,size)`, default
   identity) + `fit_box_adapter` (calibrate new→baseline from paired boxes). Wired into the demo behind
   `box_adapt` (default null → skipped → golden-identical). **Validated on real data (negative for yolo26x):**
