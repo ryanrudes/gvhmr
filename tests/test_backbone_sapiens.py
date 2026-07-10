@@ -31,7 +31,7 @@ def test_sapiens_backbone_config_group_composes():
     assert cfg.backbone.name == "sapiens"
     assert cfg.backbone.model_name == "sapiens_0.6b"
     assert cfg.backbone.checkpoint is None  # user must point this at a downloaded sapiens-lite encoder
-    assert list(cfg.backbone.input_hw) == [1024, 768]
+    assert list(cfg.backbone.input_hw) == [1024, 1024]  # verified: the pretrain encoders are traced at 1024²
 
 
 def _amass_node(train):

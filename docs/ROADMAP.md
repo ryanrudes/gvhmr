@@ -130,10 +130,15 @@ order, `weights_only=False` loads, the `imgseq_dim` guard.
 - AMASS placeholder width now follows `network.imgseq_dim` (`pure_motion/{base_dataset,amass}.py`).
 - `tests/test_backbone_sapiens.py` pins the plumbing (registry, config compose, interpolated AMASS dim).
 
-**To make it a real run:** (1) download a sapiens-lite TorchScript encoder → set `backbone.checkpoint`;
-(2) confirm the encoder's input size / feature tap against `sapiens_backbone.py`'s notes; (3)
-`gvhmr extract-features` over BEDLAM/H36M/3DPW-train; (4) `gvhmr train exp=gvhmr/mixed/mixed
-network.imgseq_dim=<D>` on the new feature dirs; (5) `gvhmr eval` / `gvhmr sweep`.
+**Backbone validated with real weights.** Downloaded `facebook/sapiens-pretrain-0.3b-torchscript` and ran
+`SapiensBackbone` on a real 3DPW video → finite `(F, 1024)` features. Running it corrected two scaffold
+assumptions: the pretrain encoders are traced at a **fixed 1024²** (not 1024×768), and they return a
+**1-tuple** wrapping the `(B, C, 64, 64)` feature map (both fixed in `sapiens_backbone.py`). So the extractor
+works end-to-end; the retrain is now just compute:
+
+**To make it a full run:** (1) `gvhmr extract-features --backbone sapiens --set backbone.checkpoint=<pt2>`
+over BEDLAM/H36M/3DPW-train (note: 1024² ViT is heavy — plan the GPU-days); (2) `gvhmr train
+exp=gvhmr/mixed/mixed network.imgseq_dim=<D>` on the new feature dirs; (3) `gvhmr eval` / `gvhmr sweep`.
 
 **A2 metric-depth seam landed** (Plan A2.1), CI-green, behavior-preserving:
 

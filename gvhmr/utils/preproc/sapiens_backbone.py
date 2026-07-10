@@ -8,17 +8,17 @@ Why Sapiens: it is pretrained on 300M+ **human** images at high resolution, so i
 human-specialized than HMR2's 2023 ViT — the single highest-leverage backbone swap in the bake-off (see
 ``docs/ROADMAP.md``, Plan A/A1).
 
-Integration notes (CONFIRM these against the exact Sapiens release you download):
-- **Weights.** The "sapiens-lite" TorchScript encoders load with ``torch.jit.load`` and need no Sapiens
-  code — the robust path used here. Point ``checkpoint`` at one (absolute, or a name/relative path under
-  the configured ``checkpoints`` root). Non-lite ``.pth`` checkpoints would need the Sapiens model code and
-  a different loader — swap ``_load_model`` if you go that route.
-- **Input.** Sapiens was pretrained at 1024×768 with ImageNet normalization. We reuse 4D-Humans'
-  ``get_batch`` (already ImageNet-normalized square crops) at higher ``img_dst_size`` and resize to
-  ``input_hw``. If your export is a fixed input size, set ``input_hw`` to match it exactly.
-- **Per-frame vector.** We global-average-pool the encoder's patch tokens → ``(F, C)``. ``feat_dim`` (C) is
-  seeded from ``_EMBED_DIMS`` and **re-verified from the first forward** (a mismatch self-corrects with a
-  warning), so a wrong table entry can't silently corrupt a feature cache.
+Integration notes (verified against ``facebook/sapiens-pretrain-*-torchscript``):
+- **Weights.** The "sapiens-lite" TorchScript encoders (``facebook/sapiens-pretrain-<size>-torchscript`` on
+  the HF hub, file ``sapiens_<size>_epoch_1600_torchscript.pt2``) load with ``torch.jit.load`` and need no
+  Sapiens code — the robust path used here. Point ``checkpoint`` at one (absolute, or a name/relative path
+  under the configured ``checkpoints`` root).
+- **Input.** The pretrain encoders are traced at a FIXED **1024×1024** (the positional embedding is a 64×64
+  grid), with ImageNet normalization. We reuse 4D-Humans' ``get_batch`` (already ImageNet-normalized square
+  crops) at ``img_dst_size=1024`` and pass 1024². ``input_hw`` must match the traced size.
+- **Output.** The encoder returns a 1-tuple wrapping the patch **feature map** ``(B, C, 64, 64)`` (verified:
+  0.3b → C=1024, 0.6b → 1280, …). We unwrap it and global-average-pool → ``(F, C)``. ``feat_dim`` (C) is
+  seeded from ``_EMBED_DIMS`` and **re-verified from the first forward**, so a wrong table entry self-corrects.
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ class SapiensBackbone:
         self,
         model_name: str = "sapiens_0.6b",
         checkpoint: str | None = None,
-        input_hw: tuple[int, int] = (1024, 768),
+        input_hw: tuple[int, int] = (1024, 1024),  # the pretrain encoders are traced at a fixed 1024²
         tqdm_leave: bool = True,
     ):
         self.device = get_device()
@@ -95,8 +95,10 @@ class SapiensBackbone:
         for j in track(range(0, len(imgs), 8), desc="Sapiens Feature", leave=self.tqdm_leave):
             b = imgs[j : j + 8].to(self.device).float()
             b = F.interpolate(b, size=(h, w), mode="bilinear", align_corners=False)
-            out = self.model(b)  # encoder feature map (B,C,h',w') or a pooled token (B,C)
-            v = out.mean(dim=(-2, -1)) if out.ndim == 4 else out  # GAP patch tokens → (B, C)
+            out = self.model(b)
+            if isinstance(out, (tuple, list)):  # the pretrain encoder returns a 1-tuple
+                out = out[0]
+            v = out.mean(dim=(-2, -1)) if out.ndim == 4 else out  # GAP the (B,C,h,w) feature map → (B, C)
             feats.append(v.detach().float().cpu())
         out = torch.cat(feats, dim=0).clone()  # (F, C)
         if out.shape[-1] != self.feat_dim:  # trust the model, not the table

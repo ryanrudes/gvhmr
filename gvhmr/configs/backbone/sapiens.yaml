@@ -7,5 +7,5 @@
 # See docs/EXTENSIBILITY.md Tier B. Needs a downloaded 'sapiens-lite' TorchScript encoder — set `checkpoint`.
 name: sapiens
 model_name: sapiens_0.6b # 0.3b/0.6b/1b/2b → 1024/1280/1536/1920-d (verified at first forward)
-checkpoint: null # path to a sapiens-lite TorchScript encoder (*_torchscript.pt2); abs or under checkpoints root
-input_hw: [1024, 768] # Sapiens pretrain resolution (H, W); match your export if it's a fixed size
+checkpoint: null # sapiens-lite TorchScript encoder (facebook/sapiens-pretrain-<size>-torchscript, *.pt2); abs or under checkpoints root
+input_hw: [1024, 1024] # the pretrain encoders are traced at a FIXED 1024² (64×64 pos-embed grid)
