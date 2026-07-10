@@ -9,6 +9,7 @@ manages output dirs/logging/sweeps; the Typer command forwards ``key=value`` ove
 
 from __future__ import annotations
 
+import os
 import sys
 
 import hydra
@@ -139,5 +140,12 @@ def _hydra_main(cfg: DictConfig) -> None:
 def run(overrides: list[str]) -> None:
     """Entry point for ``gvhmr train`` — forwards overrides into the Hydra main."""
     register_store_gvhmr()
-    sys.argv = ["gvhmr train", *overrides]
+    # sys.argv[0] must be a real, re-executable file path (not a display string): Lightning's DDP
+    # launcher re-execs ``python <sys.argv[0]> <overrides>`` for rank>0, so "gvhmr train" broke
+    # multi-GPU — and the released recipe defaults to devices=2. This module's __main__ re-enters run().
+    sys.argv = [os.path.abspath(__file__), *overrides]
     _hydra_main()
+
+
+if __name__ == "__main__":
+    run(sys.argv[1:])
