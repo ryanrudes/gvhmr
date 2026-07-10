@@ -72,9 +72,14 @@ is wired (default-off). See "Status" for the contact/penetration wiring blocker.
 
 ### A4 — Inference-only levers (no retrain)
 
-Detector (a per-detector **box-distribution normalization adapter** — the measured yolo26x −19% PA-MPJPE
-is a recoverable distribution mismatch, not fundamental) and 2D pose (RTMW / Sapiens-pose). Sweep, ship
-what wins in the wild.
+Detector (a per-detector **box-distribution normalization adapter**) and 2D pose (RTMW / Sapiens-pose).
+Sweep, ship what wins in the wild.
+
+**Measured caveat (yolo26x):** the box-adapter only helps a detector with a *systematic* framing bias. On
+3DPW, calibrating yolo26x→baseline gives the **identity** transform (pooled median size-ratio 1.0000, offset
+0) — yolo26x has no systematic bias, so a global adapter can't recover its −19% PA-MPJPE. That penalty is
+**per-frame** box variation (61% of frames differ, ±3px center / ±14px size, zero-mean), which no fixed
+transform fixes. The adapter remains valid for a detector that *is* systematically tighter/looser/offset.
 
 **Do not retrain for A4** — those stages don't affect training.
 
@@ -154,9 +159,10 @@ network.imgseq_dim=<D>` on the new feature dirs; (5) `gvhmr eval` / `gvhmr sweep
   retrain by adding weights and, once wired, the contact/penetration terms; validate on `fs`/`jitter`.
 - **A4** — `gvhmr/utils/preproc/box_adapter.py`: `BoxAdapter` (normalized affine on `(cx,cy,size)`, default
   identity) + `fit_box_adapter` (calibrate new→baseline from paired boxes). Wired into the demo behind
-  `box_adapt` (default null → skipped → golden-identical). **Empirical validation pending:** calibrate on a
-  detector's eval-pack boxes vs baseline, regenerate the variant with adapted boxes, and `gvhmr eval` to
-  measure how much of the framing penalty (e.g. yolo26x's −19% PA-MPJPE) it recovers.
+  `box_adapt` (default null → skipped → golden-identical). **Validated on real data (negative for yolo26x):**
+  the yolo26x→baseline calibration on 3DPW is the identity transform, so the adapter cannot recover yolo26x's
+  penalty — it's per-frame, not a systematic framing bias (see the A4 caveat above). The mechanism stands for
+  detectors with a real systematic bias; yolo26x isn't one.
 
 ## Regime B status
 
