@@ -151,14 +151,21 @@ exp=gvhmr/mixed/mixed network.imgseq_dim=<D>` on the new feature dirs; (3) `gvhm
   demo threads it.
 - `tests/test_metric_depth.py` pins the registry, the seam, and the scale math.
 
-**UniDepth-V2 landed + validated with real weights (a big win).** `UniDepthMetric` (2024, predicts metric
-depth + intrinsics) is implemented behind the seam (`make_metric_depth("unidepth")`; cloned into
-`third-party/UniDepth`, sys.path-imported like dust3r/vggt — no env changes). Real A/B on 3DPW, both models
-through the seam, metric depth at the tracked person (n=18): **DA-V2 MAE 6.82 m (bias +6.8), UniDepth MAE
-1.31 m — 5× better.** The released DA-V2 is the *VKITTI outdoor-driving* model (`max_depth=80`), badly
-miscalibrated for human-scale depth — exactly the range that fixes the world scale. Set
-`camera.depth_model=unidepth` on dust3r/vggt to use it. Confirmatory next step: run the full scale-fix A/B
-(VGGT reconstruction → each model's `metric_scale_from_depths` → vs 3DPW GT scale) and the world metrics.
+**UniDepth-V2 landed + validated with real weights — but the result is NUANCED, not the win I first claimed.**
+`UniDepthMetric` (2024, predicts metric depth + intrinsics) is implemented behind the seam
+(`make_metric_depth("unidepth")`; cloned into `third-party/UniDepth`, sys.path-imported like dust3r/vggt — no
+env changes). Two real A/Bs on 3DPW, both models through the seam:
+- **Person depth** (n=18): DA-V2 MAE 6.82 m (bias +6.8), **UniDepth MAE 1.31 m — 5× better**. The released
+  DA-V2 is the *VKITTI outdoor-driving* model, badly miscalibrated for human-scale depth.
+- **Scale fix** (the thing A2 actually targets — VGGT recon → metric-depth median ratio → camera travel vs GT,
+  n=1 video): **DA-V2 22% error vs UniDepth 76%.** DA-V2 wins.
+
+So **better foreground depth ≠ better scene scale**: the scale fix uses the median ratio over the *whole
+image*, where DA-V2's VKITTI scene-depth calibration happens to match the VGGT recon better, despite being
+worse on people. My earlier "UniDepth improves world grounding" claim is **not supported** — running it for
+real corrected it. UniDepth is a strong *foreground*-depth model, not (on this test) a better *scale* model.
+Caveats: the scale test is 1 video and depends on VGGT recon quality — a proper multi-video `eval_world.py`
+A/B (needs EMDB videos) is the real arbiter. `camera.depth_model=unidepth` is available to A/B further.
 
 **To add another metric-depth model:** implement a `MetricDepth` class (emit metres-valued depth), add a
 `make_metric_depth` branch, set `camera.depth_model=<name>`, and A/B with `tools/eval/eval_world.py`.
