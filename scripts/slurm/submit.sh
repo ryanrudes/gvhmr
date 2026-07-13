@@ -53,6 +53,21 @@ if [ "$RUNS_SETUP" = 1 ] && { [ -z "${SMPLX_USER:-}" ] || [ -z "${SMPLX_PW:-}" ]
   say "SMPL-X login already saved — not re-asking"
 fi
 
+# If we're NOT running setup, prove the assets are actually there. SKIP_SETUP only *asserts* they are;
+# without this the arms queue for hours and then die on startup — the worst possible failure mode.
+if [ "$RUNS_SETUP" = 0 ]; then
+  missing=""
+  for ds in AMASS BEDLAM H36M 3DPW EMDB RICH; do
+    [ -d "$DATA_ROOT/data/$ds/hmr4d_support" ] || missing="$missing $ds"
+  done
+  [ -f "$DATA_ROOT/body_models/smplx/SMPLX_NEUTRAL.npz" ] || missing="$missing SMPL-X-body-model"
+  [ -z "$missing" ] || die "assets missing under $DATA_ROOT:$missing
+  Setup has not completed. Run it (on the login node, ~1h):
+    SMPLX_USER=... SMPLX_PW=... bash -c 'source scripts/_exp_lib.sh && exp_check_disk && exp_install && exp_assets'
+  …then re-submit. (Don't pass SKIP_SETUP=1 until this check passes — the jobs would queue, then fail.)"
+  say "assets      : all 6 packs + SMPL-X present [ok]"
+fi
+
 GPUS_PER_ARM="${GPUS_PER_ARM:-4}"
 CPUS_PER_TASK="${CPUS_PER_TASK:-8}"
 GRES="${GRES:-gpu:$GPUS_PER_ARM}"
