@@ -1,0 +1,43 @@
+#!/bin/bash
+# Step 2/3 — the two arms, as a 2-task array (0 = physics OFF baseline, 1 = physics LIGHT).
+# They are independent, so Slurm runs them concurrently if the cluster has the GPUs, else back to back.
+#
+# THE SLURM/LIGHTNING CONTRACT (get this wrong and it hangs or silently trains one rank):
+#   PyTorch-Lightning detects Slurm (SLURM_* in the env) and uses SLURMEnvironment — it then expects
+#   *srun* to have already spawned one task per GPU, and takes each task's global rank from SLURM_PROCID.
+#   It does NOT spawn its own subprocesses. So:
+#       --ntasks-per-node MUST equal --gres=gpu:N MUST equal pl_trainer.devices
+#   And do NOT set --gpus-per-task=1: that pins each task to a single visible GPU, after which
+#   Lightning's devices=N would look for cuda:0..N-1 inside a task that can only see cuda:0.
+#SBATCH --job-name=gvhmr-train
+#SBATCH --output=%x-%A_%a.out
+#SBATCH --array=0-1
+#SBATCH --nodes=1
+#SBATCH --gres=gpu:4
+#SBATCH --ntasks-per-node=4
+#SBATCH --cpus-per-task=12
+#SBATCH --time=24:00:00
+#SBATCH --signal=SIGUSR1@90
+set -euo pipefail
+cd "${SLURM_SUBMIT_DIR:-$PWD}"
+source scripts/_exp_lib.sh
+
+GPUS="${SLURM_GPUS_ON_NODE:-${GPUS_PER_ARM:-4}}"
+BATCH=$((EFF_BATCH / GPUS))
+[ $((BATCH * GPUS)) -eq "$EFF_BATCH" ] || die "GPUS=$GPUS doesn't divide EFF_BATCH=$EFF_BATCH evenly"
+
+case "${SLURM_ARRAY_TASK_ID:-0}" in
+  0) EXP=$EXP_A; OUT=$OUT_A; VAR=_armA_off   ;;
+  1) EXP=$EXP_B; OUT=$OUT_B; VAR=_armB_light ;;
+  *) die "unexpected array index ${SLURM_ARRAY_TASK_ID}" ;;
+esac
+
+# Interconnect: fine on NVLink/NVSwitch nodes. On PCIe boxes NCCL can hang on init (GPUs pinned at
+# 100%, zero output) — set NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 in that case.
+export NCCL_DEBUG="${NCCL_DEBUG:-WARN}"
+
+say "arm ${SLURM_ARRAY_TASK_ID}: $EXP  |  $GPUS GPUs x batch $BATCH = $EFF_BATCH effective  ->  $OUT"
+
+mapfile -t OVERRIDES < <(exp_overrides "$GPUS" "$BATCH")
+srun --ntasks-per-node="$GPUS" \
+  bin/gvhmr train "exp=$EXP" "exp_name_var=$VAR" "output_dir=$OUT" "${OVERRIDES[@]}"
