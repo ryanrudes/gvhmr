@@ -55,9 +55,13 @@ fi
 
 # Slurm strips most of the environment on some clusters; --export=ALL is the default but be explicit
 # about the things the jobs genuinely need, and never put the password on a command line.
+# Credentials go to a 0600 file on the shared root, which each job sources — NOT through --export,
+# which would write them into the Slurm job record (readable via `scontrol show job -d` / accounting).
+exp_write_secrets
+
 EXPORTS="ALL,GVHMR_EXP_ROOT=$DATA_ROOT,EPOCHS=$EPOCHS,EFF_BATCH=$EFF_BATCH,GPUS_PER_ARM=$GPUS_PER_ARM,KEEP_TARS=$KEEP_TARS"
-EXPORTS="$EXPORTS,SMPLX_USER=$SMPLX_USER,SMPLX_PW=$SMPLX_PW"
-[ -n "${WANDB_API_KEY:-}" ] && EXPORTS="$EXPORTS,WANDB_API_KEY=$WANDB_API_KEY" || EXPORTS="$EXPORTS,WANDB_MODE=offline"
+[ -n "${TORCH_CU:-}" ] && EXPORTS="$EXPORTS,TORCH_CU=$TORCH_CU"
+[ -n "${WANDB_API_KEY:-}" ] || EXPORTS="$EXPORTS,WANDB_MODE=offline"
 
 COMMON=(--export="$EXPORTS")
 [ -n "${ACCOUNT:-}" ] && COMMON+=(--account="$ACCOUNT")
@@ -74,7 +78,13 @@ SETUPJOB=("${COMMON[@]}")
 say "root        : $DATA_ROOT   (must be visible from every node)"
 say "per arm     : $GPUS_PER_ARM GPU(s) x batch $BATCH = $EFF_BATCH effective (the paper's recipe)"
 say "resources   : partition=${PARTITION:-<default>} gres=$GRES cpus/task=$CPUS_PER_TASK time=$TIME"
-say "epochs      : $EPOCHS   |   W&B: ${WANDB_API_KEY:+online}${WANDB_API_KEY:-offline}"
+# Print a WORD, never the variable. `${VAR:-offline}` substitutes the fallback only when VAR is UNSET —
+# when it IS set it expands to the value, so the obvious-looking
+#     "${WANDB_API_KEY:+online}${WANDB_API_KEY:-offline}"
+# printed "online<your-api-key>" to stdout. It only looks right in the offline case. Never interpolate
+# a secret into a status line.
+if [ -n "${WANDB_API_KEY:-}" ]; then WANDB_STATUS=online; else WANDB_STATUS=offline; fi
+say "epochs      : $EPOCHS   |   W&B: $WANDB_STATUS"
 
 # 1/3 setup — skip it if the assets are staged, or chain onto one you already submitted.
 DEP=""

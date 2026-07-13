@@ -24,6 +24,7 @@
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 source scripts/_exp_lib.sh
+exp_load_secrets   # WANDB_API_KEY etc. from the 0600 file, not from the Slurm job record
 
 GPUS="${SLURM_GPUS_ON_NODE:-${GPUS_PER_ARM:-4}}"
 BATCH=$((EFF_BATCH / GPUS))

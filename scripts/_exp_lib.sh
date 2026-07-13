@@ -115,6 +115,31 @@ exp_overrides() {
 
 # `|| true`: with no match `ls` exits non-zero, which pipefail+set -e would turn into a cryptic abort
 # instead of the actionable "couldn't find both checkpoints" message below.
+# --- secrets ---------------------------------------------------------------------------------------
+# NEVER pass credentials through `sbatch --export`: they land in the Slurm job record, where
+# `scontrol show job -d` and the accounting DB can expose them to admins and other users. Stash them
+# in a 0600 file on the shared root instead, and have each job source it.
+EXP_SECRETS="$DATA_ROOT/.exp_secrets"
+
+exp_write_secrets() {
+  mkdir -p "$DATA_ROOT"
+  local old
+  old=$(umask); umask 077                       # create 0600 from the outset — never briefly world-readable
+  : >"$EXP_SECRETS"
+  [ -n "${SMPLX_USER:-}" ]    && printf 'export SMPLX_USER=%q\n'    "$SMPLX_USER"    >>"$EXP_SECRETS"
+  [ -n "${SMPLX_PW:-}" ]      && printf 'export SMPLX_PW=%q\n'      "$SMPLX_PW"      >>"$EXP_SECRETS"
+  [ -n "${SMPL_USER:-}" ]     && printf 'export SMPL_USER=%q\n'     "$SMPL_USER"     >>"$EXP_SECRETS"
+  [ -n "${SMPL_PW:-}" ]       && printf 'export SMPL_PW=%q\n'       "$SMPL_PW"       >>"$EXP_SECRETS"
+  [ -n "${WANDB_API_KEY:-}" ] && printf 'export WANDB_API_KEY=%q\n' "$WANDB_API_KEY" >>"$EXP_SECRETS"
+  umask "$old"
+  chmod 600 "$EXP_SECRETS"
+  say "credentials -> $EXP_SECRETS (0600, off the Slurm job record)"
+}
+
+# Optional by design: an older chain that exported its secrets still works, and the jobs stay usable
+# by hand. Only loads what isn't already in the environment.
+exp_load_secrets() { [ -f "$EXP_SECRETS" ] && . "$EXP_SECRETS" || true; }
+
 exp_last_ckpt() { ls -v "$1"/checkpoints/*.ckpt 2>/dev/null | tail -1 || true; }
 
 exp_score() {  # eval both arms and print the delta table. NB TF32 stays OFF (4x EMDB accel error).

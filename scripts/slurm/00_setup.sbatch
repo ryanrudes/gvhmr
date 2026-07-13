@@ -15,6 +15,7 @@
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 source scripts/_exp_lib.sh
+exp_load_secrets   # credentials from the 0600 file, not from the Slurm job record
 
 exp_check_disk
 exp_install
