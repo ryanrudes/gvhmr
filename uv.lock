@@ -1554,7 +1554,7 @@ wheels = [
 
 [[package]]
 name = "gvhmr"
-version = "1.0.6"
+version = "1.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "av" },
