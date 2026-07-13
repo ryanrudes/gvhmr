@@ -61,7 +61,21 @@ exp_write_secrets
 
 EXPORTS="ALL,GVHMR_EXP_ROOT=$DATA_ROOT,EPOCHS=$EPOCHS,EFF_BATCH=$EFF_BATCH,GPUS_PER_ARM=$GPUS_PER_ARM,KEEP_TARS=$KEEP_TARS"
 [ -n "${TORCH_CU:-}" ] && EXPORTS="$EXPORTS,TORCH_CU=$TORCH_CU"
-[ -n "${WANDB_API_KEY:-}" ] || EXPORTS="$EXPORTS,WANDB_MODE=offline"
+
+# W&B, best source first:
+#   1. ~/.netrc  — what `wandb login` writes (0600). $HOME is shared on a cluster, so every compute
+#      node picks it up: no key in the environment, nothing in the Slurm job record, nothing to pass.
+#      THIS IS THE ONE TO USE. Set it up once:  bin/gvhmr wandb-login   (or: uvx wandb login)
+#   2. $WANDB_API_KEY — stashed in the 0600 secrets file by exp_write_secrets.
+#   3. neither -> offline (runs still log locally; `wandb sync <dir>` uploads them later).
+if grep -qs 'api\.wandb\.ai' "$HOME/.netrc"; then
+  WANDB_STATUS="online (~/.netrc)"
+elif [ -n "${WANDB_API_KEY:-}" ]; then
+  WANDB_STATUS="online (key -> 0600 secrets file)"
+else
+  EXPORTS="$EXPORTS,WANDB_MODE=offline"
+  WANDB_STATUS="offline (no ~/.netrc, no WANDB_API_KEY)"
+fi
 
 COMMON=(--export="$EXPORTS")
 [ -n "${ACCOUNT:-}" ] && COMMON+=(--account="$ACCOUNT")
@@ -82,8 +96,7 @@ say "resources   : partition=${PARTITION:-<default>} gres=$GRES cpus/task=$CPUS_
 # when it IS set it expands to the value, so the obvious-looking
 #     "${WANDB_API_KEY:+online}${WANDB_API_KEY:-offline}"
 # printed "online<your-api-key>" to stdout. It only looks right in the offline case. Never interpolate
-# a secret into a status line.
-if [ -n "${WANDB_API_KEY:-}" ]; then WANDB_STATUS=online; else WANDB_STATUS=offline; fi
+# a secret into a status line. ($WANDB_STATUS is computed above and is a description, not a key.)
 say "epochs      : $EPOCHS   |   W&B: $WANDB_STATUS"
 
 # 1/3 setup — skip it if the assets are staged, or chain onto one you already submitted.

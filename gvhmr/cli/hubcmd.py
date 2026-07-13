@@ -96,6 +96,67 @@ def auth_smpl(
             )
 
 
+@auth_app.command("wandb")
+def auth_wandb(
+    key: Annotated[
+        str | None,
+        typer.Option("--key", help="W&B API key (https://wandb.ai/authorize). Prompted for if omitted."),
+    ] = None,
+) -> None:
+    """Save your Weights & Biases API key to ``~/.netrc`` (0600) so training just logs, everywhere.
+
+    This is the right way to hold the key on a **cluster**: ``$HOME`` is shared, so every compute node
+    reads it — the key never goes in an environment variable, a command line, or the Slurm job record
+    (``sbatch --export`` writes those into the job record, where ``scontrol show job -d`` and the
+    accounting DB can surface them). Same file and format ``wandb login`` writes, so either works.
+    """
+    import os
+    import stat
+    import tempfile
+
+    from gvhmr.utils.console import console
+
+    key = key or typer.prompt("W&B API key (https://wandb.ai/authorize)", hide_input=True)
+    key = key.strip()
+    if not key:
+        console.print("[warn]No key entered.[/] Nothing saved.")
+        raise typer.Exit(1)
+
+    netrc = Path.home() / ".netrc"
+    machine = "api.wandb.ai"
+
+    # Drop any existing api.wandb.ai stanza, keep every other machine's entry intact.
+    kept: list[str] = []
+    if netrc.exists():
+        skipping = False
+        for line in netrc.read_text().splitlines():
+            head = line.strip().split()
+            if head and head[0] == "machine":
+                skipping = len(head) > 1 and head[1] == machine
+            if not skipping:
+                kept.append(line)
+    while kept and not kept[-1].strip():
+        kept.pop()
+
+    body = "\n".join([*kept, f"machine {machine}", "  login user", f"  password {key}", ""])
+
+    # Write via a 0600 temp file in the same dir, then rename: the key is never briefly world-readable.
+    fd, tmp = tempfile.mkstemp(dir=str(netrc.parent), prefix=".netrc.")
+    try:
+        os.write(fd, body.encode())
+        os.close(fd)
+        os.chmod(tmp, stat.S_IRUSR | stat.S_IWUSR)  # 0600
+        os.replace(tmp, netrc)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+    console.print(
+        f"W&B key saved [ok]✓[/] → [muted]{netrc}[/] [dim](0600, machine {machine})[/]\n"
+        "[dim]On a cluster $HOME is shared, so every compute node picks it up — no env var needed.[/]"
+    )
+
+
 body_models_app = typer.Typer(
     name="body-models",
     help="Manage a private HF mirror of [bold]your own[/] SMPL/SMPL-X body models (fast, seamless setup).",
