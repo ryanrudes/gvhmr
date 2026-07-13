@@ -81,6 +81,24 @@ def torch_load_mmap(path: str | Path, **kwargs):
         return torch.load(path, **kwargs)
 
 
+def compile_forward(module: nn.Module) -> nn.Module:
+    """``torch.compile`` a module's *forward* in place, leaving its ``state_dict`` keys untouched.
+
+    Compile the module itself (``torch.compile(module)``) and you get an ``OptimizedModule`` whose
+    state_dict keys all gain an ``_orig_mod.`` prefix — which breaks GVHMR's **strict** checkpoint
+    loading (AGENTS.md landmine #2) and would make every checkpoint the run saves unloadable by
+    ``gvhmr eval``. Compiling the bound method instead leaves the module — and its state_dict —
+    exactly as it was, so checkpoints stay interchangeable with eager runs.
+
+    Worth it: the denoiser is a small model dominated by many tiny sequential kernels (~7% MFU), so
+    it is launch-overhead-bound, not tensor-core-bound — exactly the workload fusion helps. Measured
+    on an RTX 6000 Ada: **1.9x on fwd+bwd**, numerically faithful (fp32 max |Δ| = 1.4e-7 vs eager,
+    i.e. rounding noise). Pinned by ``tests/test_compile.py``.
+    """
+    module.forward = torch.compile(module.forward)
+    return module
+
+
 def load_pretrained_model(model: nn.Module, ckpt_path: str | Path) -> None:
     """
     Load ckpt to model with strategy

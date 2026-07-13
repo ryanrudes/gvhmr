@@ -16,7 +16,7 @@ from gvhmr.utils.geo.augment_noisy_pose import (
 from gvhmr.utils.geo.flip_utils import avg_smplx_aa, flip_smplx_params
 from gvhmr.utils.geo.hmr_cam import get_bbx_xys, normalize_kp2d, perspective_projection, safely_render_x3d_K
 from gvhmr.utils.geo_transform import apply_T_on_points, compute_T_ayfz2ay
-from gvhmr.utils.net_utils import torch_load_mmap
+from gvhmr.utils.net_utils import compile_forward, torch_load_mmap
 from gvhmr.utils.pylogger import Log
 from gvhmr.utils.smplx_utils import make_smplx
 from gvhmr.utils.video_io_utils import save_video
@@ -31,11 +31,20 @@ class GvhmrPL(pl.LightningModule):
         optimizer=None,
         scheduler_cfg=None,
         ignored_weights_prefix=["smplx", "pipeline.endecoder"],
+        compile_denoiser=False,
     ):
         super().__init__()
         self.pipeline = instantiate(pipeline, _recursive_=False)
         self.optimizer = instantiate(optimizer)
         self.scheduler_cfg = scheduler_cfg
+
+        # Opt-in torch.compile of the denoiser (~1.9x on fwd+bwd; numerically faithful — see
+        # net_utils.compile_forward). Default off so training stays byte-identical unless asked.
+        # Both arms of an A/B must agree on this: it is faithful to fp32 rounding, but a training
+        # run is chaotic, so don't compile one arm and not the other.
+        if compile_denoiser:
+            Log.info("[Model] torch.compile on the denoiser (fwd+bwd ~1.9x)")
+            compile_forward(self.pipeline.denoiser3d)
 
         # Options
         self.ignored_weights_prefix = ignored_weights_prefix

@@ -136,6 +136,29 @@ largest cost. Candidate behavior-preserving wins, in rough order of payoff/risk:
 3. **Scan the rollout-merge recurrence** (`process_ik` lines ~126-130) and the
    state-dependent loop in `pp_static_joint_cam` with an associative scan. (Higher risk —
    exact float order.)
-4. **`torch.compile`** the network forward for CUDA deployments.
 
 Each must keep `tests/test_golden_inference.py` green.
+
+## Training: `torch.compile` (opt-in, ~1.9×)
+
+`model.compile_denoiser=true` compiles the RoPE denoiser for **training** (`gvhmr train`). Default off.
+
+Why it pays: the denoiser is *small* (40.9M params, 12×512, L=120) and dominated by many tiny sequential
+kernels, so a training step reaches only **~7% MFU** on an RTX 6000 Ada (~12 of ~182 bf16 TFLOPS). It is
+launch-overhead-bound, not tensor-core-bound — precisely the workload kernel fusion fixes. Measured
+**1.9× on fwd+bwd**, numerically faithful (fp32 max |Δ| = 1.4e-7 vs eager — rounding noise).
+
+Two landmines, both guarded by `tests/test_compile.py`:
+
+- **Compile the `forward`, not the module.** `torch.compile(module)` returns an `OptimizedModule` that
+  prefixes every state_dict key with `_orig_mod.`. GVHMR loads **strict**, so that silently breaks every
+  checkpoint the run saves — you'd only find out when `gvhmr eval` refuses to load it. `net_utils.compile_forward`
+  compiles the bound method, leaving the state_dict untouched and checkpoints interchangeable with eager runs.
+- **Don't compile one arm of an A/B and not the other.** It's faithful to fp32 rounding, but training is
+  chaotic; keep both arms on the same setting.
+
+The same ~7% MFU is why an **H100 is a weaker upgrade than the spec sheet implies** for *training*: it has
+~5× the tensor throughput but only ~3.5× the bandwidth, and at 7% MFU you capture the bandwidth, not the
+tensor cores — expect ~1.5-2×, not 5×. (Preproc is the opposite: the two ViT-Huge models are real
+tensor-core work, and *that* is where a bigger GPU pays.) The larger training levers are fusion (above), a
+bigger batch (the GPU is starved at this size), and DDP across GPUs.
