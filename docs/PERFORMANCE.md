@@ -35,7 +35,8 @@ via `--fast` / `--recipe fast`.
 | Change | Speedup | Numerics / accuracy |
 |---|---|---|
 | Network `predict` on **CPU** (`device.predict_device()`, `$GVHMR_PREDICT_DEVICE`) | ~7-9× on predict (launch-bound) | golden-byte-identical |
-| **TF32 + cudnn.benchmark** in `get_device()` (`$GVHMR_DISABLE_TF32`) | 2.7× on fp32 ViT matmul | negligible (≤~1e-3), CUDA-only |
+| **cudnn.benchmark** in `get_device()` | kernel autotuning on the fixed-shape ViT convs | selection only; no convs in the denoiser, benchmarks unaffected |
+| ~~**TF32**~~ — **OFF by default since 2026-07-13** (opt in with `$GVHMR_ENABLE_TF32`) | **none measured** (EMDB eval: 76.0s on → 72.8s off) | ✗ **NOT safe: +3.3mm PA-MPJPE and 4× accel error on EMDB** — see below |
 | **bf16 autocast** on ViTPose + HMR2 (`$GVHMR_PREPROC_FP32` to disable) | HMR2 254→64ms (4.0×), ViTPose 252→57ms (4.4×) | feature 1.6% rel, kp2d 0.02px; **eval-certified: bf16-vs-fp32 worst \|Δ\|=0.08mm on 3DPW** (PA-MPJPE 43.71 vs 43.63) — noise |
 | **SDPA/Flash attention** in the two vendored ViTs | 1.1-1.3× (bf16) | fp32 max\|Δ\|≤2e-6 |
 | **skip-init + mmap** model loading | HMR2 4.9s→0.35s, ViTPose ~5s→0.42s (~13×) | every param bit-identical |
@@ -47,6 +48,36 @@ via `--fast` / `--recipe fast`.
 Net: **~3-4× end-to-end on a long clip** (YOLO, still fp32-CNN, becomes the bottleneck), more on short
 clips where the ~13× load win dominates. Retrain-gated levers (faster default detector, RTMPose, fused
 single-ViT, TensorRT) are opt-in / future work.
+
+## The TF32 regression (2026-07-06 → 2026-07-13) — read before adding a "free" fast path
+
+The speedup pass above enabled **TF32** globally in `get_device()` as a free win. It was not free, and it
+shipped broken for a week. On the **released checkpoint**, TF32 on vs off:
+
+| EMDB-1 | TF32 on | TF32 off | paper |
+|---|---|---|---|
+| PA-MPJPE (mm) | 46.0 | **42.7** | 42.7 |
+| MPJPE (mm) | 75.6 | **72.6** | 72.6 |
+| **Accel (m/s²)** | **14.2** | **3.6** | **3.6** |
+| EMDB-2 Jitter | 24.9 | **16.1** | 16.5 |
+
+TF32 is now **off by default** (`gvhmr.utils.device.tf32_enabled`, opt in with `$GVHMR_ENABLE_TF32`),
+pinned by `tests/test_device.py::test_tf32_is_off_unless_opted_in`. Three lessons worth keeping:
+
+1. **`autocast(enabled=False)` does not gate TF32.** The original rationale claimed the fp32 FK/IK guards
+   kept TF32 away from the numerically-sensitive code. They don't: `autocast` suppresses bf16/fp16
+   autocasting only, while TF32 is a separate switch (`allow_tf32`) applying to *every* fp32 matmul. The
+   rotary/attention path was never protected.
+2. **Derivative metrics amplify what pose metrics hide.** Accel scales `fps²` (900×) and jitter `fps³`
+   (27,000×), so a perturbation far too small to move PA-MPJPE on 3DPW (+0.2mm) becomes a **4× accel
+   error** on EMDB's full-length sequences. *A benchmark that only looks at pose error cannot certify a
+   numerics change.* 3DPW and RICH both looked clean — only EMDB caught it.
+3. **It bought nothing.** An EMDB eval takes 76.0s with TF32 and 72.8s without. The hot stages are already
+   bf16 (the ViTs — bf16 is *faster* than TF32: 1.68ms vs 3.74ms on a ViT-H MLP block), fp16 (YOLO), or on
+   CPU (the network `predict`), so TF32 never engaged where the time actually goes. The "2.7× on fp32 ViT
+   matmul" in the old table was a microbenchmark of a path the pipeline does not run.
+
+Certify any numerics change against **`gvhmr eval` including EMDB accel/jitter**, not just 3DPW pose.
 
 ## Verified end-to-end on Apple Silicon
 

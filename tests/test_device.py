@@ -9,7 +9,28 @@ from __future__ import annotations
 
 import torch
 
-from gvhmr.utils.device import device_name, get_device, synchronize, to_device
+from gvhmr.utils.device import device_name, get_device, synchronize, tf32_enabled, to_device
+
+
+def test_tf32_is_off_unless_opted_in(monkeypatch) -> None:
+    """TF32 must stay OFF by default: it silently wrecks the EMDB benchmark.
+
+    Measured on EMDB with the released checkpoint, enabling TF32 costs +3.3mm PA-MPJPE (42.7 → 46.0)
+    and 4x the acceleration error (3.6 → 14.2 m/s²) — the fps²/fps³ derivative metrics amplify the
+    10-bit-mantissa noise that pose metrics on 3DPW/RICH never reveal (<0.3mm). It also buys no speed
+    (the ViTs are bf16, YOLO fp16, predict on CPU). Regression guard for the default; `gvhmr eval`
+    reproduces the paper only while this holds.
+    """
+    monkeypatch.delenv("GVHMR_ENABLE_TF32", raising=False)
+    monkeypatch.delenv("GVHMR_DISABLE_TF32", raising=False)
+    assert tf32_enabled() is False
+
+    monkeypatch.setenv("GVHMR_ENABLE_TF32", "1")
+    assert tf32_enabled() is True
+
+    # An explicit disable always wins over the opt-in (back-compat with the old flag).
+    monkeypatch.setenv("GVHMR_DISABLE_TF32", "1")
+    assert tf32_enabled() is False
 
 
 def test_get_device_honours_explicit_and_env(monkeypatch) -> None:

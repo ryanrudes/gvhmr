@@ -21,9 +21,21 @@ visible at a glance. Metrics: PA-MPJPE / MPJPE / PVE (mm), Accel (m/s²) in came
 W-MPJPE₁₀₀ / WA-MPJPE₁₀₀ (mm, per 100-frame chunk), RTE (% of path), Jitter, foot sliding (mm) in
 world space.
 
-This pipeline is verified end-to-end: on 2026-07-02 the released checkpoint reproduced the paper's
-camera-space numbers exactly (3DPW 36.2/55.6/67.2, EMDB-1 42.7/72.6/84.2, RICH within 0.3 mm) and the
-world metrics within ~1% (EMDB-2 W-MPJPE 272.8 vs 274.9) on an RTX 6000 Ada.
+This pipeline is verified end-to-end: re-verified 2026-07-13, the released checkpoint reproduces the
+paper's camera-space numbers exactly (3DPW 36.2/55.6/67.2, EMDB-1 42.7/72.6/84.2 with accel 3.6, RICH
+within 0.3 mm) and the world metrics within ~1% (EMDB-2 W-MPJPE 272.8 vs 274.9) on an RTX 6000 Ada.
+
+> **This claim is load-bearing — re-run it after any numerics change.** Between 2026-07-06 and
+> 2026-07-13 it was silently false: a global TF32 fast path cost EMDB-1 +3.3 mm PA-MPJPE and **4× the
+> acceleration error** (3.6 → 14.2), while 3DPW and RICH moved <0.3 mm and looked fine. TF32 is now
+> off by default; see [PERFORMANCE.md](PERFORMANCE.md) for the post-mortem. Certify against **EMDB
+> accel/jitter**, not 3DPW pose alone — the derivative metrics are what catch per-frame noise.
+
+**Training reproduction (2026-07-13).** A from-scratch 500-epoch retrain on all four datasets
+(`exp=gvhmr/mixed/mixed`, single GPU) reproduces the paper: 3DPW 36.4/55.7/67.3, EMDB-1 **42.4**/73.5/85.5
+(accel 3.5), EMDB-2 WA-MPJPE 111.9 / RTE 2.0 / jitter **14.7**, RICH 41.0/69.9/79.0. It beats the paper on
+EMDB-1 PA-MPJPE and on jitter, and trails ~3-4 mm on RICH pose and EMDB-2 world translation — consistent
+with the halved effective batch (`devices=1` vs the recipe's `devices=2` × 128).
 
 ### Full-distribution diagnostics — `gvhmr eval --diagnostics`
 

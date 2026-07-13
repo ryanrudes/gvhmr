@@ -35,29 +35,47 @@ def _auto_device() -> torch.device:
 _BACKENDS_CONFIGURED = False
 
 
+def _env_true(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes")
+
+
+def tf32_enabled() -> bool:
+    """Whether TF32 tensor-core matmuls should be enabled. **Off unless explicitly opted in.**
+
+    TF32 is *not* free here: it truncates fp32 matmul mantissas to 10 bits, and on a full-length
+    sequence that error accumulates through the RoPE denoiser's attention. Measured on EMDB with the
+    released checkpoint, it costs **+3.3mm PA-MPJPE (42.7 → 46.0) and 4x the acceleration error
+    (3.6 → 14.2 m/s²)** — the derivative metrics amplify per-frame noise by fps² / fps³. 3DPW and RICH
+    move <0.3mm, which is why it went unnoticed. It also buys nothing: the hot stages already run bf16
+    (the ViTs, faster than TF32 anyway), fp16 (YOLO) or CPU (``predict_device``), so an EMDB eval times
+    the same either way. Opt in with ``GVHMR_ENABLE_TF32=1`` for an fp32-heavy workload that can afford it.
+    """
+    if _env_true("GVHMR_DISABLE_TF32"):  # explicit off always wins (back-compat)
+        return False
+    return _env_true("GVHMR_ENABLE_TF32")
+
+
 def configure_torch_backends() -> None:
-    """Enable the free CUDA fast paths (idempotent; called from :func:`get_device` on a CUDA box).
+    """Configure the CUDA backends (idempotent; called from :func:`get_device` on a CUDA box).
 
-    - **TF32** for fp32 matmuls (``set_float32_matmul_precision('high')`` + ``allow_tf32``): ~1.3–1.8x
-      on tensor-core hardware at ~10-bit mantissa — far below model noise. PyTorch-Lightning literally
-      warns when it's off. The ``@autocast(enabled=False)`` FK/IK guards keep TF32 out of nothing they
-      care about (3×3 rotation matmuls / SVD run off the tensor cores anyway).
     - **cuDNN benchmark**: our conv/ViT inputs are fixed-shape per stage, so autotuning the kernels once
-      pays off across the (many) frames.
+      pays off across the (many) frames. Kernel *selection* only — it cannot touch the denoiser, which
+      has no convs, so the benchmarks are unaffected.
+    - **TF32**: off unless opted in — see :func:`tf32_enabled` for the accuracy evidence.
 
-    CUDA-only, so the CPU-run golden test (``test_golden_inference.py``) is unaffected by construction.
-    Overridable with ``GVHMR_DISABLE_TF32=1`` for a strict-fp32 numerical A/B.
+    Note ``torch.amp.autocast(enabled=False)`` does NOT gate TF32: it suppresses bf16/fp16 autocasting
+    only, while TF32 is a separate switch that applies to every fp32 matmul. The fp32 FK/IK guards
+    therefore never protected the rotary/attention path from it.
     """
     global _BACKENDS_CONFIGURED
     if _BACKENDS_CONFIGURED or not torch.cuda.is_available():
         return
     _BACKENDS_CONFIGURED = True
-    if os.environ.get("GVHMR_DISABLE_TF32", "").strip().lower() in ("1", "true", "yes"):
-        return
-    torch.set_float32_matmul_precision("high")
-    torch.backends.cuda.matmul.allow_tf32 = True
-    torch.backends.cudnn.allow_tf32 = True
     torch.backends.cudnn.benchmark = True
+    if tf32_enabled():
+        torch.set_float32_matmul_precision("high")
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
 
 
 def predict_device() -> torch.device:

@@ -239,8 +239,13 @@ Preproc (the two ViT-Huge models) is ~85-95% of a run; the GVHMR `predict` is sm
 
 **Speed defaults (all overridable):** the network `predict` runs on **CPU** — it's ~6.7x faster there
 than CUDA (launch-overhead-bound on the IK's small ops), `device.predict_device()` (`$GVHMR_PREDICT_DEVICE`
-to force); preproc + render stay on GPU. `device.get_device()` enables **TF32 + cudnn.benchmark** on CUDA
-(`$GVHMR_DISABLE_TF32`). The two ViTs (ViTPose/HMR2) run **bf16 autocast** on CUDA with **SDPA/Flash
+to force); preproc + render stay on GPU. `device.get_device()` enables **cudnn.benchmark** on CUDA.
+**TF32 is OFF by default** (`device.tf32_enabled()`, opt in with `$GVHMR_ENABLE_TF32`) — it is *not* a free
+win: it cost EMDB-1 +3.3mm PA-MPJPE and **4× the accel error** (3.6→14.2) for **no measurable speedup**, and
+shipped broken 2026-07-06→07-13. Note `autocast(enabled=False)` does **not** gate TF32 (separate switch,
+hits every fp32 matmul) — the fp32 FK/IK guards never protected the rotary path. Certify numerics changes
+against **EMDB accel/jitter**, not 3DPW pose (fps²/fps³ amplify what pose metrics hide). The two ViTs
+(ViTPose/HMR2) run **bf16 autocast** on CUDA with **SDPA/Flash
 attention** (vendor-patched), batch 32; ViTPose's internal flip-test is **off** by default (`pose2d.flip_test`).
 YOLO uses `half=True`. Preproc models are kept **resident** across videos (`make_*` cache in `preproc/base.py`;
 `$GVHMR_NO_MODEL_CACHE`, `clear_model_cache()`) and skip random init (immediately overwritten). SimpleVO runs
