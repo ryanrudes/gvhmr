@@ -36,8 +36,22 @@ cd "$(dirname "$0")/../.."
 source scripts/_exp_lib.sh
 
 command -v sbatch >/dev/null || die "no sbatch on PATH — this is the Slurm path; for one box use scripts/lambda_experiment.sh"
-[ -n "${SMPLX_USER:-}" ] && [ -n "${SMPLX_PW:-}" ] || die \
-  "set SMPLX_USER and SMPLX_PW (free signup: https://smpl-x.is.tue.mpg.de/) before submitting"
+
+# SMPL-X credentials are ONLY needed by the setup step (it fetches the gated body model). With
+# SKIP_SETUP / SETUP_JOBID the model is already on disk and the login is already persisted by
+# `gvhmr auth smpl`, so demanding them again just to submit two GPU jobs is wrong — and forces the
+# password back onto a command line for no reason.
+RUNS_SETUP=1
+{ [ "${SKIP_SETUP:-0}" = 1 ] || [ -n "${SETUP_JOBID:-}" ]; } && RUNS_SETUP=0
+if [ "$RUNS_SETUP" = 1 ] && { [ -z "${SMPLX_USER:-}" ] || [ -z "${SMPLX_PW:-}" ]; }; then
+  # Already authenticated on this machine? Then setup needs nothing from the environment either.
+  if ! bin/gvhmr auth smpl --help >/dev/null 2>&1 || ! grep -qs 'smplx' "${XDG_CONFIG_HOME:-$HOME/.config}/gvhmr/smpl_credentials.toml"; then
+    die "setup needs SMPL-X credentials (free signup: https://smpl-x.is.tue.mpg.de/):
+  SMPLX_USER=you@example.com SMPLX_PW='...' bash scripts/slurm/submit.sh
+  or run \`bin/gvhmr auth smpl\` once, or pass SKIP_SETUP=1 if the packs are already staged."
+  fi
+  say "SMPL-X login already saved — not re-asking"
+fi
 
 GPUS_PER_ARM="${GPUS_PER_ARM:-4}"
 CPUS_PER_TASK="${CPUS_PER_TASK:-8}"
