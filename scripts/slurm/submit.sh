@@ -72,9 +72,7 @@ GPUS_PER_ARM="${GPUS_PER_ARM:-4}"
 CPUS_PER_TASK="${CPUS_PER_TASK:-8}"
 GRES="${GRES:-gpu:$GPUS_PER_ARM}"
 TIME="${TIME:-24:00:00}"
-BATCH=$((EFF_BATCH / GPUS_PER_ARM))
-[ $((BATCH * GPUS_PER_ARM)) -eq "$EFF_BATCH" ] || die \
-  "GPUS_PER_ARM=$GPUS_PER_ARM must divide EFF_BATCH=$EFF_BATCH (use 1, 2, 4 or 8)"
+read -r BATCH ACCUM <<<"$(exp_split_batch "$GPUS_PER_ARM")"
 
 if [ -z "${PARTITION:-}" ]; then
   say "WARNING: no PARTITION set — submitting to the default partition, which on most clusters has no GPUs."
@@ -119,7 +117,7 @@ SETUPJOB=("${COMMON[@]}")
 [ -n "${SETUP_PARTITION:-}" ] && SETUPJOB+=(--partition="$SETUP_PARTITION")
 
 say "root        : $DATA_ROOT   (must be visible from every node)"
-say "per arm     : $GPUS_PER_ARM GPU(s) x batch $BATCH = $EFF_BATCH effective (the paper's recipe)"
+say "per arm     : $GPUS_PER_ARM GPU(s) x batch $BATCH x accum $ACCUM = $EFF_BATCH effective (the paper's recipe)"
 say "resources   : partition=${PARTITION:-<default>} gres=$GRES cpus/task=$CPUS_PER_TASK time=$TIME"
 # Print a WORD, never the variable. `${VAR:-offline}` substitutes the fallback only when VAR is UNSET —
 # when it IS set it expands to the value, so the obvious-looking

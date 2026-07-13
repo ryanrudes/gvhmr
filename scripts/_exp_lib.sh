@@ -101,16 +101,49 @@ exp_assets() {  # gated body model first (fail fast on bad creds), then the ~27 
 }
 
 # The overrides shared by both arms. $1 = devices, $2 = per-GPU batch.
+#
+# num_workers is per RANK, and the recipe's default (12) assumes one process per node. Under DDP that
+# becomes devices x 12 processes competing for the node's cores — on a 28-core V100/P100 node, 4 ranks
+# x 12 = 48 workers thrash. Derive it from the CPUs Slurm actually gave this rank instead.
 exp_overrides() {
+  local devices="$1" batch="$2" accum="${3:-1}"
+  local workers="${NUM_WORKERS:-}"
+  if [ -z "$workers" ]; then
+    local cpus="${SLURM_CPUS_PER_TASK:-${CPUS_PER_TASK:-12}}"
+    workers=$((cpus - 2))                      # leave the rank itself a couple of cores
+    [ "$workers" -gt 12 ] && workers=12        # 12 is the recipe's value; more buys nothing
+    [ "$workers" -lt 2 ] && workers=2
+  fi
   printf '%s\n' \
     "pl_trainer.max_epochs=$EPOCHS" \
-    "pl_trainer.devices=$1" \
-    "data.loader_opts.train.batch_size=$2" \
+    "pl_trainer.devices=$devices" \
+    "data.loader_opts.train.batch_size=$batch" \
+    "data.loader_opts.train.num_workers=$workers" \
+    "+pl_trainer.accumulate_grad_batches=$accum" \
     "model.compile_denoiser=true" \
     "resume_mode=last" \
     "pl_trainer.check_val_every_n_epoch=1000" \
     "+pl_trainer.limit_val_batches=0" \
     "pl_trainer.num_sanity_val_steps=0"
+}
+
+# Split EFF_BATCH into devices x micro-batch x accumulation.
+#   effective batch is the ONLY thing the experiment cares about; how you reach it is a scheduling
+#   choice. The net is LayerNorm-only (no BatchNorm), so accumulation is mathematically equivalent to
+#   the bigger batch — which means a 1-GPU job (schedules in minutes) can run the SAME experiment as a
+#   4-GPU node (can queue for days).
+#   MICRO_BATCH caps what one GPU holds at once: 256 needs ~17 GB, 128 ~9 GB, 64 ~5 GB.
+exp_split_batch() {  # $1 = devices  ->  echoes "<micro_batch> <accum>"
+  local devices="$1" micro accum
+  micro="${MICRO_BATCH:-$((EFF_BATCH / devices))}"
+  [ "$micro" -lt 1 ] && micro=1
+  accum=$((EFF_BATCH / (devices * micro)))
+  [ "$accum" -lt 1 ] && accum=1
+  if [ $((devices * micro * accum)) -ne "$EFF_BATCH" ]; then
+    die "devices($devices) x MICRO_BATCH($micro) x accum($accum) != EFF_BATCH($EFF_BATCH).
+  Pick a MICRO_BATCH that divides $((EFF_BATCH / devices)) evenly (e.g. 64, 128, 256)."
+  fi
+  echo "$micro $accum"
 }
 
 # `|| true`: with no match `ls` exits non-zero, which pipefail+set -e would turn into a cryptic abort

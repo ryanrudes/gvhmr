@@ -27,8 +27,7 @@ source scripts/_exp_lib.sh
 exp_load_secrets   # WANDB_API_KEY etc. from the 0600 file, not from the Slurm job record
 
 GPUS="${SLURM_GPUS_ON_NODE:-${GPUS_PER_ARM:-4}}"
-BATCH=$((EFF_BATCH / GPUS))
-[ $((BATCH * GPUS)) -eq "$EFF_BATCH" ] || die "GPUS=$GPUS doesn't divide EFF_BATCH=$EFF_BATCH evenly"
+read -r BATCH ACCUM <<<"$(exp_split_batch "$GPUS")"
 
 case "${SLURM_ARRAY_TASK_ID:-0}" in
   0) EXP=$EXP_A; OUT=$OUT_A; VAR=_armA_off   ;;
@@ -40,8 +39,17 @@ esac
 # 100%, zero output) — set NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 in that case.
 export NCCL_DEBUG="${NCCL_DEBUG:-WARN}"
 
-say "arm ${SLURM_ARRAY_TASK_ID}: $EXP  |  $GPUS GPUs x batch $BATCH = $EFF_BATCH effective  ->  $OUT"
+say "arm ${SLURM_ARRAY_TASK_ID}: $EXP"
+say "  $GPUS GPU(s) x batch $BATCH x accum $ACCUM = $EFF_BATCH effective  ->  $OUT"
 
-mapfile -t OVERRIDES < <(exp_overrides "$GPUS" "$BATCH")
-srun --ntasks-per-node="$GPUS" \
-  bin/gvhmr train "exp=$EXP" "exp_name_var=$VAR" "output_dir=$OUT" "${OVERRIDES[@]}"
+mapfile -t OVERRIDES < <(exp_overrides "$GPUS" "$BATCH" "$ACCUM")
+
+# One GPU needs no srun/DDP at all — and Lightning would otherwise see the SLURM_* vars and try to
+# build a distributed group for a single process.
+if [ "$GPUS" -eq 1 ]; then
+  env -u SLURM_NTASKS -u SLURM_NTASKS_PER_NODE -u SLURM_PROCID -u SLURM_LOCALID \
+    bin/gvhmr train "exp=$EXP" "exp_name_var=$VAR" "output_dir=$OUT" "${OVERRIDES[@]}"
+else
+  srun --ntasks-per-node="$GPUS" \
+    bin/gvhmr train "exp=$EXP" "exp_name_var=$VAR" "output_dir=$OUT" "${OVERRIDES[@]}"
+fi
