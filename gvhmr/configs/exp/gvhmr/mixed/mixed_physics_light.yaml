@@ -1,0 +1,83 @@
+# @package _global_
+# ROADMAP A3 — the DEFINITIVE physics-loss arm: the full released recipe (all four datasets, 500 epochs)
+# plus the three physics losses at the *light* weights that won the reduced bracket (docs/ROADMAP.md A3).
+#
+# Controlled A/B: this file is `mixed.yaml` with ONLY weights.{transl_w_accel,foot_slide,penetration}
+# changed. The physics-OFF arm is the reproduce run itself (`exp=gvhmr/mixed/mixed`, W&B
+# mixed_reproduce_4ds_500e → 3DPW 36.4 / EMDB-1 42.4), so launch this with the SAME overrides the
+# reproduce used (devices=1, val disabled) or the comparison is not matched.
+#
+# Why light, not strong: in the reduced bracket the strong arm (1000/500/1e5) over-regularized the
+# trajectory (WAA +21, RTE +0.72) for a marginal jitter gain, while light improved *everything*.
+# Re-verify with `gvhmr eval` — and note the metrics this run is judged on (jitter/accel/foot-slide) are
+# the ones TF32 corrupts, so keep TF32 off (it is, by default, since 06e3922).
+defaults:
+    - override /data: mocap/trainX_testY
+    - override /model: gvhmr/gvhmr_pl
+    - override /endecoder: gvhmr/v1_amass_local_bedlam_cam
+    - override /optimizer: adamw_2e-4
+    - override /scheduler_cfg: epoch_half_200_350
+    - override /train_datasets:
+          - pure_motion_amass/v11
+          - imgfeat_bedlam/v2
+          - imgfeat_h36m/v1
+          - imgfeat_3dpw/v1
+    - override /test_datasets:
+          - emdb1/v1_fliptest
+          - emdb2/v1_fliptest
+          - rich/all
+          - 3dpw/fliptest
+    - override /callbacks:
+          - simple_ckpt_saver/every10e_top100
+          - prog_bar/prog_reporter_every0.1
+          - train_speed_timer/base
+          - lr_monitor/pl
+          - metric_emdb1
+          - metric_emdb2
+          - metric_rich
+          - metric_3dpw
+    - override /network: gvhmr/relative_transformer
+    - override /logger: wandb
+
+exp_name_base: mixed_physics_light
+exp_name_var: ""
+exp_name: ${exp_name_base}${exp_name_var}
+data_name: mocap_mixed_v1
+
+pipeline:
+    _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline
+    args_denoiser3d: ${network}
+    args:
+        endecoder_opt: ${endecoder}
+        normalize_cam_angvel: True
+        weights:
+            cr_j3d: 500.
+            transl_c: 1.
+            cr_verts: 500.
+            j2d: 1000.
+            verts2d: 1000.
+
+            transl_w: 1.
+            static_conf_bce: 1.
+
+            # --- A3 physics: the ONLY difference from mixed.yaml (light arm, per the reduced bracket) ---
+            transl_w_accel: 1e4 # velocity_smoothness_loss  (raw magnitude ~5e-7)
+            foot_slide: 200. # foot_contact_loss         (raw magnitude ~3e-4)
+            penetration: 100. # ground_penetration_loss   (raw magnitude ~5e-4)
+
+        static_conf:
+            vel_thr: 0.15
+
+data:
+    loader_opts:
+        train:
+            batch_size: 128
+            num_workers: 12
+
+pl_trainer:
+    precision: 16-mixed
+    log_every_n_steps: 50
+    gradient_clip_val: 0.5
+    max_epochs: 500
+    check_val_every_n_epoch: 10
+    devices: 2
