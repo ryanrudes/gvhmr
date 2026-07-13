@@ -16,8 +16,20 @@
 # the outputs (~115 GB). Defaults to ~/gvhmr-data, which on most clusters is shared; on a cluster where
 # $HOME is node-local that default is wrong, so set it.
 #
-# Knobs:  GPUS_PER_ARM (default 4)   EPOCHS (500)   EFF_BATCH (256)   PARTITION / ACCOUNT / TIME
-# Extra sbatch flags:  SBATCH_EXTRA='--qos=high --constraint=h100'
+# CLUSTER KNOBS — these are the ones you actually have to get right. Find your cluster's values with:
+#     sinfo -o "%20P %12G %6D %6c %10m %12l %N"      # partition, GRES, nodes, cores, mem, maxtime
+#
+#   PARTITION      the GPU partition (REQUIRED on most clusters; the default one usually has no GPUs)
+#   GRES           GPU request. Default "gpu:<GPUS_PER_ARM>". Many clusters need a TYPE: "gpu:a100:4"
+#   CPUS_PER_TASK  cores per rank (default 8). ntasks-per-node x this must FIT ON A NODE — that
+#                  product is the most common cause of "Requested node configuration is not available"
+#   TIME           walltime (default 24:00:00) — must be <= the partition's limit
+#   ACCOUNT        billing account, if your cluster requires one
+#   SBATCH_EXTRA   anything else, e.g. '--qos=high --constraint=h100'
+#
+# Other knobs:  GPUS_PER_ARM (4)   EPOCHS (500)   EFF_BATCH (256)
+#   SETUP_JOBID=<id>   chain onto an ALREADY-SUBMITTED setup job instead of submitting another
+#   SKIP_SETUP=1       assets are already staged; submit training immediately
 # ---------------------------------------------------------------------------------------------------
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -28,9 +40,18 @@ command -v sbatch >/dev/null || die "no sbatch on PATH — this is the Slurm pat
   "set SMPLX_USER and SMPLX_PW (free signup: https://smpl-x.is.tue.mpg.de/) before submitting"
 
 GPUS_PER_ARM="${GPUS_PER_ARM:-4}"
+CPUS_PER_TASK="${CPUS_PER_TASK:-8}"
+GRES="${GRES:-gpu:$GPUS_PER_ARM}"
+TIME="${TIME:-24:00:00}"
 BATCH=$((EFF_BATCH / GPUS_PER_ARM))
 [ $((BATCH * GPUS_PER_ARM)) -eq "$EFF_BATCH" ] || die \
   "GPUS_PER_ARM=$GPUS_PER_ARM must divide EFF_BATCH=$EFF_BATCH (use 1, 2, 4 or 8)"
+
+if [ -z "${PARTITION:-}" ]; then
+  say "WARNING: no PARTITION set — submitting to the default partition, which on most clusters has no GPUs."
+  say "         if this fails with 'Requested node configuration is not available', that's why."
+  say "         sinfo -o \"%20P %12G %6D %6c %10m %12l %N\"   # shows the GPU partitions"
+fi
 
 # Slurm strips most of the environment on some clusters; --export=ALL is the default but be explicit
 # about the things the jobs genuinely need, and never put the password on a command line.
@@ -39,24 +60,44 @@ EXPORTS="$EXPORTS,SMPLX_USER=$SMPLX_USER,SMPLX_PW=$SMPLX_PW"
 [ -n "${WANDB_API_KEY:-}" ] && EXPORTS="$EXPORTS,WANDB_API_KEY=$WANDB_API_KEY" || EXPORTS="$EXPORTS,WANDB_MODE=offline"
 
 COMMON=(--export="$EXPORTS")
-[ -n "${PARTITION:-}" ] && COMMON+=(--partition="$PARTITION")
-[ -n "${ACCOUNT:-}" ]   && COMMON+=(--account="$ACCOUNT")
+[ -n "${ACCOUNT:-}" ] && COMMON+=(--account="$ACCOUNT")
 # shellcheck disable=SC2206
 [ -n "${SBATCH_EXTRA:-}" ] && COMMON+=(${SBATCH_EXTRA})
 
+# The GPU jobs need the GPU partition; setup is CPU-only and is happiest on the default (usually
+# bigger, always-idle) partition — so it does NOT inherit PARTITION unless you set SETUP_PARTITION.
+GPUJOB=("${COMMON[@]}")
+[ -n "${PARTITION:-}" ] && GPUJOB+=(--partition="$PARTITION")
+SETUPJOB=("${COMMON[@]}")
+[ -n "${SETUP_PARTITION:-}" ] && SETUPJOB+=(--partition="$SETUP_PARTITION")
+
 say "root        : $DATA_ROOT   (must be visible from every node)"
 say "per arm     : $GPUS_PER_ARM GPU(s) x batch $BATCH = $EFF_BATCH effective (the paper's recipe)"
+say "resources   : partition=${PARTITION:-<default>} gres=$GRES cpus/task=$CPUS_PER_TASK time=$TIME"
 say "epochs      : $EPOCHS   |   W&B: ${WANDB_API_KEY:+online}${WANDB_API_KEY:-offline}"
 
-jid_setup=$(sbatch --parsable "${COMMON[@]}" scripts/slurm/00_setup.sbatch)
-say "1/3 setup  -> job $jid_setup  (CPU: venv + body model + ~27 GB packs)"
+# 1/3 setup — skip it if the assets are staged, or chain onto one you already submitted.
+DEP=""
+if [ -n "${SETUP_JOBID:-}" ]; then
+  jid_setup="$SETUP_JOBID"; DEP="--dependency=afterok:$jid_setup"
+  say "1/3 setup  -> reusing job $jid_setup (SETUP_JOBID)"
+elif [ "${SKIP_SETUP:-0}" = 1 ]; then
+  jid_setup="(skipped)"
+  say "1/3 setup  -> SKIPPED (SKIP_SETUP=1) — assuming packs + body model are already on $DATA_ROOT"
+else
+  jid_setup=$(sbatch --parsable "${SETUPJOB[@]}" scripts/slurm/00_setup.sbatch)
+  DEP="--dependency=afterok:$jid_setup"
+  say "1/3 setup  -> job $jid_setup  (CPU: venv + body model + ~27 GB packs)"
+fi
 
-jid_train=$(sbatch --parsable "${COMMON[@]}" --dependency=afterok:"$jid_setup" \
-  --gres=gpu:"$GPUS_PER_ARM" --ntasks-per-node="$GPUS_PER_ARM" \
-  ${TIME:+--time="$TIME"} scripts/slurm/10_train.sbatch)
-say "2/3 train  -> job $jid_train  (array 0=physics OFF, 1=physics LIGHT; after setup)"
+# shellcheck disable=SC2086
+jid_train=$(sbatch --parsable "${GPUJOB[@]}" $DEP \
+  --gres="$GRES" --ntasks-per-node="$GPUS_PER_ARM" \
+  --cpus-per-task="$CPUS_PER_TASK" --time="$TIME" scripts/slurm/10_train.sbatch)
+say "2/3 train  -> job $jid_train  (array 0=physics OFF, 1=physics LIGHT)"
 
-jid_eval=$(sbatch --parsable "${COMMON[@]}" --dependency=afterok:"$jid_train" scripts/slurm/20_eval.sbatch)
+jid_eval=$(sbatch --parsable "${GPUJOB[@]}" --dependency=afterok:"$jid_train" \
+  --gres="${EVAL_GRES:-gpu:1}" scripts/slurm/20_eval.sbatch)
 say "3/3 eval   -> job $jid_eval  (after BOTH arms succeed)"
 
 cat <<EOF
@@ -65,7 +106,7 @@ cat <<EOF
   logs:     tail -f gvhmr-train-${jid_train}_0.out    # arm A (physics off)
             tail -f gvhmr-train-${jid_train}_1.out    # arm B (physics light)
   result:   gvhmr-eval-${jid_eval}.out               # the side-by-side table
-  cancel:   scancel $jid_setup $jid_train $jid_eval
+  cancel:   scancel $jid_train $jid_eval
 
-  If a job dies, re-run this same command: each arm resumes from its last checkpoint.
+  If a job dies, re-submit with SKIP_SETUP=1 — each arm resumes from its last checkpoint.
 EOF

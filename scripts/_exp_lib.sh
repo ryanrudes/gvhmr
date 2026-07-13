@@ -49,13 +49,22 @@ exp_install() {  # torch build matching the box's CUDA, + the extras training/ev
   command -v uv >/dev/null || { say "installing uv"; curl -LsSf https://astral.sh/uv/install.sh | sh; export PATH="$HOME/.local/bin:$PATH"; }
   local cuda cu
   cuda=$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA Version: *\([0-9]*\.[0-9]*\).*/\1/p' | head -1)
-  case "$cuda" in
-    12.[0-5]*) cu=cu124 ;;
-    12.[6-7]*) cu=cu126 ;;
-    "")        cu=cu128; say "no nvidia-smi here (CPU setup node?) — assuming cu128; the GPU job re-checks" ;;
-    *)         cu=cu128 ;;   # 12.8+ / 13.x; H100 (sm_90) is covered by all three
-  esac
-  say "CUDA ${cuda:-unknown} -> torch extra: $cu"
+  if [ -n "${TORCH_CU:-}" ]; then
+    cu="$TORCH_CU"; say "torch extra: $cu (TORCH_CU)"
+  else
+    case "$cuda" in
+      12.[0-5]*) cu=cu124 ;;
+      12.[6-7]*) cu=cu126 ;;
+      # On a Slurm cluster this runs on a CPU *setup* node, which cannot see the GPU nodes' driver.
+      # cu124 is the conservative pick: it supports H100 (sm_90) and needs the oldest driver of the
+      # three, so it can't be too new for the compute nodes. Override with TORCH_CU=cu128 if you know
+      # the GPU nodes are on a recent driver — check with:
+      #   srun -p <gpu-partition> --gres=gpu:1 -t 5 nvidia-smi
+      "")        cu=cu124; say "no GPU on this node (CPU setup job?) — defaulting to cu124 (safe for H100; TORCH_CU= to override)" ;;
+      *)         cu=cu128 ;;   # 12.8+ / 13.x
+    esac
+    say "CUDA ${cuda:-unknown} -> torch extra: $cu"
+  fi
   uv sync --extra "$cu" --extra preproc --extra train --extra dev
 }
 

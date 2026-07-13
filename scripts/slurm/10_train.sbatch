@@ -9,13 +9,16 @@
 #       --ntasks-per-node MUST equal --gres=gpu:N MUST equal pl_trainer.devices
 #   And do NOT set --gpus-per-task=1: that pins each task to a single visible GPU, after which
 #   Lightning's devices=N would look for cuda:0..N-1 inside a task that can only see cuda:0.
+# NOTE: the resource flags below are only DEFAULTS — submit.sh overrides them on the command line
+# (PARTITION / GRES / CPUS_PER_TASK / TIME / SBATCH_EXTRA), and CLI flags beat #SBATCH directives.
+# If sbatch says "Requested node configuration is not available", it is one of these four, and
+# `sinfo -o "%20P %12G %6D %6c %10m %12l %N"` tells you what the cluster actually has.
 #SBATCH --job-name=gvhmr-train
 #SBATCH --output=%x-%A_%a.out
 #SBATCH --array=0-1
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:4
 #SBATCH --ntasks-per-node=4
-#SBATCH --cpus-per-task=12
+#SBATCH --cpus-per-task=8
 #SBATCH --time=24:00:00
 #SBATCH --signal=SIGUSR1@90
 set -euo pipefail
