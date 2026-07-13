@@ -43,31 +43,54 @@ def auth_smpl(
     only needed for mesh-overlay rendering. Register at https://smpl-x.is.tue.mpg.de/ and (for rendering)
     https://smpl.is.tue.mpg.de/. Credentials are stored 0600, locally.
     """
+    import sys
+
     from gvhmr.utils import assets, mpi_download
     from gvhmr.utils.console import console, rule
 
     rule("[gvhmr]gvhmr auth smpl[/]")
     console.print("[dim]SMPL and SMPL-X are separate MPI accounts — configure each with its own login.[/]")
 
+    # Non-interactive (a Slurm batch job, CI, a setup script): NEVER block on a prompt. Configure exactly
+    # the accounts whose credentials were supplied and skip the rest. Without this, passing only the
+    # SMPL-X flags still hit `typer.confirm` for SMPL, which aborts with no TTY — killing the job after
+    # the install and the downloads had already succeeded.
+    interactive = sys.stdin.isatty()
+
+    def _configure(explicit: bool, prompt: str) -> bool:
+        if explicit:
+            return True
+        if not interactive:
+            return False
+        return typer.confirm(prompt, default=True)
+
+    def _need(value: str | None, prompt: str, *, hide: bool = False, what: str) -> str:
+        if value:
+            return value
+        if not interactive:
+            raise typer.BadParameter(f"missing {what} and stdin is not a TTY — pass it as a flag or env var")
+        return typer.prompt(prompt, hide_input=hide)
+
     saved: list[str] = []
     # SMPL-X (smpl-x.is.tue.mpg.de) — required for motion recovery.
-    if (
-        smplx_username
-        or smplx_password
-        or typer.confirm("Configure the SMPL-X account (motion recovery)?", default=True)
-    ):
-        smplx_username = smplx_username or typer.prompt("  SMPL-X email [smpl-x.is.tue.mpg.de]")
-        smplx_password = smplx_password or typer.prompt("  SMPL-X password", hide_input=True)
+    if _configure(bool(smplx_username or smplx_password), "Configure the SMPL-X account (motion recovery)?"):
+        smplx_username = _need(smplx_username, "  SMPL-X email [smpl-x.is.tue.mpg.de]", what="--smplx-username")
+        smplx_password = _need(smplx_password, "  SMPL-X password", hide=True, what="--smplx-password")
         mpi_download.save_credentials(smplx_username, smplx_password, dataset="smplx")
         saved.append("smplx")
 
-    # SMPL (smpl.is.tue.mpg.de) — only needed for mesh-overlay rendering.
-    if smpl_username or smpl_password or typer.confirm("Configure the SMPL account (mesh rendering)?", default=True):
-        smpl_username = smpl_username or typer.prompt("  SMPL email [smpl.is.tue.mpg.de]")
-        smpl_password = smpl_password or typer.prompt("  SMPL password", hide_input=True)
+    # SMPL (smpl.is.tue.mpg.de) — only needed for mesh-overlay rendering, so skipping it is fine.
+    if _configure(bool(smpl_username or smpl_password), "Configure the SMPL account (mesh rendering)?"):
+        smpl_username = _need(smpl_username, "  SMPL email [smpl.is.tue.mpg.de]", what="--smpl-username")
+        smpl_password = _need(smpl_password, "  SMPL password", hide=True, what="--smpl-password")
         mpi_download.save_credentials(smpl_username, smpl_password, dataset="smpl")
         saved.append("smpl")
 
+    if not saved and not interactive:
+        console.print(
+            "[warn]No credentials supplied[/] — pass --smplx-username/--smplx-password (or $SMPLX_USER/$SMPLX_PW)."
+        )
+        raise typer.Exit(1)
     if not saved:
         console.print("[warn]No credentials entered.[/] Nothing saved.")
         return
