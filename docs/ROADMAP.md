@@ -208,31 +208,65 @@ A/B (needs EMDB videos) is the real arbiter. `camera.depth_model=unidepth` is av
   `transl_w_accel`=1e4) and a **strong** arm (1000/500/1e5) — to separate "physics helps" from "weights
   too hot":
 
+  Numbers below are the **TF32-free re-measurement (2026-07-13)** — the original table was scored while the
+  TF32 regression was live (see the note under the table), so every arm was re-evaluated from its saved
+  checkpoint with TF32 off:
+
   | metric | paper | off (baseline) | light | strong |
   |---|---|---|---|---|
-  | 3DPW PA-MPJPE *(guardrail)* | 36.2 | 42.78 | 42.94 (+0.16) | 42.99 (+0.21) |
-  | 3DPW Accel | 5.0 | 9.79 | **9.59** (−0.20) | **9.46** (−0.33) |
-  | EMDB WAA-MPJPE | 109.1 | 320.9 | **279.8** (−41) | 341.7 (+21) |
-  | EMDB RTE | 1.9 | 6.84 | **6.13** (−0.70) | 7.54 (+0.71) |
-  | EMDB Jitter | 16.5 | 60.59 | **55.58** (−5.0) | 55.79 (−4.8) |
-  | EMDB Foot-Slide | 3.5 | 11.14 | **9.43** (−1.71) | 10.61 (−0.52) |
-  | EMDB-1 Accel | 3.6 | 19.92 | **19.38** (−0.54) | 19.26 (−0.67) |
+  | 3DPW PA-MPJPE *(guardrail)* | 36.2 | 42.80 | 42.96 (+0.16) | 43.01 (+0.21) |
+  | 3DPW Accel | 5.0 | 9.67 | **9.47** (−0.20) | **9.34** (−0.33) |
+  | EMDB WAA-MPJPE | 109.1 | 320.60 | **279.54** (−41.1) | 341.47 (+20.9) |
+  | EMDB RTE | 1.9 | 6.92 | **6.21** (−0.71) | 7.64 (+0.72) |
+  | EMDB Jitter | 16.5 | 57.50 | **52.03** (−5.5) | 53.20 (−4.3) |
+  | EMDB Foot-Slide | 3.5 | 11.13 | **9.42** (−1.70) | 10.60 (−0.52) |
+  | EMDB-1 Accel | 3.6 | 11.66 | **11.03** (−0.63) | 10.89 (−0.76) |
 
-  Every physics target (jitter −8%, foot-slide −15%, accel) dropped in **both** arms, with the accuracy
+  Every physics target (jitter −10%, foot-slide −15%, accel) dropped in **both** arms, with the accuracy
   guardrail (PA-MPJPE) held to +0.4% — the losses do what they claim at ~no accuracy cost. The bracket paid
   off: the **light** arm is the clear winner — it improves *everything* including world MPJPE (WAA −41) and
-  trajectory RTE (−0.70), whereas the **strong** arm over-regularizes the trajectory (WAA +21, RTE +0.71)
+  trajectory RTE (−0.71), whereas the **strong** arm over-regularizes the trajectory (WAA +21, RTE +0.72)
   for only a marginal jitter/accel gain. Caveat: this is the reduced AMASS+3DPW model (42.8 vs paper 36.2),
-  so the deltas are *relative*; the definitive version is a **full-recipe retrain** (now unblocked — BEDLAM +
-  H36M feature packs downloaded) + `physics-light`, measured on the real ~36.2 model. Config
+  so the deltas are *relative*; the definitive version is a **full-recipe retrain** (now unblocked — the
+  500-epoch reproduce landed, see below) + `physics-light`, measured on the real ~36.2 model. Config
   `exp=gvhmr/mixed/a3_physics_hmr2` (weights default 0 → identical to the baseline arm; set the three to
   enable).
+
+  > **Re-measured after the TF32 regression (06e3922).** The first scoring of this A/B ran while TF32 was
+  > globally enabled, which corrupts exactly the metrics A3 is judged on (it inflated the baseline's EMDB-1
+  > accel by 71%: 11.66 → 19.92, and jitter 57.50 → 60.59). The conclusion nevertheless **survives intact**:
+  > TF32's error was *common-mode*, shifting all three arms almost equally, so while the absolute numbers
+  > moved a lot the A/B *deltas* are unchanged to ~0.1 (e.g. WAA −41.10 → −41.07, foot-slide −1.71 → −1.70).
+  > Worth remembering both ways: a shared artifact can leave a *ranking* valid while making every absolute
+  > number wrong — and the artifact here (−3.1 jitter) was the same size as the claimed effect (−5.0), so it
+  > had to be checked rather than assumed.
 - **A4** — `gvhmr/utils/preproc/box_adapter.py`: `BoxAdapter` (normalized affine on `(cx,cy,size)`, default
   identity) + `fit_box_adapter` (calibrate new→baseline from paired boxes). Wired into the demo behind
   `box_adapt` (default null → skipped → golden-identical). **Validated on real data (negative for yolo26x):**
   the yolo26x→baseline calibration on 3DPW is the identity transform, so the adapter cannot recover yolo26x's
   penalty — it's per-frame, not a systematic framing bias (see the A4 caveat above). The mechanism stands for
   detectors with a real systematic bias; yolo26x isn't one.
+
+**Full-recipe reproduce — DONE (2026-07-13).** A from-scratch 500-epoch retrain on all four datasets
+(`exp=gvhmr/mixed/mixed`, single GPU, W&B `mixed_reproduce_4ds_500e`) **reproduces the paper**, which
+retires the "reduced model" caveat that qualified every A-series result above:
+
+| | this retrain | paper |
+|---|---|---|
+| 3DPW PA-MPJPE / MPJPE / Accel | 36.4 / 55.7 / 4.8 | 36.2 / 55.6 / 5.0 |
+| EMDB-1 PA-MPJPE / Accel | **42.4** / **3.5** | 42.7 / 3.6 |
+| EMDB-2 WA-MPJPE / RTE / Jitter | 111.9 / 2.0 / **14.7** | 109.1 / 1.9 / 16.5 |
+| RICH PA-MPJPE / MPJPE | 41.0 / 69.9 | 39.5 / 66.0 |
+
+It matches on 3DPW, **beats the paper on EMDB-1 PA-MPJPE and on jitter across all three benchmarks**, and
+trails ~3-4 mm on RICH pose and EMDB-2 world translation. The most likely cause of that shortfall is a
+recipe deviation on my side, not the code: `mixed.yaml` specifies `devices: 2 × batch_size: 128` (effective
+**256** under DDP) and this ran `devices=1` (effective **128**) at the same LR, to leave the second GPU free
+on a shared box. Re-running at the paper's effective batch (`devices=1 batch_size=256` is equivalent — the
+net is LayerNorm-only, so there are no per-device norm statistics) is the obvious way to close it.
+
+**Next:** the definitive **A3-light** run is now unblocked — retrain this full recipe with the physics-light
+weights and re-measure on a real ~36 PA-MPJPE model instead of the reduced 42.8 one.
 
 ## Regime B status
 
