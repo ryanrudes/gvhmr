@@ -47,8 +47,13 @@ exp_check_disk() {
 
 exp_install() {  # torch build matching the box's CUDA, + the extras training/eval need
   command -v uv >/dev/null || { say "installing uv"; curl -LsSf https://astral.sh/uv/install.sh | sh; export PATH="$HOME/.local/bin:$PATH"; }
-  local cuda cu
-  cuda=$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA Version: *\([0-9]*\.[0-9]*\).*/\1/p' | head -1)
+  local cuda="" cu
+  # NB: must GUARD on nvidia-smi existing, not just redirect its stderr. On a CPU setup node the
+  # binary is absent, so `nvidia-smi | sed | head` exits 127 — and under `set -euo pipefail` that
+  # kills the whole job before the "no GPU here" branch below can ever run. (It did: exit 127, 2s.)
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    cuda=$(nvidia-smi | sed -n 's/.*CUDA Version: *\([0-9]*\.[0-9]*\).*/\1/p' | head -1) || cuda=""
+  fi
   if [ -n "${TORCH_CU:-}" ]; then
     cu="$TORCH_CU"; say "torch extra: $cu (TORCH_CU)"
   else
@@ -108,7 +113,9 @@ exp_overrides() {
     "pl_trainer.num_sanity_val_steps=0"
 }
 
-exp_last_ckpt() { ls -v "$1"/checkpoints/*.ckpt 2>/dev/null | tail -1; }
+# `|| true`: with no match `ls` exits non-zero, which pipefail+set -e would turn into a cryptic abort
+# instead of the actionable "couldn't find both checkpoints" message below.
+exp_last_ckpt() { ls -v "$1"/checkpoints/*.ckpt 2>/dev/null | tail -1 || true; }
 
 exp_score() {  # eval both arms and print the delta table. NB TF32 stays OFF (4x EMDB accel error).
   local a b
