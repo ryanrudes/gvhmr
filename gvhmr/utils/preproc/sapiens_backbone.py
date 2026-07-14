@@ -35,6 +35,10 @@ from gvhmr.utils.pylogger import Log
 # Sapiens pretrained-encoder hidden widths (patch size 16). Seed values — re-verified at first forward.
 _EMBED_DIMS = {"sapiens_0.3b": 1024, "sapiens_0.6b": 1280, "sapiens_1b": 1536, "sapiens_2b": 1920}
 
+#: pool name → spatial grid the (B, C, 64, 64) map is reduced to. The feature width is C·g², so this
+#: also sets ``network.imgseq_dim`` for a retrain. g=1 is plain GAP (what the first, losing A/B used).
+_POOL_GRID = {"gap": 1, "grid2": 2, "grid4": 4}
+
 
 def _resolve_ckpt(checkpoint: str | None, model_name: str) -> Path:
     """Resolve a TorchScript encoder path: absolute, or relative to the configured checkpoints root."""
@@ -58,22 +62,53 @@ def _resolve_ckpt(checkpoint: str | None, model_name: str) -> Path:
 
 
 class SapiensBackbone:
-    """Per-frame Sapiens encoder features (global-average-pooled). Satisfies ``FeatureBackbone`` (base.py)."""
+    """Per-frame Sapiens encoder features. Satisfies ``FeatureBackbone`` (base.py).
+
+    **Pooling is the whole ballgame** (``pool``). Sapiens emits a **(B, C, 64, 64) spatial feature map**;
+    how you collapse it to one per-frame vector decides whether any pose information survives:
+
+    ``gap`` (default, what the first A/B ran)
+        Global-average-pool the whole 64×64 map → ``(F, C)``. This averages over 4096 patches and
+        **destroys spatial structure — which, for pose, is the signal**. HMR2's competing feature is the
+        SMPL *head token*, task-trained for mesh recovery and spatially aware by construction. The
+        reduced A/B scored GAP-Sapiens at 74.5 PA-MPJPE vs HMR2's 42.8 — a 32mm rout that says far more
+        about GAP than about Sapiens.
+
+    ``grid2`` / ``grid4``
+        Adaptive-average-pool to a 2×2 (or 4×4) grid and flatten → ``(F, C*4)`` / ``(F, C*16)``. Keeps a
+        coarse spatial layout and lets the network's ``imgseq_embedder`` (a Linear) learn the pooling
+        instead of hard-coding the worst one. Set ``network.imgseq_dim`` to match when retraining.
+
+    So "Sapiens loses to HMR2" was never actually tested — only "GAP-pooled Sapiens" was.
+    """
 
     def __init__(
         self,
         model_name: str = "sapiens_0.6b",
         checkpoint: str | None = None,
         input_hw: tuple[int, int] = (1024, 1024),  # the pretrain encoders are traced at a fixed 1024²
+        pool: str = "gap",  # gap | grid2 | grid4 — see the class docstring; this is the A1 knob
         tqdm_leave: bool = True,
     ):
         self.device = get_device()
         self.model_name = model_name
         self.input_hw = (int(input_hw[0]), int(input_hw[1]))
+        if pool not in _POOL_GRID:
+            raise ValueError(f"pool must be one of {sorted(_POOL_GRID)} (got {pool!r})")
+        self.pool = pool
         # Provisional width; corrected from the first real forward (see extract_video_features).
-        self.feat_dim = _EMBED_DIMS.get(model_name, 1280)
+        self.feat_dim = _EMBED_DIMS.get(model_name, 1280) * _POOL_GRID[pool] ** 2
         self.model = self._load_model(_resolve_ckpt(checkpoint, model_name))
         self.tqdm_leave = tqdm_leave
+
+    def _pool(self, out: torch.Tensor) -> torch.Tensor:
+        """(B, C, h, w) -> (B, C * g²), where g=1 is the old GAP behaviour (bit-identical)."""
+        if out.ndim != 4:
+            return out
+        g = _POOL_GRID[self.pool]
+        if g == 1:
+            return out.mean(dim=(-2, -1))
+        return F.adaptive_avg_pool2d(out, g).flatten(1)  # (B, C, g, g) -> (B, C*g²)
 
     def _load_model(self, ckpt: Path):
         """Load a sapiens-lite TorchScript encoder. Swap this for non-lite ``.pth`` checkpoints."""
@@ -98,7 +133,7 @@ class SapiensBackbone:
             out = self.model(b)
             if isinstance(out, (tuple, list)):  # the pretrain encoder returns a 1-tuple
                 out = out[0]
-            v = out.mean(dim=(-2, -1)) if out.ndim == 4 else out  # GAP the (B,C,h,w) feature map → (B, C)
+            v = self._pool(out)  # (B,C,h,w) -> (B, C*g²); g=1 reproduces the old GAP exactly
             feats.append(v.detach().float().cpu())
         out = torch.cat(feats, dim=0).clone()  # (F, C)
         if out.shape[-1] != self.feat_dim:  # trust the model, not the table

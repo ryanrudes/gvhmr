@@ -77,32 +77,42 @@ def run(
     written, skipped = 0, 0
     for video in track(vids, desc="Videos"):
         vid = video.stem
-        dst = out / f"{vid}.pt"
-        if dst.exists() and not overwrite:
-            skipped += 1
-            continue
         width, height = get_video_lwh(video)[1:]
 
         if bbx_from is not None:  # reuse boxes from an existing feature cache (exact re-extraction)
-            src = Path(bbx_from) / f"{vid}.pt"
-            if not src.exists():
+            # Training caches are keyed PER PERSON — 3DPW train is "<vid>_0.pt", "<vid>_1.pt", … — so a
+            # single "<vid>.pt" lookup silently skipped every multi-person sequence, i.e. exactly the
+            # caches --bbx-from exists to re-extract. Take whichever naming the source cache uses.
+            srcs = sorted(Path(bbx_from).glob(f"{vid}.pt")) or sorted(Path(bbx_from).glob(f"{vid}_*.pt"))
+            if not srcs:
                 Log.warning(f"[warn]no bbx for {vid}[/] in {bbx_from} — skipping")
                 skipped += 1
                 continue
-            cached = torch.load(src, weights_only=False)
-            bbx_xys = cached["bbx_xys"].float()
-            img_wh = cached.get("img_wh", torch.tensor([width, height]))
+            jobs = []
+            for src in srcs:
+                cached = torch.load(src, weights_only=False)
+                jobs.append((src.stem, cached["bbx_xys"].float(), cached.get("img_wh", torch.tensor([width, height]))))
         else:  # detect + track the subject (bring-your-own-data)
             bbx_xyxy = tracker.get_one_track(str(video)).float()  # (F, 4)
-            bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy, base_enlarge=1.2).float()  # (F, 3)
-            img_wh = torch.tensor([width, height])
+            jobs = [(vid, get_bbx_xys_from_xyxy(bbx_xyxy, base_enlarge=1.2).float(), torch.tensor([width, height]))]
 
-        features = extractor.extract_video_features(str(video), bbx_xys)  # (F, D)
-        torch.save(
-            {"features": features, "bbx_xys": bbx_xys, "img_wh": img_wh, "backbone": backbone, "feat_dim": feat_dim},
-            dst,
-        )
-        written += 1
+        for name, bbx_xys, img_wh in jobs:
+            dst = out / f"{name}.pt"
+            if dst.exists() and not overwrite:
+                skipped += 1
+                continue
+            features = extractor.extract_video_features(str(video), bbx_xys)  # (F, D)
+            torch.save(
+                {
+                    "features": features,
+                    "bbx_xys": bbx_xys,
+                    "img_wh": img_wh,
+                    "backbone": backbone,
+                    "feat_dim": feat_dim,
+                },
+                dst,
+            )
+            written += 1
 
     Log.info(
         f"[ok]Wrote {written}[/] feature file(s) to [muted]{out}[/]" + (f" · skipped {skipped}" if skipped else "")

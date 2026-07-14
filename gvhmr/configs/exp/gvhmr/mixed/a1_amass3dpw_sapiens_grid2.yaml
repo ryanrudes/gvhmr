@@ -1,0 +1,76 @@
+# @package _global_
+# ROADMAP A1 — the POOLING ablation. Identical to a1_amass3dpw_sapiens in every way except that the
+# Sapiens features are 2x2-spatially-pooled (4096-d) instead of global-average-pooled (1024-d).
+#
+# Why: the first A/B scored Sapiens at 74.5 PA-MPJPE vs HMR2's 42.8 — and concluded "Sapiens loses".
+# But Sapiens emits a (C, 64, 64) feature map and the integration GAP'd it into ONE vector, averaging
+# 4096 patches and destroying the spatial structure that IS the pose signal. HMR2's competing feature is
+# the SMPL *head token*, task-trained and spatially aware. So that A/B tested GAP, not Sapiens.
+#
+# grid2 strictly CONTAINS gap (averaging its 4 cells reproduces gap exactly), so it cannot carry less
+# information — the network's imgseq_embedder just learns the pooling instead of us hard-coding the
+# worst one. If Sapiens still loses here, the backbone really is the problem. If it jumps, the original
+# A1 conclusion was an artifact of one line of integration code.
+#
+# Same reduced recipe (AMASS + 3DPW-train, 200 epochs) so it is directly comparable to BOTH prior arms.
+defaults:
+    - override /data: mocap/trainX_testY
+    - override /model: gvhmr/gvhmr_pl
+    - override /endecoder: gvhmr/v1_amass_local_bedlam_cam
+    - override /optimizer: adamw_2e-4
+    - override /scheduler_cfg: epoch_half_200_350
+    - override /train_datasets:
+          - pure_motion_amass/v11
+          - imgfeat_3dpw/sapiens_grid2
+    - override /test_datasets:
+          - 3dpw/fliptest
+    - override /callbacks:
+          - simple_ckpt_saver/every10e_top100
+          - prog_bar/prog_reporter_every0.1
+          - train_speed_timer/base
+    - override /network: gvhmr/relative_transformer
+
+exp_name_base: a1_amass3dpw_sapiens_grid2
+exp_name_var: ""
+exp_name: ${exp_name_base}${exp_name_var}
+data_name: a1_amass3dpw_sapiens_grid2
+
+network:
+    imgseq_dim: 4096 # sapiens 0.3b (1024) x 2x2 grid pooling = 4096
+
+pipeline:
+    _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline
+    args_denoiser3d: ${network}
+    args:
+        endecoder_opt: ${endecoder}
+        normalize_cam_angvel: True
+        weights:
+            cr_j3d: 500.
+            transl_c: 1.
+            cr_verts: 500.
+            j2d: 1000.
+            verts2d: 1000.
+            transl_w: 1.
+            static_conf_bce: 1.
+        static_conf:
+            vel_thr: 0.15
+
+data:
+    limit_each_trainset: 3000 # cap AMASS for a finishable run (3DPW's 16 seqs are unaffected)
+    loader_opts:
+        train:
+            batch_size: 128
+            num_workers: 8
+        val:
+            batch_size: 1
+            num_workers: 2
+
+pl_trainer:
+    precision: 16-mixed
+    log_every_n_steps: 20
+    gradient_clip_val: 0.5
+    max_epochs: 200
+    limit_val_batches: 0 # validation off (see header) — eval Sapiens separately after training
+    num_sanity_val_steps: 0
+    check_val_every_n_epoch: 1000
+    devices: 2

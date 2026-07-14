@@ -173,3 +173,11 @@ MainStore.store(  # re-extracted Sapiens features (Tier B backbone swap) — see
     node=builds(ThreedpwSmplDataset, imgfeat_subdir="imgfeats/3dpw_train_sapiens"),
     group="train_datasets/imgfeat_3dpw",
 )
+MainStore.store(  # Sapiens with 2x2 spatial pooling instead of GAP (4096-d) — the A1 pooling ablation.
+    # GAP-Sapiens lost to HMR2 by 32mm (74.5 vs 42.8); it averages a 64x64 feature map into one vector,
+    # destroying the spatial structure that IS the pose signal. grid2 keeps a coarse layout and strictly
+    # contains GAP, so it isolates "is Sapiens bad, or was the pooling bad?".
+    name="sapiens_grid2",
+    node=builds(ThreedpwSmplDataset, imgfeat_subdir="imgfeats/3dpw_train_sapiens_grid2"),
+    group="train_datasets/imgfeat_3dpw",
+)

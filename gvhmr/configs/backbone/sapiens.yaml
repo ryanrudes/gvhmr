@@ -9,3 +9,14 @@ name: sapiens
 model_name: sapiens_0.6b # 0.3b/0.6b/1b/2b → 1024/1280/1536/1920-d (verified at first forward)
 checkpoint: null # sapiens-lite TorchScript encoder (facebook/sapiens-pretrain-<size>-torchscript, *.pt2); abs or under checkpoints root
 input_hw: [1024, 1024] # the pretrain encoders are traced at a FIXED 1024² (64×64 pos-embed grid)
+
+# How the (B, C, 64, 64) feature map collapses to one per-frame vector. THIS IS THE A1 KNOB.
+#   gap    global-average-pool the whole map → C dims. Averages 4096 patches and throws away spatial
+#          structure — which IS the pose signal. This is what the first A/B ran, and it scored 74.5
+#          PA-MPJPE vs HMR2's 42.8. That rout indicts GAP, not Sapiens.
+#   grid2  2×2 adaptive pool, flattened → C·4 dims. Strictly CONTAINS gap (averaging its 4 cells
+#          reproduces gap exactly), so it can only carry more; the network's imgseq_embedder learns the
+#          pooling instead of us hard-coding the worst one.  ← try this first
+#   grid4  4×4 → C·16 dims. More spatial detail, 16× the cache.
+# Set network.imgseq_dim = C · g² when you retrain (0.6b: gap 1280 / grid2 5120 / grid4 20480).
+pool: gap
