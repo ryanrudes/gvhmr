@@ -86,7 +86,12 @@ fi
 # which would write them into the Slurm job record (readable via `scontrol show job -d` / accounting).
 exp_write_secrets
 
-EXPORTS="ALL,GVHMR_EXP_ROOT=$DATA_ROOT,EPOCHS=$EPOCHS,EFF_BATCH=$EFF_BATCH,GPUS_PER_ARM=$GPUS_PER_ARM,KEEP_TARS=$KEEP_TARS"
+read -r -a ARM_LIST <<<"$ARMS"
+N_ARMS=${#ARM_LIST[@]}
+[ "$N_ARMS" -gt 0 ] || die "ARMS is empty (known arms: off light vel)"
+for a in "${ARM_LIST[@]}"; do exp_arm_exp "$a" >/dev/null; done   # validate names before queuing anything
+
+EXPORTS="ALL,GVHMR_EXP_ROOT=$DATA_ROOT,EPOCHS=$EPOCHS,EFF_BATCH=$EFF_BATCH,GPUS_PER_ARM=$GPUS_PER_ARM,KEEP_TARS=$KEEP_TARS,ARMS=$ARMS"
 [ -n "${TORCH_CU:-}" ] && EXPORTS="$EXPORTS,TORCH_CU=$TORCH_CU"
 
 # W&B, best source first:
@@ -142,9 +147,10 @@ fi
 
 # shellcheck disable=SC2086
 jid_train=$(sbatch --parsable "${GPUJOB[@]}" $DEP \
+  --array=0-$((N_ARMS - 1)) \
   --gres="$GRES" --ntasks-per-node="$GPUS_PER_ARM" \
   --cpus-per-task="$CPUS_PER_TASK" --time="$TIME" scripts/slurm/10_train.sbatch)
-say "2/3 train  -> job $jid_train  (array 0=physics OFF, 1=physics LIGHT)"
+say "2/3 train  -> job $jid_train  (array 0-$((N_ARMS - 1)): $ARMS)"
 
 jid_eval=$(sbatch --parsable "${GPUJOB[@]}" --dependency=afterok:"$jid_train" \
   --gres="${EVAL_GRES:-gpu:1}" scripts/slurm/20_eval.sbatch)

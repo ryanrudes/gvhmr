@@ -1,0 +1,86 @@
+# @package _global_
+# ROADMAP A3 ablation — velocity-smoothness ONLY. Isolates which of the three physics losses is
+# actually doing the work.
+#
+# The definitive full-recipe A/B (docs/ROADMAP.md A3) found, versus the physics-off baseline:
+#   jitter −10..13%, accel −4..6%          <- a real win
+#   EMDB-2 foot-sliding 3.51 -> 3.51       <- `foot_slide` moved its OWN target by exactly nothing
+#   EMDB-2 WA-MPJPE +1.34, W-MPJPE +6.97   <- world grounding got WORSE
+#   EMDB-1 MPJPE +2.34mm                   <- and it cost pose accuracy
+#
+# Hypothesis: the jitter/accel win is entirely `transl_w_accel` (velocity smoothness), and the
+# contact/penetration terms are pure cost — they degrade the trajectory while failing to improve the
+# foot-sliding they exist to fix. This arm keeps ONLY transl_w_accel, at the same weight, so it is a
+# clean subtraction from the `light` arm (which is otherwise identical).
+#
+# If this arm keeps the jitter win AND avoids the world/pose regression, the recommendation becomes
+# "use velocity smoothness, drop foot-contact + penetration" — and the losses stop being a pure trade.
+defaults:
+    - override /data: mocap/trainX_testY
+    - override /model: gvhmr/gvhmr_pl
+    - override /endecoder: gvhmr/v1_amass_local_bedlam_cam
+    - override /optimizer: adamw_2e-4
+    - override /scheduler_cfg: epoch_half_200_350
+    - override /train_datasets:
+          - pure_motion_amass/v11
+          - imgfeat_bedlam/v2
+          - imgfeat_h36m/v1
+          - imgfeat_3dpw/v1
+    - override /test_datasets:
+          - emdb1/v1_fliptest
+          - emdb2/v1_fliptest
+          - rich/all
+          - 3dpw/fliptest
+    - override /callbacks:
+          - simple_ckpt_saver/every10e_top100
+          - prog_bar/prog_reporter_every0.1
+          - train_speed_timer/base
+          - lr_monitor/pl
+          - metric_emdb1
+          - metric_emdb2
+          - metric_rich
+          - metric_3dpw
+    - override /network: gvhmr/relative_transformer
+    - override /logger: wandb
+
+exp_name_base: mixed_physics_vel
+exp_name_var: ""
+exp_name: ${exp_name_base}${exp_name_var}
+data_name: mocap_mixed_v1
+
+pipeline:
+    _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline
+    args_denoiser3d: ${network}
+    args:
+        endecoder_opt: ${endecoder}
+        normalize_cam_angvel: True
+        weights:
+            cr_j3d: 500.
+            transl_c: 1.
+            cr_verts: 500.
+            j2d: 1000.
+            verts2d: 1000.
+
+            transl_w: 1.
+            static_conf_bce: 1.
+
+            # --- A3 ablation: velocity smoothness ONLY (same weight as the `light` arm) ---
+            transl_w_accel: 1e4 # velocity_smoothness_loss
+            # foot_slide / penetration deliberately absent (=> 0, gated off) — that IS the ablation.
+
+        static_conf:
+            vel_thr: 0.15
+
+data:
+    loader_opts:
+        train:
+            batch_size: 128
+            num_workers: 12
+
+pl_trainer:
+    precision: 16-mixed
+    log_every_n_steps: 50
+    gradient_clip_val: 0.5
+    max_epochs: 500
+    check_val_every_n_epoch: 10
+    devices: 2

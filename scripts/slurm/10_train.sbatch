@@ -29,17 +29,19 @@ exp_load_secrets   # WANDB_API_KEY etc. from the 0600 file, not from the Slurm j
 GPUS="${SLURM_GPUS_ON_NODE:-${GPUS_PER_ARM:-4}}"
 read -r BATCH ACCUM <<<"$(exp_split_batch "$GPUS")"
 
-case "${SLURM_ARRAY_TASK_ID:-0}" in
-  0) EXP=$EXP_A; OUT=$OUT_A; VAR=_armA_off   ;;
-  1) EXP=$EXP_B; OUT=$OUT_B; VAR=_armB_light ;;
-  *) die "unexpected array index ${SLURM_ARRAY_TASK_ID}" ;;
-esac
+# The array index selects an arm out of $ARMS (submit.sh sizes the array to match).
+read -r -a ARM_LIST <<<"$ARMS"
+ARM="${ARM_LIST[${SLURM_ARRAY_TASK_ID:-0}]:-}"
+[ -n "$ARM" ] || die "array index ${SLURM_ARRAY_TASK_ID} has no arm in ARMS='$ARMS'"
+EXP="$(exp_arm_exp "$ARM")"
+OUT="$(exp_arm_out "$ARM")"
+VAR="_arm_$ARM"
 
 # Interconnect: fine on NVLink/NVSwitch nodes. On PCIe boxes NCCL can hang on init (GPUs pinned at
 # 100%, zero output) — set NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 in that case.
 export NCCL_DEBUG="${NCCL_DEBUG:-WARN}"
 
-say "arm ${SLURM_ARRAY_TASK_ID}: $EXP"
+say "arm '$ARM' (index ${SLURM_ARRAY_TASK_ID:-0} of ARMS='$ARMS'): $EXP"
 say "  $GPUS GPU(s) x batch $BATCH x accum $ACCUM = $EFF_BATCH effective  ->  $OUT"
 
 mapfile -t OVERRIDES < <(exp_overrides "$GPUS" "$BATCH" "$ACCUM")

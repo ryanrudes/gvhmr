@@ -21,10 +21,38 @@ EPOCHS="${EPOCHS:-500}"
 EFF_BATCH="${EFF_BATCH:-256}"   # the paper's effective batch = devices x per-GPU batch
 KEEP_TARS="${KEEP_TARS:-0}"     # packs arrive as ~27 GB of tarballs; deleted after extraction by default
 
-OUT_A="$DATA_ROOT/outputs/armA_off"
-OUT_B="$DATA_ROOT/outputs/armB_light"
-EXP_A="gvhmr/mixed/mixed"
-EXP_B="gvhmr/mixed/mixed_physics_light"
+# --- the arms ---------------------------------------------------------------------------------------
+#   off    physics OFF                      — the baseline every other arm is judged against
+#   light  all three physics losses         — the definitive A/B (jitter -10..13%, but world/pose WORSE)
+#   vel    velocity smoothness ONLY         — the ablation: is the jitter win all transl_w_accel, and
+#                                             are foot_slide/penetration pure cost? (see ROADMAP A3)
+# ARMS selects which to TRAIN (default: the original pair). Scoring always covers every arm that has a
+# checkpoint, so you can train one new arm and still get the full comparison table.
+ARMS="${ARMS:-off light}"
+
+exp_arm_exp() {  # arm -> exp config
+  case "$1" in
+    off)   echo "gvhmr/mixed/mixed" ;;
+    light) echo "gvhmr/mixed/mixed_physics_light" ;;
+    vel)   echo "gvhmr/mixed/mixed_physics_vel" ;;
+    *)     die "unknown arm '$1' (known: off light vel)" ;;
+  esac
+}
+exp_arm_out() { echo "$DATA_ROOT/outputs/arm_$1"; }
+
+# The first two arms were trained before this generalization, under their original directory names.
+exp_arm_out() {
+  case "$1" in
+    off)   echo "$DATA_ROOT/outputs/armA_off" ;;
+    light) echo "$DATA_ROOT/outputs/armB_light" ;;
+    *)     echo "$DATA_ROOT/outputs/arm_$1" ;;
+  esac
+}
+
+OUT_A="$(exp_arm_out off)"
+OUT_B="$(exp_arm_out light)"
+EXP_A="$(exp_arm_exp off)"
+EXP_B="$(exp_arm_exp light)"
 
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$DATA_ROOT/.uv-cache}"
 export HF_HOME="${HF_HOME:-$DATA_ROOT/.hf}"
@@ -175,26 +203,49 @@ exp_load_secrets() { [ -f "$EXP_SECRETS" ] && . "$EXP_SECRETS" || true; }
 
 exp_last_ckpt() { ls -v "$1"/checkpoints/*.ckpt 2>/dev/null | tail -1 || true; }
 
-exp_score() {  # eval both arms and print the delta table. NB TF32 stays OFF (4x EMDB accel error).
-  local a b
-  a=$(exp_last_ckpt "$OUT_A"); b=$(exp_last_ckpt "$OUT_B")
-  [ -n "$a" ] && [ -n "$b" ] || die "couldn't find both checkpoints under $DATA_ROOT/outputs — see the logs"
-  say "scoring arm A (physics off):   $a"
-  bin/gvhmr eval all --ckpt "$a" --json "$DATA_ROOT/armA_off.json"
-  say "scoring arm B (physics light): $b"
-  bin/gvhmr eval all --ckpt "$b" --json "$DATA_ROOT/armB_light.json"
+# Score EVERY arm that has a checkpoint (not just the ones we trained this time) and print one table
+# with `off` as the reference column. That's what lets you train a single new arm and still compare it
+# against the baseline you already paid for. NB TF32 stays OFF (it costs 4x the EMDB accel error).
+exp_score() {
+  local scored=()
+  for arm in off light vel; do
+    local out ck
+    out="$(exp_arm_out "$arm")"
+    ck=$(exp_last_ckpt "$out")
+    [ -n "$ck" ] || continue
+    say "scoring arm '$arm': $ck"
+    bin/gvhmr eval all --ckpt "$ck" --json "$DATA_ROOT/arm_$arm.json"
+    scored+=("$arm")
+  done
+  [ ${#scored[@]} -gt 0 ] || die "no arm has a checkpoint under $DATA_ROOT/outputs — see the logs"
 
-  uv run --no-sync python - "$DATA_ROOT/armA_off.json" "$DATA_ROOT/armB_light.json" <<'PY'
+  uv run --no-sync python - "$DATA_ROOT" "${scored[@]}" <<'PY'
 import json, sys
-a, b = (json.load(open(p)) for p in sys.argv[1:3])
-ref = a["paper_reference"]
-print(f"\n{'':<12}{'metric':<22}{'A: off':>9}{'B: light':>10}{'Δ (B-A)':>10}{'paper':>9}")
-print("-" * 72)
-for ds in a["metrics"]:
-    for k, va in a["metrics"][ds].items():
-        vb = b["metrics"][ds][k]
-        print(f"{ds:<12}{k:<22}{va:>9.2f}{vb:>10.2f}{vb - va:>+10.2f}{ref[ds].get(k, float('nan')):>9.1f}")
-print("\nPhysics should lower jitter / foot-sliding / accel while holding PA-MPJPE (the guardrail).")
+root, arms = sys.argv[1], sys.argv[2:]
+data = {a: json.load(open(f"{root}/arm_{a}.json")) for a in arms}
+base = data.get("off")
+ref = next(iter(data.values()))["paper_reference"]
+others = [a for a in arms if a != "off"]
+
+hdr = f"\n{'':<10}{'metric':<20}" + (f"{'off':>9}" if base else "")
+for a in others:
+    hdr += f"{a:>10}{'Δ':>9}"
+hdr += f"{'paper':>8}"
+print(hdr)
+print("-" * (len(hdr) - 1))
+for ds in next(iter(data.values()))["metrics"]:
+    for k in next(iter(data.values()))["metrics"][ds]:
+        row = f"{ds:<10}{k:<20}"
+        b = base["metrics"][ds][k] if base else None
+        if b is not None:
+            row += f"{b:>9.2f}"
+        for a in others:
+            v = data[a]["metrics"][ds][k]
+            row += f"{v:>10.2f}" + (f"{v - b:>+9.2f}" if b is not None else " " * 9)
+        row += f"{ref[ds].get(k, float('nan')):>8.1f}"
+        print(row)
+print("\nPhysics targets: jitter / foot-sliding / accel should DROP. Guardrails: PA-MPJPE, and the")
+print("world metrics (WA-MPJPE / W-MPJPE / RTE) — the full A/B found those got WORSE, so watch them.")
 PY
-  say "metrics: $DATA_ROOT/armA_off.json | $DATA_ROOT/armB_light.json"
+  say "metrics: ${scored[*]} -> $DATA_ROOT/arm_<name>.json"
 }
