@@ -43,8 +43,10 @@ from gvhmr.utils.pylogger import Log
 from gvhmr.utils.smplx_utils import make_smplx
 
 # Adapter registry: dataset name → zero-arg-ish loader(data_root, limit) yielding WorldSeqGT.
+# emdb is the field-standard global benchmark (what GVHMR reports) — the right arbiter for A2.
 ADAPTERS = {"sloper4d": "gvhmr.dataset.sloper4d.sloper4d_eval:iter_sequences",
-            "whac": "gvhmr.dataset.whac.whac_eval:iter_sequences"}  # fmt: skip
+            "whac": "gvhmr.dataset.whac.whac_eval:iter_sequences",
+            "emdb": "gvhmr.dataset.emdb.emdb_world_eval:iter_sequences"}  # fmt: skip
 
 
 def _load_adapter(name: str):
@@ -101,11 +103,18 @@ def predict_sequence(gt, model, device):
     return detach_to_cpu(model.predict(data, static_cam=False)), cfg
 
 
-def dust3r_T_w2c(cfg, device):
+def dust3r_T_w2c(cfg, device, depth_model: str = "depth_anything_v2"):
+    """DUSt3R reconstruction, scaled to metres by ``depth_model``.
+
+    The metric-depth model IS the A2 question: DUSt3R (like VGGT) recovers the scene only up to scale,
+    and this model is what fixes it. ROADMAP A2 compared Depth-Anything-V2 against UniDepth on a
+    *single* video and found DA-V2 won on scale despite being 5x worse on person depth — a result that
+    plainly needed more than n=1. Hence the switch.
+    """
     from gvhmr.utils.preproc.dust3r_slam import run_dust3r_slam
 
-    result = run_dust3r_slam(cfg.video_path, max_depth=80.0, device=device)
-    Log.info(f"  DUSt3R camera: scale {result['scale']:.1f}, conf {result['conf']:.2f}")
+    result = run_dust3r_slam(cfg.video_path, max_depth=80.0, depth_model=depth_model, device=device)
+    Log.info(f"  DUSt3R camera ({depth_model}): scale {result['scale']:.1f}, conf {result['conf']:.2f}")
     return torch.as_tensor(result["T_w2c"]).float()
 
 
@@ -116,6 +125,9 @@ def main() -> None:
     p.add_argument("--modes", nargs="+", default=["prior", "gt-cam"],
                    choices=["prior", "gt-cam", "dust3r"], help="World-trajectory strategies to score.")  # fmt: skip
     p.add_argument("--limit", type=int, default=None, help="Evaluate only the first N sequences.")
+    p.add_argument("--depth-model", default="depth_anything_v2",
+                   help="Metric-depth model that fixes DUSt3R's scale (depth_anything_v2 | unidepth). "
+                        "This is the ROADMAP A2 knob — the released default is depth_anything_v2.")  # fmt: skip
     p.add_argument("--probe", default=None, help="WHAC only: dump a HumanData npz's key tree and exit.")
     args = p.parse_args()
 
@@ -152,7 +164,7 @@ def main() -> None:
                 compose_world_from_dust3r(pm, gt.T_w2c)
             elif mode == "dust3r":
                 try:
-                    compose_world_from_dust3r(pm, dust3r_T_w2c(cfg, device))
+                    compose_world_from_dust3r(pm, dust3r_T_w2c(cfg, device, args.depth_model))
                 except Exception as e:  # noqa: BLE001
                     Log.warning(f"[warn]dust3r skip[/] {gt.vid}: {type(e).__name__}: {e}")
                     continue
