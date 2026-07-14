@@ -201,8 +201,52 @@ A/B (needs EMDB videos) is the real arbiter. `camera.depth_model=unidepth` is av
   with the GT world orientation (teacher-forced, exactly as `transl_w` does — a vectorized cumsum) then
   `fk_v2`; no inference-time for-loop (`get_smpl_params_w_Rt_v2`) needed.
 
-  **Real A/B run (reduced) — A3 CONFIRMED: the physics losses work, and this is the first A-item that
-  did.** Same reduced recipe + seed as the A1 HMR2 baseline (`a3_physics_hmr2.yaml`), evaluated on 3DPW +
+  ### A3 — the DEFINITIVE result (full recipe, 2026-07-14): a smoothness/accuracy TRADE, not a free win
+
+  > **This supersedes, and substantially retracts, the "A3 CONFIRMED" claim from the reduced model below.**
+
+  Two matched 500-epoch runs on the **full released recipe** (AMASS+BEDLAM+H36M+3DPW), the paper's true
+  effective batch (**256** = the recipe's `devices=2 × 128`), same seed (42), `torch.compile` on both arms,
+  differing in *nothing* but the three physics weights. Trained on H200s via `scripts/slurm/submit.sh`
+  (W&B `armA_off` / `armB_light`). TF32 off, so the derivative metrics are trustworthy (06e3922).
+
+  | metric | A: off | B: light | Δ | (reduced model said) |
+  |---|---|---|---|---|
+  | **EMDB-2 Jitter** | 16.24 | **14.58** | **−10.2%** ✓ | −9% ✓ |
+  | **RICH Jitter** | 12.76 | **11.12** | **−12.9%** ✓ | — |
+  | **EMDB-1 Accel** | 3.58 | **3.38** | **−5.6%** ✓ | −5% ✓ |
+  | **RICH Accel** | 4.12 | **3.95** | −4.1% ✓ | — |
+  | **EMDB-2 Foot-slide** | 3.51 | 3.51 | **0.00 — nothing** ✗ | −15% ✓ |
+  | **EMDB-2 WA-MPJPE** | 112.32 | 113.66 | **+1.34 WORSE** ✗ | **−41.07** ✓ |
+  | **EMDB-2 W-MPJPE₁₀₀** | 279.17 | 286.14 | **+6.97 WORSE** ✗ | — |
+  | EMDB-2 RTE | 1.93 | 1.85 | −0.08 | −0.71 ✓ |
+  | **EMDB-1 MPJPE** | 74.92 | 77.26 | **+2.34 WORSE** | — |
+  | 3DPW PA-MPJPE *(guardrail)* | 35.94 | 36.12 | +0.18 | +0.16 |
+
+  **What survives:** the losses genuinely and consistently **cut jitter 10–13%** (EMDB-2 *and* RICH) and
+  **accel 4–6%**. That is a real effect, reproduced on a paper-grade model.
+
+  **What is REFUTED:** the reduced model's headline — "improves *everything* including world MPJPE
+  (WAA −41) and RTE, at ~no accuracy cost" — does **not** replicate.
+  - **The world-grounding gain inverted**: WAA **−41.07 → +1.34**. The sign flipped. That −41 was the
+    regularizer tidying up a *weak* model's sloppy trajectories (baseline WAA 320 vs the paper's 109);
+    a model that already reproduces the paper has no such slack to recover.
+  - **Foot-sliding — the loss's most direct target — does exactly nothing** on EMDB-2 (3.51 → 3.51).
+  - It now **costs** real accuracy: EMDB-1 MPJPE +2.34mm, PVE +2.36mm; EMDB-2 W-MPJPE +6.97mm.
+
+  So A3 is a **smoothness-for-accuracy trade**, worth taking when temporal smoothness is the product
+  (animation, retargeting) and not otherwise. The weights stay **default-off**. The general lesson is the
+  one this A/B exists to catch: *a regularizer that rescues a weak model can do nothing — or harm — on a
+  strong one, and a reduced-model A/B will happily tell you otherwise.*
+
+  **Obvious follow-up (not run):** ablate the three losses separately. `foot_slide` moved EMDB-2
+  foot-sliding by 0.00 while the world metrics got worse, so the jitter win is plausibly *all* from
+  `transl_w_accel` (velocity smoothness) and the contact/penetration terms may be pure cost. A
+  `transl_w_accel`-only arm would test that in one run.
+
+  ### The original reduced-model A/B (kept for the record — its world-grounding claim did not hold up)
+
+  Same reduced recipe + seed as the A1 HMR2 baseline (`a3_physics_hmr2.yaml`), evaluated on 3DPW +
   EMDB. Weights were calibrated from a probe (raw magnitudes: `foot_slide`~3e-4, `penetration`~5e-4,
   `transl_w_accel`~5e-7) and *bracketed* — a **light** arm (`foot_slide`=200, `penetration`=100,
   `transl_w_accel`=1e4) and a **strong** arm (1000/500/1e5) — to separate "physics helps" from "weights
@@ -222,15 +266,18 @@ A/B (needs EMDB videos) is the real arbiter. `camera.depth_model=unidepth` is av
   | EMDB Foot-Slide | 3.5 | 11.13 | **9.42** (−1.70) | 10.60 (−0.52) |
   | EMDB-1 Accel | 3.6 | 11.66 | **11.03** (−0.63) | 10.89 (−0.76) |
 
-  Every physics target (jitter −10%, foot-slide −15%, accel) dropped in **both** arms, with the accuracy
-  guardrail (PA-MPJPE) held to +0.4% — the losses do what they claim at ~no accuracy cost. The bracket paid
-  off: the **light** arm is the clear winner — it improves *everything* including world MPJPE (WAA −41) and
-  trajectory RTE (−0.71), whereas the **strong** arm over-regularizes the trajectory (WAA +21, RTE +0.72)
-  for only a marginal jitter/accel gain. Caveat: this is the reduced AMASS+3DPW model (42.8 vs paper 36.2),
-  so the deltas are *relative*; the definitive version is a **full-recipe retrain** (now unblocked — the
-  500-epoch reproduce landed, see below) + `physics-light`, measured on the real ~36.2 model. Config
-  `exp=gvhmr/mixed/a3_physics_hmr2` (weights default 0 → identical to the baseline arm; set the three to
-  enable).
+  On *this* model every physics target dropped in both arms with PA-MPJPE held to +0.4%, and the **light**
+  arm appeared to improve *everything* — including world MPJPE (WAA −41) and RTE (−0.71) — while the
+  **strong** arm over-regularized the trajectory (WAA +21, RTE +0.72). That reading is what the full-recipe
+  run above **overturns**: on a paper-grade model the WAA gain inverts and the foot-slide gain vanishes, so
+  the world-grounding half of this conclusion was an artifact of the weak baseline (WAA 320 vs paper 109).
+  The jitter/accel half held. Config `exp=gvhmr/mixed/a3_physics_hmr2` (weights default 0 → identical to the
+  baseline arm); the full-recipe arm is `exp=gvhmr/mixed/mixed_physics_light`.
+
+  **Why the reduced A/B misled, worth internalizing:** its baseline was *far* from the paper on exactly the
+  metrics being judged (WAA 320 vs 109, jitter 57 vs 16, foot-slide 11.1 vs 3.5). A regularizer has enormous
+  room to improve a model that bad, and none of that transfers. A reduced-model A/B can establish that a loss
+  *does something*; it cannot establish that the something is *useful on a good model*.
 
   > **Re-measured after the TF32 regression (06e3922).** The first scoring of this A/B ran while TF32 was
   > globally enabled, which corrupts exactly the metrics A3 is judged on (it inflated the baseline's EMDB-1
@@ -262,11 +309,22 @@ It matches on 3DPW, **beats the paper on EMDB-1 PA-MPJPE and on jitter across al
 trails ~3-4 mm on RICH pose and EMDB-2 world translation. The most likely cause of that shortfall is a
 recipe deviation on my side, not the code: `mixed.yaml` specifies `devices: 2 × batch_size: 128` (effective
 **256** under DDP) and this ran `devices=1` (effective **128**) at the same LR, to leave the second GPU free
-on a shared box. Re-running at the paper's effective batch (`devices=1 batch_size=256` is equivalent — the
-net is LayerNorm-only, so there are no per-device norm statistics) is the obvious way to close it.
+on a shared box.
 
-**Next:** the definitive **A3-light** run is now unblocked — retrain this full recipe with the physics-light
-weights and re-measure on a real ~36 PA-MPJPE model instead of the reduced 42.8 one.
+**Confirmed — and fixed (2026-07-14).** Re-run at the paper's true effective batch of **256** (1× H200,
+`scripts/slurm/submit.sh`), the reproduce is even closer, and **beats the paper on 3DPW**:
+
+| | batch 256 (correct) | batch 128 (first try) | paper |
+|---|---|---|---|
+| 3DPW PA-MPJPE / MPJPE | **35.9** / 55.5 | 36.4 / 55.7 | 36.2 / 55.6 |
+| EMDB-1 PA-MPJPE / Accel | 43.3 / 3.6 | 42.4 / 3.5 | 42.7 / 3.6 |
+| EMDB-2 RTE / Jitter / FS | 1.9 / 16.2 / 3.5 | 2.0 / 14.7 / 3.8 | 1.9 / 16.5 / 3.5 |
+| RICH PA-MPJPE / MPJPE | 40.7 / 68.4 | 41.0 / 69.9 | 39.5 / 66.0 |
+
+The batch fix moved exactly what it was predicted to: 3DPW PA-MPJPE 36.4 → **35.9** (now *better* than the
+paper), RICH MPJPE gap halved (+3.9 → +2.4), EMDB-2 W-MPJPE gap halved (+8.8 → +4.3). It costs a little on
+EMDB-1 pose and jitter, so it is not strictly dominant — but the pose metrics that were lagging now match or
+beat the paper. **This (`armA_off`) is the baseline the definitive A3 A/B above is measured against.**
 
 ## Regime B status
 
