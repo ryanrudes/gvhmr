@@ -173,15 +173,35 @@ def main() -> None:
             for k in GLOBAL_METRIC_KEYS:
                 agg[mode][k].append(as_np_array(m[k]).reshape(-1))
 
-    rule(f"{args.dataset} world-frame results (mm / %, lower is better)")
-    header = "  mode      " + "".join(f"{k:>12}" for k in GLOBAL_METRIC_KEYS)
-    console.print(header)
+    # COVERAGE IS PART OF THE RESULT. Every mode is wrapped in a per-sequence `except … continue` so one
+    # bad sequence can't sink a long run — but that means a mode can fail on EVERY sequence and still
+    # print a confident-looking row, averaged over whatever survived. That is exactly what happened: a
+    # missing `roma` made dust3r fail 21/21 while the run completed "successfully" and tabulated a row
+    # from the 2 sequences that slipped through. Silence looked like success. So: show n, and refuse to
+    # let a partial row masquerade as a full one.
+    total = len(sequences)
+    rule(f"{args.dataset} world-frame results (mm / %, lower is better) · {total} sequences")
+    console.print("  mode        " + "".join(f"{k:>12}" for k in GLOBAL_METRIC_KEYS) + f"{'n':>6}")
+    incomplete = []
     for mode in args.modes:
+        n = len(agg[mode][GLOBAL_METRIC_KEYS[0]])
         cells = []
         for k in GLOBAL_METRIC_KEYS:
             vals = agg[mode][k]
             cells.append(f"{np.concatenate(vals).mean():>12.2f}" if vals else f"{'—':>12}")
-        console.print(f"  {mode:10}" + "".join(cells))
+        flag = "" if n == total else "  [warn]← PARTIAL[/]"
+        console.print(f"  {mode:12}" + "".join(cells) + f"{n:>6}" + flag)
+        if n != total:
+            incomplete.append((mode, n))
+
+    if incomplete:
+        console.print()
+        for mode, n in incomplete:
+            console.print(
+                f"[warn]{mode}: only {n}/{total} sequences contributed[/] — this row is NOT comparable to a "
+                f"full one. Scroll up for the per-sequence '{mode} skip' warnings and fix the cause."
+            )
+        raise SystemExit(1)  # a partial row is a failed run, not a result
 
 
 if __name__ == "__main__":
