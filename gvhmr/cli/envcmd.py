@@ -119,16 +119,18 @@ def detect_torch_extra() -> str | None:
     return extra
 
 
-def sync_args(torch_extra: str | None, extras: list[str], dpvo: bool = False) -> list[str]:
+def sync_args(torch_extra: str | None, extras: list[str], dpvo: bool = False, scene: bool = False) -> list[str]:
     """The ``uv`` argument vector that realizes the recorded env.
 
     ``--inexact`` is the key: it syncs the requested extras **without removing** anything else, so the
     out-of-band DPVO install (and any user pip-installs) survive. ``dpvo=true`` adds the ``dpvo`` extra —
     DPVO's locked, torch-ABI-free runtime deps (numba, pypose), whose constraints keep numpy where numba
-    needs it. Pure — unit-tested.
+    needs it. ``scene=true`` does the same for the scene-aware cameras' ``scene`` extra (``roma``, which
+    DUSt3R's global aligner needs at RUNTIME — without it ``--camera dust3r`` dies mid-reconstruction).
+    Pure — unit-tested.
     """
     args = ["sync", "--inexact"]
-    wanted = list(extras) + (["dpvo"] if dpvo else [])
+    wanted = list(extras) + (["dpvo"] if dpvo else []) + (["scene"] if scene else [])
     args += [f"--extra={e}" for e in dict.fromkeys(wanted)]  # de-dup, keep order
     if torch_extra and torch_extra not in ("none", "default"):
         args.append(f"--extra={torch_extra}")
@@ -195,7 +197,9 @@ def sync(
             "[gvhmr]gvhmr env record --torch cu128 --extras preproc[/]."
         )
         raise typer.Exit(1)
-    args = sync_args(localconfig.env_torch(), localconfig.env_extras(), dpvo=localconfig.env_dpvo())
+    args = sync_args(
+        localconfig.env_torch(), localconfig.env_extras(), dpvo=localconfig.env_dpvo(), scene=localconfig.env_scene()
+    )
     console.print(f"$ [gvhmr]uv {' '.join(args)}[/]  [dim](cwd {PROJ_ROOT})[/]")
     if dry_run:
         return
@@ -242,5 +246,6 @@ def show() -> None:
     scene_now = component_installed(SCRIPT_COMPONENTS["scene"][2])
     console.print(f"  scene  = [gvhmr]{str(scene).lower()}[/]" + ("" if scene_now == scene else "  [warn](drifted)[/]"))
     console.print(
-        f"sync runs: [gvhmr]uv {' '.join(sync_args(localconfig.env_torch(), localconfig.env_extras(), dpvo=dpvo))}[/]"
+        "sync runs: [gvhmr]uv "
+        f"{' '.join(sync_args(localconfig.env_torch(), localconfig.env_extras(), dpvo=dpvo, scene=scene))}[/]"
     )

@@ -1653,6 +1653,9 @@ rtmpose = [
     { name = "onnxruntime" },
     { name = "rtmlib" },
 ]
+scene = [
+    { name = "roma" },
+]
 train = [
     { name = "tensorboard" },
     { name = "wandb" },
@@ -1699,6 +1702,7 @@ requires-dist = [
     { name = "pytorch3d", marker = "extra == 'render'", git = "https://github.com/facebookresearch/pytorch3d.git?rev=c8fcd83ff96fa0a5893c0b994f9285d7aa772540" },
     { name = "requests", specifier = ">=2.28" },
     { name = "rich", specifier = ">=13" },
+    { name = "roma", marker = "extra == 'scene'" },
     { name = "rtmlib", marker = "extra == 'rtmpose'" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
     { name = "scikit-image" },
@@ -1727,7 +1731,7 @@ requires-dist = [
     { name = "wis3d", marker = "extra == 'vis'" },
     { name = "yacs", marker = "extra == 'preproc'" },
 ]
-provides-extras = ["preproc", "rtmpose", "app", "vis", "notebook", "dev", "render", "train", "dpvo", "cpu", "cu124", "cu126", "cu128"]
+provides-extras = ["preproc", "rtmpose", "app", "vis", "notebook", "dev", "render", "train", "dpvo", "scene", "cpu", "cu124", "cu126", "cu128"]
 
 [[package]]
 name = "h11"
@@ -5258,6 +5262,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e9/67/cae617f1351490c25a4b8ac3b8b63a4dda609295d8222bad12242dfdc629/rich-14.3.4.tar.gz", hash = "sha256:817e02727f2b25b40ef56f5aa2217f400c8489f79ca8f46ea2b70dd5e14558a9", size = 230524, upload-time = "2026-04-11T02:57:45.419Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/76/6d163cfac87b632216f71879e6b2cf17163f773ff59c00b5ff4900a80fa3/rich-14.3.4-py3-none-any.whl", hash = "sha256:07e7adb4690f68864777b1450859253bed81a99a31ac321ac1817b2313558952", size = 310480, upload-time = "2026-04-11T02:57:47.484Z" },
+]
+
+[[package]]
+name = "roma"
+version = "1.5.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/13/b2/f6560e1a105957a61d1090cf918415f354a012cef0639886e1ccd5aa9d4e/roma-1.5.6.tar.gz", hash = "sha256:986b3c1323592a50590c4566fa4dfd89f4855d6fa6f173268ec9e03bfdf553db", size = 32187, upload-time = "2026-02-11T12:55:11.869Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/55/bd/dd56edc2680df7658c7bdeeb58270ab35dfcdc0e2670899ce9771604b436/roma-1.5.6-py3-none-any.whl", hash = "sha256:ae21a4e095330428d60e1dbdcad4e550dbdc9a7b4597a0157aaf5d6fd2b46afb", size = 25327, upload-time = "2026-02-11T12:55:10.629Z" },
 ]
 
 [[package]]

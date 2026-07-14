@@ -102,6 +102,17 @@ train = ["wandb>=0.17", "tensorboard", "wandb-workspaces"]
 # recorded env has dpvo=true.
 dpvo = ["numba", "pypose"]
 
+# The scene-aware cameras' torch-ABI-free runtime deps (`gvhmr demo --camera dust3r|vggt`, and
+# tools/eval/eval_world.py). Same rationale as `dpvo` above: the MODELS are cloned into third-party/ by
+# scripts/setup_scene_aware.sh and imported via sys.path (never `pip install -e`'d — VGGT's numpy<2 pin
+# would break scipy), but their ordinary wheel deps must be LOCKED or a later `uv sync` prunes them.
+#
+# `roma` is the one that bites: DUSt3R's global aligner imports it for rotation ops, so it fails at
+# RUNTIME, not import time — `--camera dust3r` dies mid-reconstruction with ModuleNotFoundError while
+# `import dust3r.model` looks fine. It was in DUSt3R's requirements.txt but declared nowhere here, so
+# every dust3r run depended on someone having hand-installed it and no sync having pruned it since.
+scene = ["roma"]
+
 # --- PyTorch CUDA backend (Linux): pick the one matching your GPU ---------------------------------
 # uv can't auto-detect the GPU for `uv sync` (`--torch-backend=auto` is uv-pip-only) and a lockfile
 # can't gate wheels on CUDA version (no marker exists), so the CUDA build is an explicit, mutually-

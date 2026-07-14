@@ -41,6 +41,18 @@ def test_sync_args_dpvo_adds_the_locked_runtime_extra():
     assert sync_args(None, ["dpvo"], dpvo=True).count("--extra=dpvo") == 1  # no duplicate
 
 
+def test_sync_args_scene_adds_the_locked_runtime_extra():
+    # scene=true → the `scene` extra (roma) rides along. DUSt3R's global aligner imports roma at RUNTIME,
+    # so without it `--camera dust3r` imports fine and then dies mid-reconstruction with
+    # ModuleNotFoundError — which is exactly how it shipped broken: declared in DUSt3R's
+    # requirements.txt, declared nowhere here, so it survived only until the next `uv sync` pruned it.
+    args = sync_args("cu124", ["preproc"], scene=True)
+    assert args == ["sync", "--inexact", "--extra=preproc", "--extra=scene", "--extra=cu124"]
+    assert sync_args(None, ["scene"], scene=True).count("--extra=scene") == 1  # no duplicate
+    # dpvo and scene compose
+    assert sync_args(None, [], dpvo=True, scene=True) == ["sync", "--inexact", "--extra=dpvo", "--extra=scene"]
+
+
 def test_cuda_version_maps_to_the_documented_extra():
     # mirrors the table in docs/INSTALL.md (and scripts/install.sh's case statement)
     assert _extra_for_cuda("12.0") == "cu124"
