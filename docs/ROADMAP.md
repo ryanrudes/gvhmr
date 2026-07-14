@@ -188,6 +188,44 @@ real corrected it. UniDepth is a strong *foreground*-depth model, not (on this t
 Caveats: the scale test is 1 video and depends on VGGT recon quality — a proper multi-video `eval_world.py`
 A/B (needs EMDB videos) is the real arbiter. `camera.depth_model=unidepth` is available to A/B further.
 
+### A2 ARBITRATED on EMDB-2 (2026-07-14) — the n=1 verdict above is WRONG, twice over
+
+The "real arbiter" ran: all **25 EMDB-2 sequences** (the field-standard global benchmark GVHMR reports),
+`tools/eval/eval_world.py --dataset emdb`, 25/25 coverage, zero skips.
+
+| mode | W-MPJPE₁₀₀ | WA-MPJPE₁₀₀ | **RTE** | jitter | foot-slide |
+|---|---|---|---|---|---|
+| `prior` (the shipped velocity prior) | 314.95 | 131.24 | **2.43** | 21.03 | 4.54 |
+| `gt-cam` (a *perfect* camera) | 266.67 | 94.95 | **0.52** | 35.40 | 8.22 |
+| `dust3r` + **DA-V2** (the shipped default) | 2465.21 | 346.18 | **19.42** | 100.74 | 52.92 |
+| `dust3r` + **UniDepth** | **1116.33** | **332.03** | **11.21** | **52.56** | **24.53** |
+
+**1. UniDepth beats DA-V2 on every metric, by ~2x.** The n=1 "DA-V2 wins" above is refuted — and note what
+that single video cost: it caused a *correct* claim ("UniDepth improves world grounding") to be retracted
+and replaced with a wrong one. One video is not an arbiter.
+
+**2. But BOTH are 5-8x WORSE than the plain prior they are supposed to beat** (RTE 11.2 / 19.4 vs 2.43). So
+"UniDepth wins" does not mean the scene-aware camera is usable — it means UniDepth is *less bad* at scaling
+a reconstruction whose *shape* is already broken.
+
+**3. The real defect is keyframe density, not the depth model.** `run_dust3r_slam` uses **16 keyframes for
+the whole sequence** and *linearly interpolates* (slerp+lerp) the camera between them. EMDB-2 averages 1728
+frames, so that is one keyframe per **~3.6 seconds** — and a handheld camera does not move linearly for 3.6
+seconds. The trajectory's shape is wrong before the depth model ever gets to scale it, which makes the
+entire DA-V2-vs-UniDepth debate a rounding error on top of a structural failure. **The A2 question as posed
+was measuring the wrong variable.**
+
+**4. The headroom is real, so the idea isn't dead.** `gt-cam` cuts RTE **4.7x** (2.43 → 0.52) and WA-MPJPE
+28%. A *good* camera is worth a lot; this implementation just isn't one. (Note the honest cost nobody had
+measured: a perfect camera also DOUBLES jitter and foot-sliding — the velocity prior is buying smoothness
+in exchange for drift.)
+
+**USER-FACING:** `gvhmr demo --camera dust3r` is documented as the MPS-friendly way to recover camera
+*translation*, and on anything longer than a few seconds it returns a trajectory far worse than the prior it
+replaces — silently. The 16-keyframe default is fine for a short demo clip and catastrophic for a minute-long
+one. Keyframe-density sweep (`--n-keyframes`) is running to decide whether to fix the default or document the
+backend as short-clip-only.
+
 **To add another metric-depth model:** implement a `MetricDepth` class (emit metres-valued depth), add a
 `make_metric_depth` branch, set `camera.depth_model=<name>`, and A/B with `tools/eval/eval_world.py`.
 

@@ -103,7 +103,7 @@ def predict_sequence(gt, model, device):
     return detach_to_cpu(model.predict(data, static_cam=False)), cfg
 
 
-def dust3r_T_w2c(cfg, device, depth_model: str = "depth_anything_v2"):
+def dust3r_T_w2c(cfg, device, depth_model: str = "depth_anything_v2", n_keyframes: int = 16):
     """DUSt3R reconstruction, scaled to metres by ``depth_model``.
 
     The metric-depth model IS the A2 question: DUSt3R (like VGGT) recovers the scene only up to scale,
@@ -113,8 +113,12 @@ def dust3r_T_w2c(cfg, device, depth_model: str = "depth_anything_v2"):
     """
     from gvhmr.utils.preproc.dust3r_slam import run_dust3r_slam
 
-    result = run_dust3r_slam(cfg.video_path, max_depth=80.0, depth_model=depth_model, device=device)
-    Log.info(f"  DUSt3R camera ({depth_model}): scale {result['scale']:.1f}, conf {result['conf']:.2f}")
+    result = run_dust3r_slam(
+        cfg.video_path, max_depth=80.0, depth_model=depth_model, n_keyframes=n_keyframes, device=device
+    )
+    Log.info(
+        f"  DUSt3R camera ({depth_model}, {n_keyframes} kf): scale {result['scale']:.1f}, conf {result['conf']:.2f}"
+    )
     return torch.as_tensor(result["T_w2c"]).float()
 
 
@@ -128,6 +132,11 @@ def main() -> None:
     p.add_argument("--depth-model", default="depth_anything_v2",
                    help="Metric-depth model that fixes DUSt3R's scale (depth_anything_v2 | unidepth). "
                         "This is the ROADMAP A2 knob — the released default is depth_anything_v2.")  # fmt: skip
+    p.add_argument("--n-keyframes", type=int, default=16,
+                   help="DUSt3R keyframes for the WHOLE sequence (default 16). At EMDB's ~1728-frame mean "
+                        "that is one every ~3.6s, and the poses BETWEEN them are linearly interpolated — a "
+                        "handheld camera does not move linearly for 3.6s, which is why dust3r scores RTE "
+                        "19.4 vs the prior's 2.4. Raise it to test whether the approach is salvageable.")  # fmt: skip
     p.add_argument("--probe", default=None, help="WHAC only: dump a HumanData npz's key tree and exit.")
     args = p.parse_args()
 
@@ -164,7 +173,7 @@ def main() -> None:
                 compose_world_from_dust3r(pm, gt.T_w2c)
             elif mode == "dust3r":
                 try:
-                    compose_world_from_dust3r(pm, dust3r_T_w2c(cfg, device, args.depth_model))
+                    compose_world_from_dust3r(pm, dust3r_T_w2c(cfg, device, args.depth_model, args.n_keyframes))
                 except Exception as e:  # noqa: BLE001
                     Log.warning(f"[warn]dust3r skip[/] {gt.vid}: {type(e).__name__}: {e}")
                     continue
