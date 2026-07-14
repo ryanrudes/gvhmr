@@ -62,4 +62,37 @@ def test_camera_configs_expose_swappable_depth_model():
     with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):
         for cam in ("dust3r", "vggt"):
             cfg = compose(config_name="demo", overrides=["video_name=x", f"camera={cam}"])
-            assert cfg.camera.depth_model == "depth_anything_v2"  # released default, byte-identical scale step
+            # unidepth since 2026-07-14: 2x better scale than DA-V2 on the 25-seq EMDB-2 A/B (ROADMAP A2).
+            assert cfg.camera.depth_model == "unidepth"
+
+
+def _adaptive_kf(length, cap):
+    """Mirror of run_dust3r_slam's adaptive keyframe policy (extracted so CI can pin it without weights)."""
+    return min(max(16, length // 20), cap)
+
+
+def test_adaptive_keyframe_policy():
+    """A flat 16 keyframes silently wrecks long sequences — ROADMAP A2 measured RTE 15 vs the prior's 3
+    because the camera is linearly interpolated across ~3.6s gaps. The default must scale with length,
+    stay at 16 for short clips (unchanged behavior), and cap so the global aligner doesn't OOM."""
+    from gvhmr.utils.preproc.dust3r_slam import DUST3R_KF_CAP
+
+    # short clips are untouched — a 3-second demo still gets 16
+    assert _adaptive_kf(90, DUST3R_KF_CAP) == 16
+    assert _adaptive_kf(300, DUST3R_KF_CAP) == 16
+    # long sequences get proportionally more (EMDB's ~1728-frame mean lands between the 48 and 96 we swept)
+    assert _adaptive_kf(1728, DUST3R_KF_CAP) == 86
+    # and it never exceeds the measured memory ceiling (192 OOM'd a 48 GB GPU)
+    assert _adaptive_kf(100_000, DUST3R_KF_CAP) == DUST3R_KF_CAP
+    assert DUST3R_KF_CAP <= 128  # the cap must stay below where 192 OOM'd
+
+
+def test_scene_cameras_default_to_unidepth():
+    """UniDepth beat DA-V2 2x on the 25-seq EMDB-2 arbitration (ROADMAP A2), so it's the scale default."""
+    register_store_gvhmr()
+    from hydra import compose, initialize_config_module
+
+    with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):
+        for cam in ("dust3r", "vggt"):
+            cfg = compose(config_name="demo", overrides=[f"camera={cam}", "video_name=_"])
+            assert cfg.camera.depth_model == "unidepth", f"{cam} should default to unidepth"

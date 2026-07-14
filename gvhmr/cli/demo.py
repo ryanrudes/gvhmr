@@ -571,7 +571,7 @@ def run_preprocess(cfg, flip_test: bool = False) -> None:
                         result = run_dust3r_slam(
                             cfg.video_path,
                             max_depth=cam.max_depth,
-                            depth_model=cam.get("depth_model", "depth_anything_v2"),
+                            depth_model=cam.get("depth_model", "unidepth"),  # 2x better scale, see ROADMAP A2
                         )
                     Log.info(f"DUSt3R camera: scale {result['scale']:.1f}, reconstruction conf {result['conf']:.2f}")
                     torch.save(result["T_w2c"], paths.slam)

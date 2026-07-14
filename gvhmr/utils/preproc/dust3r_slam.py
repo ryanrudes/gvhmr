@@ -28,6 +28,7 @@ from pathlib import Path
 import numpy as np
 
 from gvhmr.utils.assets import SCENE_ROOT
+from gvhmr.utils.pylogger import Log
 
 _THIRD_PARTY = Path(__file__).resolve().parents[3] / "third-party"
 # Scene-model weights live under the `scene` root — config file `[paths].scene` / $GVHMR_DATA (default
@@ -57,10 +58,17 @@ def _interp_poses(kf_idx: np.ndarray, kf_c2w: np.ndarray, length: int) -> np.nda
     return c2w
 
 
+#: Keyframes above which DUSt3R's global aligner (all pairwise pointmaps resident) OOMs a ~48 GB GPU.
+#: Measured on EMDB-2 (2026-07-14): 96 fits, 192 OOMs. This is a memory ceiling, not an accuracy one —
+#: RTE was still falling monotonically at 96 (see ROADMAP A2), so the cap trades unreachable accuracy
+#: for not crashing. A windowed aligner would lift it; until then this is the honest bound.
+DUST3R_KF_CAP = 128
+
+
 def run_dust3r_slam(
     video_path: str | Path,
     *,
-    n_keyframes: int = 16,
+    n_keyframes: int | None = None,
     scene_graph: str = "swin-3",
     dust3r_ckpt: Path = _DUST3R_CKPT,
     da_ckpt: Path = _DA_CKPT,
@@ -93,6 +101,13 @@ def run_dust3r_slam(
 
     frames = iio.imread(str(video_path), plugin="pyav")
     length = len(frames)
+    if n_keyframes is None:
+        # Adaptive: a flat 16 keyframes is fine for a 3-second clip and catastrophic for a 2-minute one
+        # (one keyframe per ~3.6s on EMDB → the camera is linearly interpolated across huge gaps → RTE
+        # 15 vs the prior's 3, see ROADMAP A2). Scale with length (~1 per 20 frames ≈ 0.7s at 30fps),
+        # floored at 16 so short clips are unchanged, capped so long ones don't OOM the global aligner.
+        n_keyframes = min(max(16, length // 20), DUST3R_KF_CAP)
+        Log.info(f"[dust3r] {n_keyframes} keyframes for {length} frames (adaptive; --n-keyframes to override)")
     kf_idx = np.unique(np.linspace(0, length - 1, min(n_keyframes, length)).astype(int))
 
     # write keyframes to disk (DUSt3R's loader wants files) under the system temp

@@ -223,8 +223,36 @@ in exchange for drift.)
 **USER-FACING:** `gvhmr demo --camera dust3r` is documented as the MPS-friendly way to recover camera
 *translation*, and on anything longer than a few seconds it returns a trajectory far worse than the prior it
 replaces — silently. The 16-keyframe default is fine for a short demo clip and catastrophic for a minute-long
-one. Keyframe-density sweep (`--n-keyframes`) is running to decide whether to fix the default or document the
-backend as short-clip-only.
+one.
+
+**Keyframe-density sweep (same 6 EMDB-2 seqs, UniDepth) — the density is the whole story, and the fix hits a
+memory wall:**
+
+| dust3r keyframes | RTE | W-MPJPE₁₀₀ | dust3r cost |
+|---|---|---|---|
+| 16 *(shipped default)* | 15.11 | 1380.11 | 40 s/seq |
+| 48 | 11.19 | 1170.19 | 78 s/seq |
+| 96 | **6.71** | 582.29 | 132 s/seq |
+| 192 | **OOM** (48 GB) | — | — |
+| *prior, for reference* | **3.17** | 259.60 | — |
+| *gt-cam, for reference* | **0.47** | 248.43 | — |
+
+RTE falls **monotonically and steeply** with keyframes (15.1 → 6.7, a 2.25× gain from changing one integer;
+cost is *sub-linear* because `swin-3` is a sliding window, not all-pairs). The depth model was never the
+lever — density is. **But:** a log-linear fit crosses the prior (3.17) at **~166 keyframes**, and **192 already
+OOMs on a 48 GB GPU** — DUSt3R's global aligner holds all pairwise pointmaps in memory at once, so the density
+needed to be competitive is the density that runs out of memory. So on current hardware + implementation the
+scene-aware camera **cannot reach the prior** on long sequences.
+
+**Verdict — this is now a bounded conclusion, not an open experiment:**
+1. **Default fixed:** `n_keyframes` scales with sequence length (`max(16, L//20)`, capped for memory) instead
+   of a flat 16 — a short clip is unchanged, a long one gets the density it needs, up to what fits.
+2. **`--camera dust3r`/`vggt` documented as best-effort on long sequences**, not a drop-in world-grounding
+   fix: below the prior until ~halfway to the OOM ceiling, and unable to cross it there.
+3. **The real path forward is not more keyframes** — it's a windowed/streaming global aligner (bounded
+   memory) or switching to DPVO where CUDA is available. Logged as future work, not attempted here.
+4. **`--depth-model unidepth`** is the better scale model regardless (2× over DA-V2), so it becomes the
+   default for the scene cameras. Cheap, strictly better, independent of the keyframe question.
 
 **To add another metric-depth model:** implement a `MetricDepth` class (emit metres-valued depth), add a
 `make_metric_depth` branch, set `camera.depth_model=<name>`, and A/B with `tools/eval/eval_world.py`.
