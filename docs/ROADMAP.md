@@ -332,10 +332,41 @@ scene-aware camera **cannot reach the prior** on long sequences.
   one this A/B exists to catch: *a regularizer that rescues a weak model can do nothing — or harm — on a
   strong one, and a reduced-model A/B will happily tell you otherwise.*
 
-  **Obvious follow-up (not run):** ablate the three losses separately. `foot_slide` moved EMDB-2
-  foot-sliding by 0.00 while the world metrics got worse, so the jitter win is plausibly *all* from
-  `transl_w_accel` (velocity smoothness) and the contact/penetration terms may be pure cost. A
-  `transl_w_accel`-only arm would test that in one run.
+  #### The `vel` ablation (2026-07-15): the hypothesis was **exactly backwards**
+
+  The follow-up above predicted the jitter win was *all* `transl_w_accel` and the contact terms were
+  pure cost. So I trained a third matched arm — `mixed_physics_vel`, identical to `light` but with
+  `foot_slide`/`penetration` gated **off**, keeping only `transl_w_accel` — a clean subtraction. On the
+  same H200 recipe/seed, scored against the same `off` baseline:
+
+  | metric | off | light (all 3) | **vel** (accel only) | what it says |
+  |---|---|---|---|---|
+  | **EMDB-2 Jitter** | 16.24 | **14.58** (−1.66) | 16.33 (**+0.10**) | the win is NOT the velocity term |
+  | **RICH Jitter** | 12.76 | **11.12** (−1.64) | 12.43 (−0.32) | vel recovers ~⅕ of it, at most |
+  | EMDB-1 Accel | 3.58 | 3.38 (−0.20) | 3.54 (−0.04) | ditto |
+  | **EMDB-2 W-MPJPE₁₀₀** | 279.2 | 286.1 (+7.0) | 297.1 (**+17.9**) | vel does the MOST world harm |
+  | EMDB-2 RTE | 1.93 | 1.85 (−0.08) | 2.13 (**+0.20**) | vel is the only arm that worsens it |
+  | **RICH MPJPE** | 68.4 | 69.0 (+0.6) | 72.0 (**+3.6**) | vel costs the most pose accuracy |
+  | 3DPW PA-MPJPE *(guardrail)* | 35.94 | 36.12 | 35.96 | all three tied |
+
+  **Refuted, with the sign flipped.** `transl_w_accel` alone recovers **almost none** of the jitter win
+  (EMDB-2 gets *worse*), and is the **most harmful** arm on every world/pose metric — the exact opposite
+  of "the contact terms are pure cost." By subtraction (`light − vel`), the jitter/accel win is carried
+  **entirely by `foot_slide` + `penetration`**, and `transl_w_accel` is the pure cost. This is
+  mechanistically sensible: jitter (10·m/s³) is a *local per-joint* metric, whereas `transl_w_accel`
+  only penalizes *global root-translation* acceleration — it can't touch local jitter, but it *can*
+  over-damp genuine translation, which is the world-metric regression. The foot terms pin stationary
+  feet, which is exactly the local high-frequency noise jitter measures.
+
+  **This session's sixth cheap-proxy call, and the second in a row where the confident hypothesis was
+  wrong** (grid2 refuted "it was just GAP"; vel refuted "it was all velocity smoothness"). The
+  shippable read: if physics losses are used at all (still a smoothness/accuracy trade → default-off),
+  it's `foot_slide` + `penetration` that earn their keep and `transl_w_accel` that should be dropped.
+  **The clean test of that** — a `foot_slide`+`penetration`-only arm (`light` minus `transl_w_accel`) —
+  is the one arm not yet run; it's the candidate most likely to keep the jitter win while shedding the
+  biggest chunk of the world regression (vel's +17.9 W-MPJPE was all `transl_w_accel`). One more 20 h
+  H200 run. Arms/configs: `off`=`mixed`, `light`=`mixed_physics_light`, `vel`=`mixed_physics_vel`;
+  scored by `scripts/_exp_lib.sh::exp_score` (W&B `armA_off`/`armB_light`/`arm_vel`).
 
   ### The original reduced-model A/B (kept for the record — its world-grounding claim did not hold up)
 
