@@ -13,11 +13,24 @@ freshly-built ``JointBackbone`` produces the token **bit-identical** to the froz
 from __future__ import annotations
 
 import torch
+import torch.utils.checkpoint as cp
 from torch import nn
 
 from gvhmr.network.hmr2 import HMR2, load_hmr2
 from gvhmr.network.lora import HMR2_LORA_TARGETS, apply_lora, count_lora_parameters
 from gvhmr.utils.net_utils import skip_torch_init
+
+
+def _checkpoint_blocks(blocks: nn.ModuleList) -> None:
+    """Recompute each ViT block in the backward pass instead of storing its activations. Without this a
+    ViT-Huge fwd+bwd over a clip's worth of crops OOMs even a 48 GB GPU. Patches ``.forward`` (not the
+    module tree), so named-module paths — and the checkpoint state_dict keys — are unchanged. Idempotent."""
+    for blk in blocks:
+        if getattr(blk, "_gvhmr_ckpt_wrapped", False):
+            continue
+        orig = blk.forward
+        blk.forward = (lambda o: lambda *a, **k: cp.checkpoint(o, *a, use_reentrant=False, **k))(orig)
+        blk._gvhmr_ckpt_wrapped = True
 
 
 class JointBackbone(nn.Module):
@@ -38,6 +51,7 @@ class JointBackbone(nn.Module):
         dropout: float = 0.0,
         checkpoint: str | None = None,
         targets: tuple[str, ...] = HMR2_LORA_TARGETS,
+        grad_checkpointing: bool = True,
     ):
         super().__init__()
         with skip_torch_init():  # random init is overwritten by load_hmr2's strict ckpt load
@@ -45,6 +59,8 @@ class JointBackbone(nn.Module):
         self.replaced = apply_lora(self.hmr2, targets=targets, rank=rank, alpha=alpha, dropout=dropout)
         if not self.replaced:
             raise RuntimeError(f"LoRA matched no Linear in HMR2 for targets={targets} — check the paths")
+        if grad_checkpointing:  # essential: makes the ViT-Huge fwd+bwd over a clip's crops fit in memory
+            _checkpoint_blocks(self.hmr2.backbone.blocks)
         self.n_lora_params = count_lora_parameters(self.hmr2)
 
     def forward(self, crops: torch.Tensor) -> torch.Tensor:

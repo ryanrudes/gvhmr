@@ -14,11 +14,15 @@ from gvhmr.utils.vis.renderer_utils import simple_render_mesh_background
 
 
 class ThreedpwSmplDataset(ImgfeatMotionDatasetBase):
-    def __init__(self, imgfeat_subdir="imgfeats/3dpw_train_smplx_refit"):
+    def __init__(self, imgfeat_subdir="imgfeats/3dpw_train_smplx_refit", serve_crops=False):
         # Path. `imgfeat_subdir` selects which cached-feature backbone to train on (default HMR2; e.g.
         # "imgfeats/3dpw_train_dinov2" for a re-extracted DINOv2 set — see docs/EXTENSIBILITY.md Tier B).
         self.hmr4d_support_dir = DATA_ROOT / "3DPW/hmr4d_support"  # honours $GVHMR_DATA_ROOT (default inputs/)
         self.imgfeat_subdir = imgfeat_subdir
+        # serve_crops: also decode the clip's raw crops (L,3,256,256) for in-loop LoRA backbone training
+        # (ROADMAP Regime B). Default off -> the item dict is unchanged and the cached-feature path is
+        # byte-identical. The crops reproduce what the extractor fed the ViT, so f_imgseq matches at LoRA-0.
+        self.serve_crops = serve_crops
         self.dataset_name = "3DPW"
 
         # Setting
@@ -94,6 +98,15 @@ class ThreedpwSmplDataset(ImgfeatMotionDatasetBase):
         data["img_wh"] = f_img_dict["img_wh"]  # (2)
         data["kp2d"] = torch.zeros((end - start), 17, 3)  # (L, 17, 3)  # do not provide kp2d
 
+        # Raw crops for in-loop backbone training — decode only this clip's frames, crop with the same
+        # bbx the extractor used, so JointBackbone(crops) reproduces the cached f_imgseq at LoRA-0.
+        if self.serve_crops:
+            from gvhmr.utils.imgcrop import get_batch  # dpvo-free: safe to import in a forked worker
+
+            video_path = self.hmr4d_support_dir / f"videos/{vid[:-2]}.mp4"
+            crops, _ = get_batch(str(video_path), data["bbx_xys"], img_ds=0.5, start_frame=start, end_frame=end)
+            data["crops"] = crops.float()  # (L, 3, 256, 256)
+
         return data
 
     def _process_data(self, data, idx):
@@ -125,6 +138,8 @@ class ThreedpwSmplDataset(ImgfeatMotionDatasetBase):
                 "spv_incam_only": True,
             },
         }
+        if "crops" in data:
+            return_data["crops"] = data["crops"]  # (F, 3, 256, 256)
 
         if False:  # Debug, render incam
             start, end = data["meta"]["start_end"]
@@ -157,12 +172,19 @@ class ThreedpwSmplDataset(ImgfeatMotionDatasetBase):
         return_data["f_imgseq"] = repeat_to_max_len(return_data["f_imgseq"], max_len)
         return_data["kp2d"] = repeat_to_max_len(return_data["kp2d"], max_len)
         return_data["cam_angvel"] = repeat_to_max_len(return_data["cam_angvel"], max_len)
+        if "crops" in return_data:  # pad the crops the same way (padded frames are masked downstream)
+            return_data["crops"] = repeat_to_max_len(return_data["crops"], max_len)
 
         return return_data
 
 
 # 3DPW
 MainStore.store(name="v1", node=builds(ThreedpwSmplDataset), group="train_datasets/imgfeat_3dpw")
+MainStore.store(  # serves raw crops for in-loop LoRA backbone training (ROADMAP Regime B stage 3)
+    name="v1_crops",
+    node=builds(ThreedpwSmplDataset, serve_crops=True),
+    group="train_datasets/imgfeat_3dpw",
+)
 MainStore.store(  # re-extracted DINOv2 features (Tier B backbone swap)
     name="dinov2",
     node=builds(ThreedpwSmplDataset, imgfeat_subdir="imgfeats/3dpw_train_dinov2"),

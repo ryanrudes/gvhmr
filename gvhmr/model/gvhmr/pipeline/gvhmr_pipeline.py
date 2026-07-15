@@ -37,6 +37,23 @@ class Pipeline(nn.Module):
         self.denoiser3d = instantiate(args_denoiser3d, _recursive_=False)
         # Log.info(self.denoiser3d)
 
+        # Opt-in in-loop backbone (ROADMAP Regime B): when configured, HMR2 + LoRA runs on raw crops each
+        # step so the backbone learns the task, instead of reading the cached f_imgseq. Default None -> the
+        # cached-feature path is byte-identical (golden-guarded). LoRA is zero-init, so even when enabled the
+        # first forward matches the cached feature exactly. Its LoRA params are the only trainable ones and
+        # are picked up automatically by configure_optimizers (requires_grad filter).
+        self.joint_backbone = None
+        jb = getattr(args, "joint_backbone", None)
+        if jb is not None and getattr(jb, "enabled", False):
+            from gvhmr.network.joint_backbone import JointBackbone
+
+            self.joint_backbone = JointBackbone(
+                rank=getattr(jb, "rank", 8),
+                alpha=getattr(jb, "alpha", 16.0),
+                dropout=getattr(jb, "dropout", 0.0),
+                checkpoint=getattr(jb, "checkpoint", None),
+            )
+
         # Normalizer
         self.endecoder: EnDecoder = instantiate(args.endecoder_opt, _recursive_=False)
         if self.args.normalize_cam_angvel:
@@ -45,6 +62,17 @@ class Pipeline(nn.Module):
             self.register_buffer("cam_angvel_std", torch.tensor(cam_angvel_stats["std"]), persistent=False)
 
     # ========== Training ========== #
+
+    def _img_features(self, inputs: dict) -> torch.Tensor:
+        """The (B, L, 1024) image-sequence condition. Default: the cached ``f_imgseq`` (byte-identical).
+        When the joint backbone is active and the batch carries raw ``crops`` (real-image datasets), run
+        HMR2+LoRA on them instead so the backbone trains. AMASS (no crops) keeps its zero placeholder."""
+        if self.joint_backbone is None or "crops" not in inputs:
+            return inputs["f_imgseq"]
+        crops = inputs["crops"]  # (B, L, 3, 256, 256)
+        B, L = crops.shape[:2]
+        feats = self.joint_backbone(crops.flatten(0, 1))  # (B*L, 1024)
+        return feats.view(B, L, -1)
 
     def forward(
         self,
@@ -65,7 +93,7 @@ class Pipeline(nn.Module):
             "obs": inputs["obs"],  # (B, L, J, 3)
             "f_cliffcam": cliff_cam,  # (B, L, 3)
             "f_cam_angvel": f_cam_angvel,  # (B, L, C=6)
-            "f_imgseq": inputs["f_imgseq"],  # (B, L, C=1024)
+            "f_imgseq": self._img_features(inputs),  # (B, L, C=1024)
         }
         if train:
             f_condition = randomly_set_null_condition(f_condition, 0.1)
