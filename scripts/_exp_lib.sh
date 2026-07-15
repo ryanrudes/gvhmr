@@ -22,20 +22,24 @@ EFF_BATCH="${EFF_BATCH:-256}"   # the paper's effective batch = devices x per-GP
 KEEP_TARS="${KEEP_TARS:-0}"     # packs arrive as ~27 GB of tarballs; deleted after extraction by default
 
 # --- the arms ---------------------------------------------------------------------------------------
-#   off    physics OFF                      — the baseline every other arm is judged against
-#   light  all three physics losses         — the definitive A/B (jitter -10..13%, but world/pose WORSE)
-#   vel    velocity smoothness ONLY         — the ablation: is the jitter win all transl_w_accel, and
-#                                             are foot_slide/penetration pure cost? (see ROADMAP A3)
+#   off     physics OFF                      — the baseline every other arm is judged against
+#   light   all three physics losses         — the definitive A/B (jitter -10..13%, but world/pose WORSE)
+#   vel     velocity smoothness ONLY         — ablation: RAN, refuted. transl_w_accel gives ~0 jitter and
+#                                              the MOST world harm (EMDB-2 W-MPJPE +17.9). Pure cost.
+#   contact foot_slide + penetration ONLY    — the mirror ablation: vel showed the jitter win is all in
+#                                              the contact terms; this arm tests if dropping transl_w_accel
+#                                              keeps that win without vel's world regression (see ROADMAP A3)
 # ARMS selects which to TRAIN (default: the original pair). Scoring always covers every arm that has a
 # checkpoint, so you can train one new arm and still get the full comparison table.
 ARMS="${ARMS:-off light}"
 
 exp_arm_exp() {  # arm -> exp config
   case "$1" in
-    off)   echo "gvhmr/mixed/mixed" ;;
-    light) echo "gvhmr/mixed/mixed_physics_light" ;;
-    vel)   echo "gvhmr/mixed/mixed_physics_vel" ;;
-    *)     die "unknown arm '$1' (known: off light vel)" ;;
+    off)     echo "gvhmr/mixed/mixed" ;;
+    light)   echo "gvhmr/mixed/mixed_physics_light" ;;
+    vel)     echo "gvhmr/mixed/mixed_physics_vel" ;;
+    contact) echo "gvhmr/mixed/mixed_physics_contact" ;;
+    *)       die "unknown arm '$1' (known: off light vel contact)" ;;
   esac
 }
 exp_arm_out() { echo "$DATA_ROOT/outputs/arm_$1"; }
@@ -208,7 +212,7 @@ exp_last_ckpt() { ls -v "$1"/checkpoints/*.ckpt 2>/dev/null | tail -1 || true; }
 # against the baseline you already paid for. NB TF32 stays OFF (it costs 4x the EMDB accel error).
 exp_score() {
   local scored=()
-  for arm in off light vel; do
+  for arm in off light vel contact; do
     local out ck
     out="$(exp_arm_out "$arm")"
     ck=$(exp_last_ckpt "$out")
