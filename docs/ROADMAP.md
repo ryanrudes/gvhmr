@@ -152,15 +152,42 @@ Sapiens is **~2× worse**. The reason is real: HMR2's feature is the **SMPL-head
 recovery**; Sapiens's is a *generic* MAE-pretrain feature, and I fed it naively. This refutes "Sapiens is a
 drop-in win" but NOT "Sapiens can't help" — the integration was weak in three ways that likely each cost a
 lot: (1) smallest model (0.3b), (2) **global-average-pooling** the `(C,64,64)` map to one vector (throwing away
-spatial structure HMR2's learned token keeps — probably the biggest culprit), (3) the pretrain encoder, not
+spatial structure HMR2's learned token keeps — *I first guessed this was the biggest culprit; the grid2
+ablation below refutes that*), (3) the pretrain encoder, not
 Sapiens's pose head. Matches this session's theme: a "better" generic model doesn't beat task-specific
 features without careful integration. Both numbers are low (vs the released 36.2) because it's a reduced
 AMASS+3DPW train — the A/B is controlled, so the relative verdict holds.
 
-**A fair Sapiens test would need:** a larger variant, a *learned* pooling / the pose-head features (not GAP),
-possibly fine-tuning — i.e. a real feature-design effort, not a drop-in. **To retry the full run:**
-`gvhmr extract-features --backbone sapiens …` over BEDLAM/H36M/3DPW-train (1024² ViT — GPU-days) then
-`gvhmr train … network.imgseq_dim=<D>`.
+**Pooling ablation (grid2) — refutes "it was just GAP".** The single most-cited culprit above was GAP
+(#2). The cheap test: keep a **2×2 spatial layout** instead (`backbone.pool=grid2`, imgseq_dim 4096). grid2
+*strictly contains* GAP — the mean of its four cells reproduces the GAP vector exactly — so a motion head
+that wanted GAP could learn to average and match 74.5. Trained the grid2 arm on the identical reduced
+AMASS+3DPW recipe / 200 epochs and evaluated on 3DPW-test (features verified 4096-dim, both train and the
+regenerated `sapiens_grid2_test` variant):
+
+| 3DPW-test | HMR2 (GAP-free token) | Sapiens GAP | Sapiens **grid2** |
+|---|---|---|---|
+| **PA-MPJPE** | **42.8** | 74.5 | **89.2** |
+| MPJPE | 69.6 | 121.2 | 155.8 |
+| PVE | 82.0 | 145.2 | 185.4 |
+| Accel | 9.8 | 7.9 | 12.9 |
+
+grid2 is **worse than GAP**, not better — and far from HMR2. So "Sapiens loses" was **not** one line of
+mean-pooling. Giving the head 4× the spatial detail under the same small budget *hurt*: the 4×-wider input
+projection has more to learn from the same reduced data (a real confound, but it *is* the finding — a richer
+Sapiens feature is not a free win), and the head never rediscovered the averaging that would have recovered
+GAP. This **strengthens** A1's original verdict: the gap is the generic-MAE-vs-task-token nature of the
+feature, not the pooling granularity. Reproduce: `outputs/a1_amass3dpw_sapiens_grid2/…/e199-s009200.ckpt`,
+`gvhmr eval 3dpw --backbone sapiens --set backbone.pool=grid2 --set network.imgseq_dim=4096`.
+
+This is the session's recurring theme flipped once more: four cheap proxies overturned their conclusions;
+this fifth one (grid2 as a cheap stand-in for "fix the pooling") **confirmed** the original — cheap proxies
+are unreliable in *both* directions, so run them and read the number rather than assuming the sign.
+
+**A fair Sapiens test would need:** a larger variant, a *learned* pooling / the pose-head features (grid2
+proved a fixed finer grid isn't it), possibly fine-tuning — i.e. a real feature-design effort, not a drop-in.
+**To retry the full run:** `gvhmr extract-features --backbone sapiens …` over BEDLAM/H36M/3DPW-train
+(1024² ViT — GPU-days) then `gvhmr train … network.imgseq_dim=<D>`.
 
 **A2 metric-depth seam landed** (Plan A2.1), CI-green, behavior-preserving:
 
