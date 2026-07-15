@@ -152,8 +152,12 @@ jid_train=$(sbatch --parsable "${GPUJOB[@]}" $DEP \
   --cpus-per-task="$CPUS_PER_TASK" --time="$TIME" scripts/slurm/10_train.sbatch)
 say "2/3 train  -> job $jid_train  (array 0-$((N_ARMS - 1)): $ARMS)"
 
+# Eval is single-GPU. Some clusters (e.g. Caltech Resnick) REJECT an untyped `gpu:1` — they require
+# `gpu:<type>:<count>`. So default the eval gres to the train gres with its count forced to 1, which
+# carries the type through; on clusters with an untyped train gres this stays `gpu:1` (unchanged).
+if [[ "$GRES" == *:*:* ]]; then EVAL_GRES_DEFAULT="${GRES%:*}:1"; else EVAL_GRES_DEFAULT="gpu:1"; fi
 jid_eval=$(sbatch --parsable "${GPUJOB[@]}" --dependency=afterok:"$jid_train" \
-  --gres="${EVAL_GRES:-gpu:1}" scripts/slurm/20_eval.sbatch)
+  --gres="${EVAL_GRES:-$EVAL_GRES_DEFAULT}" scripts/slurm/20_eval.sbatch)
 say "3/3 eval   -> job $jid_eval  (after BOTH arms succeed)"
 
 cat <<EOF
