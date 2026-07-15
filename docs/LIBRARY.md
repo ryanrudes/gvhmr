@@ -135,6 +135,9 @@ frame (the paper's global frame); **`camera`** = in-camera frame. `L` is the num
 | `.intrinsics` | `(L,3,3)` | per-frame pinhole `K` (full-image pixels) |
 | `.betas_per_frame` | `(L,10) \| None` | frame-varying shape params *before* the sequence-averaging — the model averages betas across the clip, and `smpl_params_*["betas"]` is that single shape; this is the raw per-frame signal (`None` if the producing pipeline didn't surface it) |
 | `.betas_avg` | `(10,)` | the single averaged shape actually used for the mesh (== `smpl_params_world["betas"][0]`) |
+| `.bbx_xys` | `(L,3) \| None` | per-frame crop box `(cx, cy, size)` in full-image pixels (the network's input crop) |
+| `.kp2d` | `(L,J,3) \| None` | per-frame detected 2D keypoints `(x, y, conf)` |
+| `.depth_reliability()` | `dict \| None` | per-frame in-camera-depth (`tz`) trust proxy for multi-view fusion — `bbx_px` / `betas_mag` / `betas_std` / `weight`. `tz = 2f/(s·b)` biases *far* on OOD (low-res/grayscale) crops via shape inflation, view-specifically; a reprojection residual can't catch it. See `docs/CAMERA_METADATA.md` |
 | `.fps` | `float` | frames per second (GVHMR runs at `30.0`) |
 | `.camera` | `str` | backend used (`simplevo` / `dpvo` / `dust3r` / `vggt` / `static`) |
 | `.video_path` | `Path \| None` | the staged 30fps input video |

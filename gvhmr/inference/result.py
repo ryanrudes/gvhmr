@@ -28,6 +28,10 @@ class MotionResult:
         betas_per_frame: ``(L, 10)`` the per-frame (frame-varying) shape params as the network predicts
             them, *before* the sequence-averaging that produces the single ``betas`` used for the mesh.
             ``None`` if the producing pipeline didn't surface them. See :attr:`betas_per_frame`.
+        bbx_xys: ``(L, 3)`` per-frame crop box ``(cx, cy, size)`` in full-image pixels — the network's
+            input crop. Feeds :meth:`depth_reliability`; ``None`` if not produced.
+        kp2d: ``(L, J, 3)`` per-frame detected 2D keypoints ``(x, y, conf)`` — the pose observation;
+            ``None`` if not produced.
         fps: frames per second of the recovered motion (GVHMR runs at 30).
         camera: the camera backend used (``simplevo`` / ``dpvo`` / ``dust3r`` / ``vggt`` / ``static``).
         video_path: the (staged, 30fps) input video, if produced by the pipeline.
@@ -37,6 +41,8 @@ class MotionResult:
     smpl_params_camera: dict[str, torch.Tensor]
     intrinsics: torch.Tensor
     betas_per_frame: torch.Tensor | None = None
+    bbx_xys: torch.Tensor | None = None
+    kp2d: torch.Tensor | None = None
     fps: float = 30.0
     camera: str = "simplevo"
     video_path: Path | None = None
@@ -136,6 +142,40 @@ class MotionResult:
         """The single sequence-averaged shape ``(10,)`` actually used to build the mesh (all frames share it)."""
         return self.smpl_params_world["betas"][0]
 
+    def depth_reliability(self) -> dict[str, torch.Tensor] | None:
+        """Per-frame proxy for how much to trust the in-camera depth (``tz``) — for multi-view fusion.
+
+        Why: ``tz = 2·f/(s·b)`` (``hmr_cam.compute_transl_full_cam``). On out-of-distribution crops
+        (low-res, grayscale, upsampled) the network **inflates the predicted metric shape** (betas), so
+        the larger body must sit *farther* to reproject at the same pixel size — a systematic, **view-
+        specific FAR bias**. Because the 2D reprojection stays satisfied, a reprojection residual does
+        **not** detect it; the signals that track it are the shape inflation and the crop's OOD-ness:
+
+        - ``bbx_px`` ``(L,)`` — person pixel-height (``bbx_xys[:,2]``), in this view's pixel space. The
+          causal factor: smaller/lower-res crops are more OOD. Kept **absolute** (not normalized) so it's
+          directly comparable across views for cross-view weighting alongside depth.
+        - ``betas_mag`` ``(L,)`` — ``‖betas_per_frame‖``; larger = shape pushed off the ~N(0,1) prior =
+          more likely inflated. Correlates with the far bias, but also with a genuinely large person, so
+          it is only *decisive across views* (below).
+        - ``betas_std`` ``(L,)`` — ``‖betas_per_frame − betas_avg‖``; shape instability across the clip.
+        - ``weight`` ``(L,)`` in ``(0, 1]`` — a convenience within-view reliability (bbx_px normalized by
+          its own median, penalized by shape instability), higher = trust ``tz`` more. A starting point;
+          recombine with your own fusion — the raw components are the point.
+
+        **Strongest signal is cross-view**, which one result can't see: for a fixed subject, down-weight
+        the view whose per-frame betas disagree most from the others (you hold every view's
+        ``betas_per_frame``). Returns ``None`` if ``betas_per_frame`` / ``bbx_xys`` weren't produced.
+        """
+        if self.betas_per_frame is None or self.bbx_xys is None:
+            return None
+        bbx_px = self.bbx_xys[..., 2].float()  # (L,) absolute person pixel-height
+        bpf = self.betas_per_frame.float()  # (L, 10)
+        betas_mag = bpf.norm(dim=-1)  # (L,)
+        betas_std = (bpf - bpf.mean(dim=0, keepdim=True)).norm(dim=-1)  # (L,)
+        med = bbx_px.median().clamp_min(1e-6)
+        weight = (bbx_px / med).clamp(max=1.0) / (1.0 + betas_std)  # within-view; monotone, no magic thresh
+        return {"bbx_px": bbx_px, "betas_mag": betas_mag, "betas_std": betas_std, "weight": weight}
+
     # ---- serialization ---------------------------------------------------------------------------
     def to_dict(self) -> dict:
         """A plain dict of the friendly fields (tensors), for programmatic use."""
@@ -149,6 +189,10 @@ class MotionResult:
         }
         if self.betas_per_frame is not None:
             out["betas_per_frame"] = self.betas_per_frame
+        if self.bbx_xys is not None:
+            out["bbx_xys"] = self.bbx_xys
+        if self.kp2d is not None:
+            out["kp2d"] = self.kp2d
         return out
 
     def save(self, path: str | Path) -> Path:
@@ -169,6 +213,10 @@ class MotionResult:
                 arrays[f"{frame}_{k}"] = _np(v)
         if self.betas_per_frame is not None:
             arrays["betas_per_frame"] = _np(self.betas_per_frame)
+        if self.bbx_xys is not None:
+            arrays["bbx_xys"] = _np(self.bbx_xys)
+        if self.kp2d is not None:
+            arrays["kp2d"] = _np(self.kp2d)
         np.savez(path, **arrays)
         return path
 
@@ -180,6 +228,10 @@ class MotionResult:
         }
         if self.betas_per_frame is not None:
             raw["betas_per_frame"] = self.betas_per_frame
+        if self.bbx_xys is not None:
+            raw["bbx_xys"] = self.bbx_xys
+        if self.kp2d is not None:
+            raw["kp2d"] = self.kp2d
         return raw
 
     # ---- rendering (reuses the demo's moderngl overlay renderer) ---------------------------------

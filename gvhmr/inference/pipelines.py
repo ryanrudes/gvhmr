@@ -215,6 +215,8 @@ class GVHMRPipeline:
                 smpl_params_camera=pred["smpl_params_incam"],
                 intrinsics=pred["K_fullimg"],
                 betas_per_frame=pred.get("betas_per_frame"),
+                bbx_xys=pred.get("bbx_xys"),
+                kp2d=pred.get("kp2d"),
                 fps=30.0,
                 camera="static" if static_camera else cam_name,
                 video_path=Path(cfg.video_path),

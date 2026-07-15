@@ -75,6 +75,11 @@ class DemoPL(pl.LightningModule):
             # before that collapse — exposed for callers who want it, never fed back into rendering.
             "betas_per_frame": outputs["pred_betas_per_frame"][0],
             "K_fullimg": data["K_fullimg"],
+            # The per-frame crop box (cx, cy, size) and 2D keypoints — inputs, surfaced so downstream
+            # can gauge in-camera-depth reliability (tz = 2f/(s·b): OOD/small crops bias tz far; see
+            # MotionResult.depth_reliability and docs/CAMERA_METADATA.md).
+            "bbx_xys": data["bbx_xys"],  # (L, 3)
+            "kp2d": data["kp2d"],  # (L, J, 3)
             "net_outputs": outputs,  # intermediate outputs
         }
         if world_from_incam:

@@ -213,3 +213,34 @@ sidecar to use real intrinsics; leave it empty to fall back to metadata / the he
 - **One focal, square pixels.** The model consumes only `fx` and the principal point `(cx, cy)`; `fy` is
   stored in the returned `K` but not used.
 - **30 fps staging.** Per-frame arrays are indexed against the staged 30 fps clip, not the raw source.
+
+---
+
+## In-camera depth (`tz`): focal sensitivity and the OOD far-bias
+
+The in-camera translation is `tz = 2·f / (s·b)` (`gvhmr/utils/geo/hmr_cam.py::compute_transl_full_cam`):
+`f` = `K[0,0]` (focal in px), `s` = the network's crop-relative predicted scale, `b` = bbox size in
+full-image pixels. Two consequences matter for anyone consuming the in-camera depth (e.g. multi-camera
+fusion):
+
+- **`tz ∝ f`, exactly.** A wrong focal biases depth by the same ratio while leaving the *bearing* (lateral
+  placement) almost untouched. So **"bearing good, range biased, view-specific" is the signature of a
+  per-camera focal error** — first check you're passing calibrated `fx` per stream, not the default
+  diagonal heuristic `f = √(w²+h²)` (which, for a 640×400 sensor, is ~755 px and typically overshoots a
+  wide-FOV machine-vision camera's true `fx`, placing bodies *too far*).
+
+- **Out-of-distribution crops bias `tz` FAR even with correct `f`.** GVHMR trains on HD-ish RGB; a small,
+  low-resolution, or grayscale crop (upsampled to the fixed 256×192 the ViT sees) is out of distribution.
+  The network responds by **inflating the predicted metric shape (betas)** — a larger body must sit
+  *farther* to reproject at the same pixel size. Measured in the field: +9–75 cm far, worst on 640×400
+  grayscale monos, and it is **view-specific**, so zero-mean multi-view fusion can't average it out.
+  Crucially, because the inflated body still reprojects correctly in 2D, **a reprojection residual does
+  NOT detect this bias** — the signals that do are the shape inflation (betas) and the crop's pixel size.
+
+**Consuming this downstream.** `MotionResult.depth_reliability()` returns a per-frame proxy —
+`bbx_px` (person pixel-height, the causal OOD factor), `betas_mag` / `betas_std` (shape inflation and
+instability, from the v1.5.0 per-frame betas), and a convenience `weight ∈ (0,1]`. Weight each view's
+`tz` by it. The **strongest** signal is cross-view: for a fixed subject, down-weight the view whose
+per-frame betas disagree most from the others (each view's `betas_per_frame` is exposed). What is
+*excellent* and should be trusted: `body_pose`, `betas` shape, in-cam orientation, and the lateral
+bearing — the bias is specifically along the optical axis.
