@@ -70,6 +70,10 @@ class DemoPL(pl.LightningModule):
         pred = {
             "smpl_params_global": {k: v[0] for k, v in outputs["pred_smpl_params_global"].items()},
             "smpl_params_incam": {k: v[0] for k, v in outputs["pred_smpl_params_incam"].items()},
+            # Per-frame (pre-avgbeta) shape params, (L, 10). The `betas` inside smpl_params_* is the
+            # single sequence-averaged shape the model actually uses; this is the frame-varying signal
+            # before that collapse — exposed for callers who want it, never fed back into rendering.
+            "betas_per_frame": outputs["pred_betas_per_frame"][0],
             "K_fullimg": data["K_fullimg"],
             "net_outputs": outputs,  # intermediate outputs
         }
@@ -109,6 +113,9 @@ class DemoPL(pl.LightningModule):
         outputs["pred_smpl_params_incam"] = {k: v[None] for k, v in avg.items()}
         outputs["pred_smpl_params_global"]["betas"] = avg["betas"][None]
         outputs["pred_smpl_params_global"]["body_pose"] = avg["body_pose"][None]
+        # Average the per-frame betas with the mirror's too (betas are mirror-invariant, so the flip
+        # leaves them as-is), matching the shared-beta averaging above.
+        outputs["pred_betas_per_frame"] = (outputs["pred_betas_per_frame"] + flipped["pred_betas_per_frame"]) / 2
 
         endecoder = self.pipeline.endecoder
         pp = pp_static_joint_cam if static_cam else pp_static_joint

@@ -172,6 +172,12 @@ class NetworkEncoderRoPE(nn.Module):
 
         # Output
         sample = self.final_layer(x)  # (B, L, C)
+        # Per-frame betas as predicted, BEFORE the temporal avg-beta collapse below. These are the
+        # genuine frame-varying shape params; `avgbeta` replaces the 126:136 slice in `sample` with
+        # their length-masked mean (broadcast over L) so every frame shares one beta. We keep the
+        # pre-collapse slice around (still normalized, decoded by EnDecoder) so callers can opt into
+        # the per-frame shape without changing the default (avg-beta) output.
+        pred_betas_per_frame = sample[..., 126:136]  # (B, L, 10), normalized
         if self.avgbeta:
             betas = (sample[..., 126:136] * (~pmask[..., None])).sum(1) / length[:, None]  # (B, C)
             betas = repeat(betas, "b c -> b l c", l=L)
@@ -191,6 +197,7 @@ class NetworkEncoderRoPE(nn.Module):
         output = {
             "pred_context": x,
             "pred_x": sample,
+            "pred_betas_per_frame": pred_betas_per_frame,  # (B, L, 10), normalized, pre-avgbeta
             "pred_cam": pred_cam,
             "static_conf_logits": static_conf_logits,
         }

@@ -106,6 +106,24 @@ def test_golden_output_matches_fingerprint(model) -> None:
 
 
 @torch.no_grad()
+def test_per_frame_betas_exposed(model) -> None:
+    """``pred['betas_per_frame']`` carries the frame-varying shape params the network predicts
+    *before* the avg-beta collapse. Guards the invariant that their length-mean equals the single
+    averaged ``betas`` the mesh uses (denormalization is affine, so the mean commutes)."""
+    pred = model.predict(_synthetic_data("cpu"), static_cam=True)
+    L = pred["smpl_params_incam"]["betas"].shape[0]
+    bpf = pred["betas_per_frame"]
+    assert tuple(bpf.shape) == (L, 10)
+    # per-frame betas genuinely vary across frames (not already collapsed)
+    assert bpf.std(0).max() > 1e-3
+    # the sequence-averaged betas the mesh uses is identical every frame...
+    avg = pred["smpl_params_incam"]["betas"]
+    assert torch.allclose(avg, avg[:1].expand_as(avg))
+    # ...and equals the mean of the per-frame betas
+    assert torch.allclose(bpf.mean(0), avg[0], atol=1e-5)
+
+
+@torch.no_grad()
 def test_cpu_inference_is_deterministic(model) -> None:
     a = model.predict(_synthetic_data("cpu"), static_cam=True)
     b = model.predict(_synthetic_data("cpu"), static_cam=True)

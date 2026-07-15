@@ -103,6 +103,12 @@ class Pipeline(nn.Module):
         decode_dict = self.endecoder.decode(model_output["pred_x"])  # (B, L, C) -> dict
         outputs.update({"model_output": model_output, "decode_dict": decode_dict})
 
+        # Per-frame (pre-avgbeta) shape params, denormalized to the same units as decode_dict["betas"].
+        # Frame-varying and identical for the in-cam / global branches (betas are frame-shared shape),
+        # so we surface a single (B, L, 10) tensor rather than duplicating it into smpl_params dicts —
+        # keeping those dicts consumable as `smplx(**params)`.
+        outputs["pred_betas_per_frame"] = self.endecoder.decode_betas(model_output["pred_betas_per_frame"])
+
         # Post-processing
         outputs["pred_smpl_params_incam"] = {
             "body_pose": decode_dict["body_pose"],  # (B, L, 63)

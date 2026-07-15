@@ -25,6 +25,9 @@ class MotionResult:
         smpl_params_world: ``{global_orient (L,3), body_pose (L,63), betas (L,10), transl (L,3)}`` — world frame.
         smpl_params_camera: same keys, in the camera frame.
         intrinsics: ``(L, 3, 3)`` per-frame pinhole ``K`` (full-image pixels).
+        betas_per_frame: ``(L, 10)`` the per-frame (frame-varying) shape params as the network predicts
+            them, *before* the sequence-averaging that produces the single ``betas`` used for the mesh.
+            ``None`` if the producing pipeline didn't surface them. See :attr:`betas_per_frame`.
         fps: frames per second of the recovered motion (GVHMR runs at 30).
         camera: the camera backend used (``simplevo`` / ``dpvo`` / ``dust3r`` / ``vggt`` / ``static``).
         video_path: the (staged, 30fps) input video, if produced by the pipeline.
@@ -33,6 +36,7 @@ class MotionResult:
     smpl_params_world: dict[str, torch.Tensor]
     smpl_params_camera: dict[str, torch.Tensor]
     intrinsics: torch.Tensor
+    betas_per_frame: torch.Tensor | None = None
     fps: float = 30.0
     camera: str = "simplevo"
     video_path: Path | None = None
@@ -127,10 +131,15 @@ class MotionResult:
             self._cache["faces_smplx"] = smplx_faces(str(self._device or "cpu"))
         return self._cache["faces_smplx"]
 
+    @property
+    def betas_avg(self) -> torch.Tensor:
+        """The single sequence-averaged shape ``(10,)`` actually used to build the mesh (all frames share it)."""
+        return self.smpl_params_world["betas"][0]
+
     # ---- serialization ---------------------------------------------------------------------------
     def to_dict(self) -> dict:
         """A plain dict of the friendly fields (tensors), for programmatic use."""
-        return {
+        out = {
             "smpl_params_world": self.smpl_params_world,
             "smpl_params_camera": self.smpl_params_camera,
             "intrinsics": self.intrinsics,
@@ -138,6 +147,9 @@ class MotionResult:
             "camera": self.camera,
             "num_frames": self.num_frames,
         }
+        if self.betas_per_frame is not None:
+            out["betas_per_frame"] = self.betas_per_frame
+        return out
 
     def save(self, path: str | Path) -> Path:
         """Save the full raw prediction as a ``.pt`` — the exact format ``gvhmr demo`` writes
@@ -155,15 +167,20 @@ class MotionResult:
         for frame, params in (("world", self.smpl_params_world), ("camera", self.smpl_params_camera)):
             for k, v in params.items():
                 arrays[f"{frame}_{k}"] = _np(v)
+        if self.betas_per_frame is not None:
+            arrays["betas_per_frame"] = _np(self.betas_per_frame)
         np.savez(path, **arrays)
         return path
 
     def _raw_from_fields(self) -> dict:
-        return {
+        raw = {
             "smpl_params_global": self.smpl_params_world,
             "smpl_params_incam": self.smpl_params_camera,
             "K_fullimg": self.intrinsics,
         }
+        if self.betas_per_frame is not None:
+            raw["betas_per_frame"] = self.betas_per_frame
+        return raw
 
     # ---- rendering (reuses the demo's moderngl overlay renderer) ---------------------------------
     def render(

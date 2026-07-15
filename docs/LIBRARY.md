@@ -133,6 +133,8 @@ frame (the paper's global frame); **`camera`** = in-camera frame. `L` is the num
 | `.smpl_params_world` | `dict` | world-frame SMPL params: `global_orient (L,3)`, `body_pose (L,63)`, `betas (L,10)`, `transl (L,3)` |
 | `.smpl_params_camera` | `dict` | same keys, in the camera frame |
 | `.intrinsics` | `(L,3,3)` | per-frame pinhole `K` (full-image pixels) |
+| `.betas_per_frame` | `(L,10) \| None` | frame-varying shape params *before* the sequence-averaging — the model averages betas across the clip, and `smpl_params_*["betas"]` is that single shape; this is the raw per-frame signal (`None` if the producing pipeline didn't surface it) |
+| `.betas_avg` | `(10,)` | the single averaged shape actually used for the mesh (== `smpl_params_world["betas"][0]`) |
 | `.fps` | `float` | frames per second (GVHMR runs at `30.0`) |
 | `.camera` | `str` | backend used (`simplevo` / `dpvo` / `dust3r` / `vggt` / `static`) |
 | `.video_path` | `Path \| None` | the staged 30fps input video |
@@ -156,7 +158,7 @@ result = gvhmr.recover("dance.mp4")
 joints = result.joints_world               # (L, 24, 3) world-frame joints
 verts  = result.vertices_camera            # (L, 6890, 3) in-camera mesh
 
-result.save_npz("dance.npz")               # world_/camera_ params + intrinsics, fps, camera
+result.save_npz("dance.npz")               # world_/camera_ params + intrinsics, fps, camera, betas_per_frame
 result.save("dance.pt")                    # round-trips with the rest of the CLI toolchain
 
 result.render("overlay.mp4")               # side-by-side in-cam ∥ world (view="both", default)

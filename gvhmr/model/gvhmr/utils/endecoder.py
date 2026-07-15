@@ -167,6 +167,16 @@ class EnDecoder(nn.Module):
     def decode_translw(self, x_norm: torch.Tensor) -> torch.Tensor:
         return x_norm * self.std[-3:] + self.mean[-3:]
 
+    def decode_betas(self, betas_norm: torch.Tensor) -> torch.Tensor:
+        """Denormalize a betas slice ``(..., 10)`` exactly as :meth:`decode` denormalizes ``x[..., 126:136]``.
+
+        Used to recover the per-frame (pre-avgbeta) shape params the network stashes in
+        ``pred_betas_per_frame``; the ``mean.shape[-1] == 1`` branch mirrors the no-stats variant.
+        """
+        if self.mean.shape[-1] == 1:  # no mean/std provided
+            return betas_norm
+        return betas_norm * self.std[126:136] + self.mean[126:136]
+
     def decode(self, x_norm: torch.Tensor) -> dict[str, torch.Tensor]:
         """x_norm: (B, L, C)"""
         B, L, C = x_norm.shape
