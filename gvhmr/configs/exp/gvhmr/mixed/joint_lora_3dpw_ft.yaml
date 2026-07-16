@@ -1,0 +1,87 @@
+# @package _global_
+# ROADMAP Regime B stage 3, take 2 — JOINT LoRA backbone, FINE-TUNED from the released checkpoint.
+#
+# Why this replaces the from-scratch joint_lora_3dpw.yaml: that config trained a denoiser from random init
+# on 3DPW-train alone. At ~38 min/epoch it needed ~63 h for its 100 epochs against a 12 h wall clock, and
+# 3DPW-only-from-scratch lands ~62 mm 3DPW PA-MPJPE (vs the released model's 35.9) — a regime so far from
+# convergence that a backbone-vs-frozen gap is unmeasurable through the noise. It answered nothing.
+#
+# This arm instead starts from the RELEASED checkpoint (pass ckpt_path=<gvhmr_siga24_release.ckpt>). That
+# ckpt holds ONLY pipeline.denoiser3d.* — load_hmr2() supplies the backbone and LoRA is zero-init, so at
+# step 0 this model IS the released model, bit for bit. Every millimetre it then moves is attributable to
+# fine-tuning, and the frozen twin (joint_lora_3dpw_frozen_ft.yaml) starts from the exact same point.
+#
+# The question it answers: does letting the ViT adapt to the task beat frozen cached features, starting
+# from a converged model? 10 epochs ≈ 6.3 h — fits one 12 h job with room for validation.
+#
+# Guardrails: 3DPW PA-MPJPE is the in-domain verdict; EMDB-1 PA-MPJPE is the generalization check. Both
+# arms fine-tune on 3DPW-train alone, so both can overfit — a 3DPW win paired with an EMDB regression means
+# memorization, and the answer is more data (H36M crops), not more epochs.
+defaults:
+    - override /data: mocap/trainX_testY
+    - override /model: gvhmr/gvhmr_pl
+    - override /endecoder: gvhmr/v1_amass_local_bedlam_cam
+    # 5e-5, not the from-scratch 2e-4: this warm-starts from a converged model, and 2e-4 would wreck it
+    # before it learned anything. BOTH arms share it — a per-arm LR would confound the A/B.
+    - override /optimizer: adamw_5e-5
+    - override /scheduler_cfg: epoch_half_200_350 # milestones at 200/350 >> 10 epochs -> LR is constant
+    - override /train_datasets:
+          - imgfeat_3dpw/v1_crops
+    - override /test_datasets:
+          - emdb1/v1_fliptest
+          - emdb2/v1_fliptest
+          - 3dpw/fliptest
+    - override /callbacks:
+          - simple_ckpt_saver/every10e_top100
+          - prog_bar/prog_reporter_every0.1
+          - train_speed_timer/base
+          - lr_monitor/pl
+          - metric_emdb1
+          - metric_emdb2
+          - metric_3dpw
+    - override /network: gvhmr/relative_transformer
+    - override /logger: wandb
+
+exp_name_base: joint_lora_3dpw_ft
+exp_name_var: ""
+exp_name: ${exp_name_base}${exp_name_var}
+data_name: mocap_joint_3dpw_v1
+
+pipeline:
+    _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline
+    args_denoiser3d: ${network}
+    args:
+        endecoder_opt: ${endecoder}
+        normalize_cam_angvel: True
+        weights:
+            cr_j3d: 500.
+            transl_c: 1.
+            cr_verts: 500.
+            j2d: 1000.
+            verts2d: 1000.
+            transl_w: 1.
+            static_conf_bce: 1.
+        static_conf:
+            vel_thr: 0.15
+
+        # The in-loop LoRA backbone. Zero-init B -> zero delta at step 0 -> identical to the frozen twin.
+        joint_backbone:
+            enabled: True
+            rank: 8
+            alpha: 16.0
+            dropout: 0.0
+
+data:
+    loader_opts:
+        train:
+            batch_size: 8 # ViT-Huge fwd+bwd on B*L crops/step; grad-checkpointing keeps this ~13 GB
+            num_workers: 8
+
+pl_trainer:
+    precision: 16-mixed
+    log_every_n_steps: 50
+    gradient_clip_val: 0.5
+    # ~38 min/epoch for the joint arm. 10 epochs + 2 validations fits inside a 12 h job.
+    max_epochs: 10
+    check_val_every_n_epoch: 5
+    devices: 1

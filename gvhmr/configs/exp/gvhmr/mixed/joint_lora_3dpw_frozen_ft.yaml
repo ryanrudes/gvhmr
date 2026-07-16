@@ -1,0 +1,69 @@
+# @package _global_
+# ROADMAP Regime B stage 3, take 2 — the FROZEN control for the fine-tune A/B.
+#
+# Identical to joint_lora_3dpw_ft.yaml in every way EXCEPT the backbone does not train: cached HMR2
+# features (imgfeat_3dpw/v1), joint_backbone absent. Same released warm-start (pass the same ckpt_path),
+# same LR, same epochs, same seed → the ONLY difference is whether the ViT adapts. Since LoRA is zero-init,
+# the joint arm starts numerically identical to this one; any gap at the end is backbone training alone.
+#
+# This arm is much cheaper per epoch (no ViT fwd/bwd), but run it for the SAME 10 epochs — an epoch-matched
+# comparison is the point. It will simply finish sooner.
+defaults:
+    - override /data: mocap/trainX_testY
+    - override /model: gvhmr/gvhmr_pl
+    - override /endecoder: gvhmr/v1_amass_local_bedlam_cam
+    - override /optimizer: adamw_5e-5 # must match the joint arm exactly
+    - override /scheduler_cfg: epoch_half_200_350
+    - override /train_datasets:
+          - imgfeat_3dpw/v1 # cached HMR2 features (NOT crops)
+    - override /test_datasets:
+          - emdb1/v1_fliptest
+          - emdb2/v1_fliptest
+          - 3dpw/fliptest
+    - override /callbacks:
+          - simple_ckpt_saver/every10e_top100
+          - prog_bar/prog_reporter_every0.1
+          - train_speed_timer/base
+          - lr_monitor/pl
+          - metric_emdb1
+          - metric_emdb2
+          - metric_3dpw
+    - override /network: gvhmr/relative_transformer
+    - override /logger: wandb
+
+exp_name_base: joint_lora_3dpw_frozen_ft
+exp_name_var: ""
+exp_name: ${exp_name_base}${exp_name_var}
+data_name: mocap_joint_3dpw_v1
+
+pipeline:
+    _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline
+    args_denoiser3d: ${network}
+    args:
+        endecoder_opt: ${endecoder}
+        normalize_cam_angvel: True
+        weights:
+            cr_j3d: 500.
+            transl_c: 1.
+            cr_verts: 500.
+            j2d: 1000.
+            verts2d: 1000.
+            transl_w: 1.
+            static_conf_bce: 1.
+        static_conf:
+            vel_thr: 0.15
+        # joint_backbone deliberately absent -> the cached-feature path. That IS the control.
+
+data:
+    loader_opts:
+        train:
+            batch_size: 8
+            num_workers: 8
+
+pl_trainer:
+    precision: 16-mixed
+    log_every_n_steps: 50
+    gradient_clip_val: 0.5
+    max_epochs: 10
+    check_val_every_n_epoch: 5
+    devices: 1

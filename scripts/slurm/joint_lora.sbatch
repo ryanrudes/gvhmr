@@ -34,13 +34,20 @@ cd "${SLURM_SUBMIT_DIR:-$PWD}"
 # Single-GPU, single-process: keep Lightning from seeing SLURM_* and trying to stand up a DDP group.
 unset SLURM_NTASKS SLURM_NTASKS_PER_NODE SLURM_PROCID SLURM_LOCALID 2>/dev/null || true
 
-EXP="${EXP:-gvhmr/mixed/joint_lora_3dpw}"
+EXP="${EXP:-gvhmr/mixed/joint_lora_3dpw_ft}"
 RESUME="${RESUME:-last}"
 args=(train "exp=$EXP")
 
-# Warm-start (weights-only) from the newest checkpoint of this exp, if any. `ckpt_path=` -> a strict=False
-# weight load, NOT the full-state resume that dies on weights-only checkpoints.
-if [ "$RESUME" = last ]; then
+# CKPT pins an explicit warm-start checkpoint and wins over RESUME. The *_ft arms use this to start from
+# the RELEASED checkpoint: it holds only pipeline.denoiser3d.*, load_hmr2() supplies the backbone, and LoRA
+# is zero-init — so step 0 IS the released model, bit for bit, for BOTH arms of the A/B.
+if [ -n "${CKPT:-}" ]; then
+  [ -f "$CKPT" ] || { echo "[joint] CKPT=$CKPT does not exist" >&2; exit 1; }
+  echo "[joint] warm-starting weights from $CKPT (explicit)"
+  args+=("ckpt_path=$CKPT")
+elif [ "$RESUME" = last ]; then
+  # Warm-start (weights-only) from the newest checkpoint of this exp, if any. `ckpt_path=` -> a strict=False
+  # weight load, NOT the full-state resume that dies on weights-only checkpoints.
   newest=$(ls -t outputs/*/"${EXP##*/}"/checkpoints/*.ckpt 2>/dev/null | head -1 || true)
   if [ -n "$newest" ]; then
     echo "[joint] warm-starting weights from $newest (fresh optimizer; LR constant pre-milestone)"

@@ -65,7 +65,7 @@ def map_path(upstream_path: str, manifest: dict) -> tuple[str, str]:
     for entry in sorted(manifest.get("path_map", []), key=lambda e: -len(e["upstream"])):
         up = entry["upstream"]
         if upstream_path == up or upstream_path.startswith(up):
-            local = entry["local"] + upstream_path[len(up):] if up.endswith("/") else entry["local"]
+            local = entry["local"] + upstream_path[len(up) :] if up.endswith("/") else entry["local"]
             best = (local, entry.get("note", ""))
             break
     if best is None:
@@ -82,8 +82,7 @@ def ensure_upstream(remote: str, url: str) -> None:
     remotes = _run(["git", "remote"]).split()
     if remote not in remotes:
         sys.exit(
-            f"No '{remote}' remote. Add it once with:\n    git remote add {remote} {url}\n"
-            f"then re-run this script."
+            f"No '{remote}' remote. Add it once with:\n    git remote add {remote} {url}\nthen re-run this script."
         )
     subprocess.run(["git", "fetch", remote, "--quiet"], cwd=REPO_ROOT, check=True)
 

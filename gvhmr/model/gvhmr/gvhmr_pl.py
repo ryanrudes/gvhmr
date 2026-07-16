@@ -294,12 +294,20 @@ class GvhmrPL(pl.LightningModule):
         return [optimizer], [scheduler_cfg]
 
     # ============== Utils ================= #
+    def _is_ignored_weight(self, k: str) -> bool:
+        """Weights deliberately left out of checkpoints (rebuilt at construction instead)."""
+        if any(k.startswith(ig) for ig in self.ignored_weights_prefix):
+            return True
+        # A LoRA joint backbone carries a FROZEN ~670M-param HMR2 base (~2.7 GB per checkpoint). It never
+        # trains and load_hmr2() rebuilds it at construction, so only the adapters are worth persisting.
+        if k.startswith("pipeline.joint_backbone") and "lora_" not in k:
+            return True
+        return False
+
     def on_save_checkpoint(self, checkpoint) -> None:
-        for ig_keys in self.ignored_weights_prefix:
-            for k in list(checkpoint["state_dict"].keys()):
-                if k.startswith(ig_keys):
-                    # Log.info(f"Remove key `{ig_keys}' from checkpoint.")
-                    checkpoint["state_dict"].pop(k)
+        for k in list(checkpoint["state_dict"].keys()):
+            if self._is_ignored_weight(k):
+                checkpoint["state_dict"].pop(k)
 
     def load_pretrained_model(self, ckpt_path):
         """Load pretrained checkpoint, and assign each weight to the corresponding part."""
@@ -307,11 +315,7 @@ class GvhmrPL(pl.LightningModule):
 
         state_dict = torch_load_mmap(ckpt_path, map_location="cpu", weights_only=False)["state_dict"]
         missing, unexpected = self.load_state_dict(state_dict, strict=False)
-        real_missing = []
-        for k in missing:
-            ignored_when_saving = any(k.startswith(ig_keys) for ig_keys in self.ignored_weights_prefix)
-            if not ignored_when_saving:
-                real_missing.append(k)
+        real_missing = [k for k in missing if not self._is_ignored_weight(k)]
 
         if len(real_missing) > 0:
             Log.warn(f"Missing keys: {real_missing}")

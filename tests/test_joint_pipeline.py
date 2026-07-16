@@ -48,3 +48,28 @@ def test_crops_are_flattened_through_backbone_and_reshaped():
     assert out.shape == (2, 3, 1024)
     # flat index (B*L order) reshaped to (B,L): row [b,l] == b*3 + l
     assert out[0, 0, 0] == 0 and out[0, 1, 0] == 1 and out[1, 0, 0] == 3 and out[1, 2, 0] == 5
+
+
+def test_frozen_backbone_base_is_dropped_from_checkpoints_but_adapters_kept():
+    """A LoRA joint backbone must persist its ADAPTERS only.
+
+    The frozen HMR2 base is ~670M params (~2.7GB/ckpt) and load_hmr2() rebuilds it at construction, so
+    saving it every 10 epochs is pure waste. Regression guard: this shipped saving the whole ViT.
+    """
+    from gvhmr.model.gvhmr.gvhmr_pl import GvhmrPL
+
+    class _Fake:  # _is_ignored_weight is pure string logic — no need for the real 670M-param module
+        ignored_weights_prefix = ["smplx", "pipeline.endecoder"]
+        _is_ignored_weight = GvhmrPL._is_ignored_weight
+
+        class pipeline:
+            joint_backbone = object()
+
+    f = _Fake()
+    base = "pipeline.joint_backbone.hmr2.backbone.blocks.0.attn.qkv"
+    assert f._is_ignored_weight(f"{base}.base.weight")  # frozen ViT -> dropped
+    assert not f._is_ignored_weight(f"{base}.lora_A")  # adapters -> kept
+    assert not f._is_ignored_weight(f"{base}.lora_B")
+    assert not f._is_ignored_weight("pipeline.denoiser3d.blocks.0.attn.qkv.weight")  # trains -> kept
+    assert f._is_ignored_weight("pipeline.endecoder.foo")  # pre-existing prefixes still honoured
+    assert f._is_ignored_weight("smplx.bar")
