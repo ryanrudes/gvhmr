@@ -143,28 +143,35 @@ class MotionResult:
         return self.smpl_params_world["betas"][0]
 
     def depth_reliability(self) -> dict[str, torch.Tensor] | None:
-        """Per-frame proxy for how much to trust the in-camera depth (``tz``) — for multi-view fusion.
+        """Per-frame in-camera-depth diagnostics. **``weight`` does NOT predict depth error — see below.**
 
-        Why: ``tz = 2·f/(s·b)`` (``hmr_cam.compute_transl_full_cam``). On out-of-distribution crops
-        (low-res, grayscale, upsampled) the network **inflates the predicted metric shape** (betas), so
-        the larger body must sit *farther* to reproject at the same pixel size — a systematic, **view-
-        specific FAR bias**. Because the 2D reprojection stays satisfied, a reprojection residual does
-        **not** detect it; the signals that track it are the shape inflation and the crop's OOD-ness:
+        .. warning::
+           This shipped in v1.6.0 on the *unmeasured* hypothesis that out-of-distribution crops inflate
+           ``betas`` and push ``tz`` far. Measured against EMDB-1 ground truth (2026-07-16,
+           ``scripts/depth_bias_probe.py``, 24k frames), **that hypothesis is refuted**:
 
-        - ``bbx_px`` ``(L,)`` — person pixel-height (``bbx_xys[:,2]``), in this view's pixel space. The
-          causal factor: smaller/lower-res crops are more OOD. Kept **absolute** (not normalized) so it's
-          directly comparable across views for cross-view weighting alongside depth.
-        - ``betas_mag`` ``(L,)`` — ``‖betas_per_frame‖``; larger = shape pushed off the ~N(0,1) prior =
-          more likely inflated. Correlates with the far bias, but also with a genuinely large person, so
-          it is only *decisive across views* (below).
+           - The dominant depth error is the **focal**, not the crops. ``tz = 2·f/(s·b)`` is exactly
+             linear in ``f``, and the default ``estimate_K`` heuristic (``f = √(w²+h²)``) runs 1.67× long
+             on phone footage → **+71% depth error on 100% of frames**. With GT intrinsics: +6%.
+           - The residual bias is **not** crop-size dependent — relative error *grows* with crop size
+             (+2.97% → +8.08%), the opposite of the OOD story, and ``corr(betas_mag, |err|) = −0.373``
+             (anti-correlated with the inflation hypothesis).
+           - ``corr(weight, |depth error|)`` is **−0.028 with correct intrinsics** — i.e. nothing. Its
+             apparent −0.650 under the default heuristic is an artifact: ``weight`` is mostly ``bbx_px``,
+             a distance proxy, and a wrong focal makes error scale with distance. It tracks how far away
+             the person is, not how wrong the depth is.
+
+           **Do not weight multi-view depth fusion by ``weight``.** The dominant error is a per-video
+           constant (the focal) that no per-frame proxy can express — pass calibrated ``--f_px`` /
+           ``--intrinsics`` instead. The raw fields below remain useful as diagnostics.
+
+        - ``bbx_px`` ``(L,)`` — person pixel-height (``bbx_xys[:,2]``), absolute, comparable across views.
+        - ``betas_mag`` ``(L,)`` — ``‖betas_per_frame‖``; shape departure from the ~N(0,1) prior.
         - ``betas_std`` ``(L,)`` — ``‖betas_per_frame − betas_avg‖``; shape instability across the clip.
-        - ``weight`` ``(L,)`` in ``(0, 1]`` — a convenience within-view reliability (bbx_px normalized by
-          its own median, penalized by shape instability), higher = trust ``tz`` more. A starting point;
-          recombine with your own fusion — the raw components are the point.
+        - ``weight`` ``(L,)`` in ``(0, 1]`` — **deprecated, not predictive** (see the warning). Retained
+          only so v1.6.0 consumers don't break on a missing key.
 
-        **Strongest signal is cross-view**, which one result can't see: for a fixed subject, down-weight
-        the view whose per-frame betas disagree most from the others (you hold every view's
-        ``betas_per_frame``). Returns ``None`` if ``betas_per_frame`` / ``bbx_xys`` weren't produced.
+        Returns ``None`` if ``betas_per_frame`` / ``bbx_xys`` weren't produced. See docs/CAMERA_METADATA.md.
         """
         if self.betas_per_frame is None or self.bbx_xys is None:
             return None

@@ -216,31 +216,71 @@ sidecar to use real intrinsics; leave it empty to fall back to metadata / the he
 
 ---
 
-## In-camera depth (`tz`): focal sensitivity and the OOD far-bias
+## In-camera depth (`tz`): it is the focal, measured against ground truth
+
+> **Measured 2026-07-16 on EMDB-1** (released checkpoint, 17 sequences / 24,117 frames, default no-flip
+> path) with `scripts/depth_bias_probe.py`. This **replaces an earlier version of this section that
+> attributed the far-bias to out-of-distribution crops inflating `betas`. That hypothesis is refuted** —
+> it was reasoned from the mechanism and never measured against ground truth. The numbers below are.
 
 The in-camera translation is `tz = 2·f / (s·b)` (`gvhmr/utils/geo/hmr_cam.py::compute_transl_full_cam`):
 `f` = `K[0,0]` (focal in px), `s` = the network's crop-relative predicted scale, `b` = bbox size in
-full-image pixels. Two consequences matter for anyone consuming the in-camera depth (e.g. multi-camera
-fusion):
+full-image pixels. **`tz ∝ f`, exactly** — a wrong focal biases depth by the same ratio while leaving the
+*bearing* (lateral placement) almost untouched.
 
-- **`tz ∝ f`, exactly.** A wrong focal biases depth by the same ratio while leaving the *bearing* (lateral
-  placement) almost untouched. So **"bearing good, range biased, view-specific" is the signature of a
-  per-camera focal error** — first check you're passing calibrated `fx` per stream, not the default
-  diagonal heuristic `f = √(w²+h²)` (which, for a 640×400 sensor, is ~755 px and typically overshoots a
-  wide-FOV machine-vision camera's true `fx`, placing bodies *too far*).
+### The default focal heuristic costs +71% depth error
 
-- **Out-of-distribution crops bias `tz` FAR even with correct `f`.** GVHMR trains on HD-ish RGB; a small,
-  low-resolution, or grayscale crop (upsampled to the fixed 256×192 the ViT sees) is out of distribution.
-  The network responds by **inflating the predicted metric shape (betas)** — a larger body must sit
-  *farther* to reproject at the same pixel size. Measured in the field: +9–75 cm far, worst on 640×400
-  grayscale monos, and it is **view-specific**, so zero-mean multi-view fusion can't average it out.
-  Crucially, because the inflated body still reprojects correctly in 2D, **a reprojection residual does
-  NOT detect this bias** — the signals that do are the shape inflation (betas) and the crop's pixel size.
+`estimate_K` uses `f = √(w²+h²)` — a 53° diagonal-FOV assumption. On EMDB's phone footage the true focal
+is ~1435 px and the heuristic returns 2400 px: **1.67× too long**. Depth follows almost linearly:
 
-**Consuming this downstream.** `MotionResult.depth_reliability()` returns a per-frame proxy —
-`bbx_px` (person pixel-height, the causal OOD factor), `betas_mag` / `betas_std` (shape inflation and
-instability, from the v1.5.0 per-frame betas), and a convenience `weight ∈ (0,1]`. Weight each view's
-`tz` by it. The **strongest** signal is cross-view: for a fixed subject, down-weight the view whose
-per-frame betas disagree most from the others (each view's `betas_per_frame` is exposed). What is
-*excellent* and should be trusted: `body_pose`, `betas` shape, in-cam orientation, and the lateral
+| | mean pred depth | mean signed error | relative | frames predicted FAR |
+|---|---|---|---|---|
+| GT depth | 2.26 m | — | — | — |
+| **default (`estimate_K`)** | **3.84 m** | **+1.58 m** | **+70.9%** | **100.0%** |
+| **GT intrinsics** | 2.38 m | +0.12 m | **+6.0%** | 77.9% |
+
+The network sees `K` in its `bbox_info` conditioning and **absorbs only ~9%** of the focal error
+(`pred_est/pred_gt` = 1.614 against a focal ratio of 1.672); the remaining 1.61× lands straight on depth.
+
+**Consequences.** *Every EMDB depth number this project has ever reported is ~70% long* — including the
+paper protocol, since `emdb_motion_test.py` deliberately discards EMDB's GT intrinsics ("We use estimated
+K"). This is invisible to every metric we ship: `mpjpe` is pelvis-aligned, `pa_mpjpe` is Procrustes-aligned,
+and 2D reprojection cannot see it either (a body placed farther with a larger `s` reprojects to the same
+pixels). **If you consume in-camera depth, pass calibrated intrinsics** (`--f_px` / `--intrinsics`); there
+is no EXIF auto-detection, so the default path is always the heuristic. This is also why *"bearing good,
+range biased, view-specific"* is the signature of a per-camera focal error — check `fx` first.
+
+### With correct intrinsics: a residual +6% far bias, NOT crop-size dependent
+
+A real, systematic far bias survives calibration (+0.12 m, 78% of frames). But its shape is **the opposite
+of the OOD-crop hypothesis** — the relative bias *grows* with crop size, and the whole spread is 5 pp:
+
+| crop size (bbx px) | 464–1067 | 1067–1215 | 1215–1372 | 1372–1560 | 1560–4115 |
+|---|---|---|---|---|---|
+| relative depth error | +2.97% | +6.03% | +6.80% | +5.96% | **+8.08%** |
+
+Small crops are the *least* biased. So "small/OOD crops → betas inflation → far depth" is refuted twice
+over: inverted in sign, and weak in magnitude. With GT `K`, `corr(betas_mag, |err|) = −0.373` — the shape
+signal is real but *anti*-correlated with error, again opposite to the inflation story.
+
+### `depth_reliability()` does not predict depth error — do not weight by it
+
+Measured correlation of its `weight` against true `|depth error|`:
+
+| | corr(weight, \|err\|) |
+|---|---|
+| default (`estimate_K`) | −0.650 |
+| **GT intrinsics** | **−0.028** |
+
+The −0.650 is an **artifact**: with a wrong focal the error scales with distance, and the weight is mostly
+`bbx_px`, which is itself a distance proxy. It tracks *how far away the person is*, not *how wrong the
+depth is*. Once intrinsics are correct — the regime any depth consumer should be in — it predicts
+**nothing** (−0.028). It shipped in v1.6.0 with this correlation unmeasured; the fields it exposes
+(`bbx_px`, `betas_mag`, `betas_std`, per-frame betas) remain useful as raw diagnostics, but **the `weight`
+should not be used to weight multi-view depth fusion.** The dominant error is a per-video constant (the
+focal), which no per-frame proxy can express. Fix the focal instead.
+
+What is *excellent* and should be trusted: `body_pose`, `betas` shape, in-cam orientation, and the lateral
 bearing — the bias is specifically along the optical axis.
+
+Reproduce: `python scripts/depth_bias_probe.py --split 1 --k est|gt`.
