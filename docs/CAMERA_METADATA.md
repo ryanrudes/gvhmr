@@ -250,18 +250,41 @@ pixels). **If you consume in-camera depth, pass calibrated intrinsics** (`--f_px
 is no EXIF auto-detection, so the default path is always the heuristic. This is also why *"bearing good,
 range biased, view-specific"* is the signature of a per-camera focal error — check `fx` first.
 
-### With correct intrinsics: a residual +6% far bias, NOT crop-size dependent
+### With correct intrinsics: a residual bias that is *shrinkage toward a depth prior*
 
-A real, systematic far bias survives calibration (+0.12 m, 78% of frames). But its shape is **the opposite
-of the OOD-crop hypothesis** — the relative bias *grows* with crop size, and the whole spread is 5 pp:
+A real, systematic bias survives calibration — but the pooled "+6% far" is an average over videos that
+disagree in **sign**. Per video (EMDB-1, 17 seqs), the fitted scale `a` (`pred_z ≈ a·gt_z`) runs
+**0.966 → 1.104**, and **4 of 17 sequences are biased NEAR, not far**.
 
-| crop size (bbx px) | 464–1067 | 1067–1215 | 1215–1372 | 1372–1560 | 1560–4115 |
-|---|---|---|---|---|---|
-| relative depth error | +2.97% | +6.03% | +6.80% | +5.96% | **+8.08%** |
+What predicts a video's scale is **distance**, not shape or crop:
 
-Small crops are the *least* biased. So "small/OOD crops → betas inflation → far depth" is refuted twice
-over: inverted in sign, and weak in magnitude. With GT `K`, `corr(betas_mag, |err|) = −0.373` — the shape
-signal is real but *anti*-correlated with error, again opposite to the inflation story.
+| predictor (n=17 videos) | corr with scale `a` |
+|---|---|
+| `gt_z` (subject distance) | **−0.691** |
+| `1/gt_z` | **+0.682** |
+| `bbx_px` (crop size) | +0.411 (confounded with distance) |
+| `betas_mag` | −0.454 (**sign is backwards** for inflation) |
+
+Close subjects are pushed away, far subjects are pulled in: the network **shrinks depth toward its
+training prior**. The signature is that `a` is linear in `1/gt_z`, exactly as `pred = (1−k)·gt + k·prior`
+predicts. The frame-level fit is `pred = 0.891·gt + 0.366` — about **11% shrinkage** (the implied prior
+~3.3 m is an x-intercept extrapolated from a narrow 1.9–3.5 m range; trust the *signature*, not that number).
+
+This kills the OOD-crop/`betas`-inflation hypothesis for the third time. Inflation predicts scale
+*increases* with `betas_mag`; measured, it *decreases* (−0.454 per video, −0.373 per frame). The crop-size
+correlation is real but is distance wearing a disguise — closer subjects fill more pixels.
+
+**Consequence for consumers: do not apply a constant correction.** A single global scale only moves mean
+|relative error| 6.99% → 5.14%, while a **per-video scale reaches 2.69%** — and a constant would actively
+*harm* the near-biased quarter of takes. Estimate one scalar per video per view (this is well-posed for a
+multi-view rig: bearings triangulate the pelvis without using any view's depth, so each view's scale falls
+out against it). Notes for such an estimator: it must be free to go **below 1.0**; expect a ~2.7% within-take
+residual floor; and ~1 in 17 sequences is not a pure scale at all (one fits `a=0.676, b=+0.95 m`).
+Distance alone predicts a view's scale to ±0.030 against the 0.138 spread — useful as a prior or sanity
+check, not a replacement for fitting.
+
+*Independently replicated* (2026-07, a calibrated multi-view consumer): scale range 0.925–1.041 spanning
+both sides of 1.0, residuals at/under the 2.7% floor, affine regime at 1-of-15 fits vs this project's 1-of-17.
 
 ### `depth_reliability()` does not predict depth error — do not weight by it
 
@@ -277,8 +300,9 @@ The −0.650 is an **artifact**: with a wrong focal the error scales with distan
 depth is*. Once intrinsics are correct — the regime any depth consumer should be in — it predicts
 **nothing** (−0.028). It shipped in v1.6.0 with this correlation unmeasured; the fields it exposes
 (`bbx_px`, `betas_mag`, `betas_std`, per-frame betas) remain useful as raw diagnostics, but **the `weight`
-should not be used to weight multi-view depth fusion.** The dominant error is a per-video constant (the
-focal), which no per-frame proxy can express. Fix the focal instead.
+should not be used to weight multi-view depth fusion.** The dominant error is a per-video constant — the
+focal, and under the focal a per-view shrinkage scale — which no per-frame proxy can express. Fix the
+focal, then estimate one scale per view per take.
 
 What is *excellent* and should be trusted: `body_pose`, `betas` shape, in-cam orientation, and the lateral
 bearing — the bias is specifically along the optical axis.
