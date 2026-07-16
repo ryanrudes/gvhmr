@@ -362,11 +362,43 @@ scene-aware camera **cannot reach the prior** on long sequences.
   wrong** (grid2 refuted "it was just GAP"; vel refuted "it was all velocity smoothness"). The
   shippable read: if physics losses are used at all (still a smoothness/accuracy trade → default-off),
   it's `foot_slide` + `penetration` that earn their keep and `transl_w_accel` that should be dropped.
-  **The clean test of that** — a `foot_slide`+`penetration`-only arm (`light` minus `transl_w_accel`) —
-  is the one arm not yet run; it's the candidate most likely to keep the jitter win while shedding the
-  biggest chunk of the world regression (vel's +17.9 W-MPJPE was all `transl_w_accel`). One more 20 h
-  H200 run. Arms/configs: `off`=`mixed`, `light`=`mixed_physics_light`, `vel`=`mixed_physics_vel`;
-  scored by `scripts/_exp_lib.sh::exp_score` (W&B `armA_off`/`armB_light`/`arm_vel`).
+  **The clean test of that** — a `foot_slide`+`penetration`-only arm — is the `contact` arm below.
+
+  #### The `contact` arm (2026-07-16): **A3 CLOSED — the prediction held, and this is the arm to use**
+
+  `mixed_physics_contact` = `light` minus `transl_w_accel` (`foot_slide`=200, `penetration`=100). Same
+  H200 recipe / seed / 500 epochs, scored against the same `off` baseline. This completes the 2×2:
+
+  | metric | off | light (all 3) | vel (accel only) | **contact** (feet only) |
+  |---|---|---|---|---|
+  | **EMDB-2 Jitter** | 16.24 | 14.58 (−1.66) | 16.33 (+0.10) | **14.17 (−2.07)** ✓ best |
+  | **RICH Jitter** | 12.76 | 11.12 (−1.64) | 12.43 (−0.32) | **10.97 (−1.79)** ✓ best |
+  | **EMDB-1 Accel** | 3.58 | 3.38 (−0.20) | 3.54 (−0.04) | **3.36 (−0.22)** ✓ best |
+  | **EMDB-2 W-MPJPE₁₀₀** | 279.17 | 286.14 (**+6.97**) | 297.11 (**+17.9**) | **276.37 (−2.80)** ✓ *better than off* |
+  | **EMDB-2 WA-MPJPE** | 112.32 | 113.66 (+1.34) | 116.40 (+4.08) | **110.52 (−1.80)** ✓ *better than off* |
+  | EMDB-2 RTE | 1.93 | 1.85 (−0.08) | 2.13 (+0.20) | **1.76 (−0.17)** ✓ best |
+  | EMDB-1 PA-MPJPE | 43.35 | 43.97 (+0.63) | 43.48 (+0.13) | **43.26 (−0.09)** ✓ |
+  | RICH W-MPJPE₁₀₀ | 131.52 | 133.29 (+1.76) | 133.11 (+1.59) | **130.79 (−0.73)** ✓ |
+  | **3DPW MPJPE** | 55.55 | 55.18 (−0.37) | 55.09 (−0.46) | **58.25 (+2.70)** ✗ *the one cost* |
+  | 3DPW PA-MPJPE *(guardrail)* | 35.94 | 36.12 | 35.96 | 36.43 (+0.49) |
+
+  **Confirmed by subtraction.** Dropping `transl_w_accel` keeps the *entire* jitter/accel win — in fact
+  **enlarges** it (EMDB-2 jitter −2.07 vs light's −1.66) — while **reversing** the world-metric
+  regression that sank `light`: W-MPJPE goes **+6.97 → −2.80**, WA-MPJPE **+1.34 → −1.80**. `contact`
+  is the only arm that beats the `off` baseline on jitter, accel, *and* every EMDB world metric at once.
+  So the earlier framing — "A3 is a smoothness-for-accuracy trade" — was an artifact of **including
+  `transl_w_accel`**. With the velocity term dropped, world grounding is not traded away at all.
+
+  **The one real cost is in-camera 3DPW**: MPJPE +2.70, PVE +1.77, PA-MPJPE +0.49. Mechanistically
+  consistent — the foot terms pin feet in the **world** frame, which is exactly what EMDB's world metrics
+  reward and what 3DPW's in-camera metrics don't measure; the constraint has to be paid for somewhere,
+  and it lands on in-cam fit. **So the honest recommendation is regime-dependent**: `contact` for
+  world-grounded / animation work (it dominates `off` there), `off` when in-camera 3DPW accuracy is the
+  product. Weights stay **default-off**; `contact` is the config to reach for, not `light`.
+
+  Arms/configs: `off`=`mixed`, `light`=`mixed_physics_light`, `vel`=`mixed_physics_vel`,
+  `contact`=`mixed_physics_contact`; scored by `scripts/_exp_lib.sh::exp_score` (per-arm scores cached
+  in `arm_<name>.json`). **A3 is closed** — all four cells of the 2×2 are run.
 
   ### The original reduced-model A/B (kept for the record — its world-grounding claim did not hold up)
 
@@ -458,3 +490,58 @@ fine-tuning, a metric-camera conditioning stream, whole-clip context, physics), 
 physics), then take B one measurable rung at a time (backbone LoRA → camera conditioning → full joint
 training), each gated on `gvhmr eval` / `eval_world.py`. The additive-fusion architecture means the new
 conditioning streams B needs are one-embedder changes, and the seams from A1/A2 are the plug points.
+
+### Stage 3 — joint LoRA backbone (2026-07-16): **NEGATIVE on the 3DPW-only testbed; the testbed is exhausted**
+
+The machinery works and is verified: `gvhmr/network/lora.py` (zero-init `B` → adapted model bit-identical
+to base at step 0), `joint_backbone.py` (HMR2 + LoRA on raw crops in the training loop, grad-checkpointed
+→ 13.3 GB), crops-serving datasets, `_img_features` injection. **The crop path is faithful** — the make-or-
+break premise, now measured, not assumed: `JointBackbone(dataset crops)` vs the cached `f_imgseq` gives
+**cosine 0.99905, min 0.99813** (the 4.3% L2 gap is the bf16 cache's quantization). `tests/test_joint_dataset.py`
+pins it. So an A/B here measures the backbone, not a crop bug.
+
+Two arms were run; both answer the same way.
+
+**Take 1 — from scratch on 3DPW-train** (`joint_lora_3dpw` / `_frozen`, 100 epochs, random init): lands
+**~62 mm 3DPW PA-MPJPE** vs the released model's 35.9. A denoiser trained from scratch on 3DPW alone is so
+far from convergence that any backbone-vs-frozen gap is unmeasurable through the noise. **The design was
+unanswerable**, and no amount of wall clock fixes it.
+
+**Take 2 — fine-tuned from the released checkpoint** (`joint_lora_3dpw_ft` / `_frozen_ft`, 10 epochs, lr
+5e-5). The released ckpt holds only `pipeline.denoiser3d.*`; `load_hmr2()` supplies the backbone and LoRA
+is zero-init, so **both arms start as the released model, bit for bit** — any gap is backbone adaptation
+alone. Epoch-matched, same LR, same data:
+
+| metric | released (`off`) | **frozen_ft** | **joint_ft** (LoRA) | verdict |
+|---|---|---|---|---|
+| 3DPW PA-MPJPE | 35.94 | **35.4** | 35.8 | frozen better |
+| 3DPW MPJPE | 55.55 | **55.7** | 56.2 | frozen better |
+| EMDB-1 PA-MPJPE | 43.35 | 43.2 | **43.1** | tie (noise) |
+| EMDB-1 MPJPE | 74.92 | **73.2** | 74.8 | frozen better |
+| **EMDB-2 W-MPJPE₁₀₀** | **279.17** | 324.4 (+45) | 343.1 (**+64**) | both *much* worse |
+| **EMDB-2 WA-MPJPE** | **112.32** | 125.8 | 132.4 | both *much* worse |
+| **EMDB-2 Foot-slide** | **3.51** | 8.1 (2.3×) | 8.4 (2.4×) | both *much* worse |
+| EMDB-2 RTE | **1.93** | 2.6 | 2.9 | both worse |
+
+**Two findings, both negative:**
+
+1. **LoRA does not beat frozen features — it loses on nearly every metric.** More adaptable capacity did
+   not buy in-domain accuracy (3DPW PA 35.8 vs frozen's 35.4); it just **overfit harder** (EMDB-2 W-MPJPE
+   +64 vs frozen's +45). The answer to stage 3's question, *on this testbed*, is **no**.
+2. **3DPW-only fine-tuning is catastrophic forgetting, for both arms.** 10 epochs bought ≈0.5 mm of 3DPW
+   PA-MPJPE while destroying EMDB world grounding (W-MPJPE 279 → 324/343, foot-sliding 3.5 → 8.1/8.4).
+   This was the predicted failure mode and it arrived exactly as predicted.
+
+**Why this does not settle the real question.** A1 found HMR2's edge over a frozen swap comes from its
+*task training at scale* (4M+ images). Fine-tuning on 3DPW-train — 24 sequences — cannot reproduce that;
+it can only memorize. Both takes converge on the same conclusion: **3DPW alone is too small a testbed to
+teach a backbone anything that generalizes**, whichever way you initialize. The cheap path is exhausted.
+
+**The only honest way forward is multi-dataset crops** (BEDLAM/H36M served as crops, so the ViT adapts on
+scale-appropriate data while the mixed recipe anchors world grounding). That is the ~200 GB image-plumbing
+job deferred at stage 3's outset — it is real work, and it is now the *entry* cost of answering the
+question, not an optimization. **Do not run more 3DPW-only backbone arms**; they will keep saying this.
+
+Landmine fixed along the way: `ignored_weights_prefix` didn't cover the joint backbone, so every save
+serialized the frozen 670M-param ViT (~2.7 GB/ckpt). Only the adapters persist now — the base is rebuilt
+by `load_hmr2()` at construction (`GvhmrPL._is_ignored_weight`, pinned by `tests/test_joint_pipeline.py`).
