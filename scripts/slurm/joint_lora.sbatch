@@ -10,8 +10,15 @@
 #
 # Knobs (env or `sbatch --flag` overrides):
 #   EXP     experiment config (default gvhmr/mixed/joint_lora_3dpw; use *_frozen for the baseline arm)
-#   RESUME  last | none  (default last — resume the newest checkpoint; `none` starts fresh)
+#   RESUME  last | none  (default last — WARM-START from the newest checkpoint; `none` starts fresh)
 #   plus the usual --partition / --gres / --time if your cluster differs from the defaults below.
+#
+# NB on resume: GVHMR checkpoints are weights-only (save_weights_only=True), so Lightning's full-state
+# resume (`resume_mode=last`) raises KeyError('...contains only the model'). We instead warm-start via
+# `ckpt_path=<newest>` (load_pretrained_model, strict=False) — restores the trained weights (incl. the
+# LoRA adapters), fresh optimizer. The LR-schedule milestones are at epoch 200/350, so over a 100-epoch
+# run the LR is constant and a fresh optimizer loses nothing. It does restart the epoch counter (trains
+# a full max_epochs from the warm weights) — fine, it just converges further.
 #SBATCH --job-name=gvhmr-joint
 #SBATCH --output=%x-%j.out
 #SBATCH --partition=gpu
@@ -30,7 +37,18 @@ unset SLURM_NTASKS SLURM_NTASKS_PER_NODE SLURM_PROCID SLURM_LOCALID 2>/dev/null 
 EXP="${EXP:-gvhmr/mixed/joint_lora_3dpw}"
 RESUME="${RESUME:-last}"
 args=(train "exp=$EXP")
-[ "$RESUME" != none ] && args+=("resume_mode=$RESUME")
+
+# Warm-start (weights-only) from the newest checkpoint of this exp, if any. `ckpt_path=` -> a strict=False
+# weight load, NOT the full-state resume that dies on weights-only checkpoints.
+if [ "$RESUME" = last ]; then
+  newest=$(ls -t outputs/*/"${EXP##*/}"/checkpoints/*.ckpt 2>/dev/null | head -1 || true)
+  if [ -n "$newest" ]; then
+    echo "[joint] warm-starting weights from $newest (fresh optimizer; LR constant pre-milestone)"
+    args+=("ckpt_path=$newest")
+  else
+    echo "[joint] no checkpoint under outputs/*/${EXP##*/} — starting fresh"
+  fi
+fi
 
 echo "[joint] $(date '+%F %H:%M')  exp=$EXP  resume=$RESUME  data=$GVHMR_DATA_ROOT"
 bin/gvhmr "${args[@]}"
