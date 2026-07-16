@@ -250,41 +250,54 @@ pixels). **If you consume in-camera depth, pass calibrated intrinsics** (`--f_px
 is no EXIF auto-detection, so the default path is always the heuristic. This is also why *"bearing good,
 range biased, view-specific"* is the signature of a per-camera focal error — check `fx` first.
 
-### With correct intrinsics: a residual bias that is *shrinkage toward a depth prior*
+### With correct intrinsics: a per-video depth **scale**, cause unknown
 
 A real, systematic bias survives calibration — but the pooled "+6% far" is an average over videos that
 disagree in **sign**. Per video (EMDB-1, 17 seqs), the fitted scale `a` (`pred_z ≈ a·gt_z`) runs
-**0.966 → 1.104**, and **4 of 17 sequences are biased NEAR, not far**.
+**0.966 → 1.104**, and **4 of 17 sequences are biased NEAR, not far**. That per-video scale is the whole
+of the effect, and it is what consumers should model. What *sets* it is not established.
 
-What predicts a video's scale is **distance**, not shape or crop:
+The decisive measurement is the within/between decomposition:
 
-| predictor (n=17 videos) | corr with scale `a` |
+| slope of `pred_z` on `gt_z` | value |
 |---|---|
-| `gt_z` (subject distance) | **−0.691** |
-| `1/gt_z` | **+0.682** |
-| `bbx_px` (crop size) | +0.411 (confounded with distance) |
-| `betas_mag` | −0.454 (**sign is backwards** for inflation) |
+| **within**-video (video-centred, 24,117 frames) | **0.977** |
+| **between**-video (17 video means) | **0.811** |
+| pooled (a blend of the two — do not use) | 0.891 |
 
-Close subjects are pushed away, far subjects are pulled in: the network **shrinks depth toward its
-training prior**. The signature is that `a` is linear in `1/gt_z`, exactly as `pred = (1−k)·gt + k·prior`
-predicts. The frame-level fit is `pred = 0.891·gt + 0.366` — about **11% shrinkage** (the implied prior
-~3.3 m is an x-intercept extrapolated from a narrow 1.9–3.5 m range; trust the *signature*, not that number).
+Within a take the network tracks depth changes almost correctly (~2% shrinkage) as the subject walks
+1.2→3.1 m. Essentially the entire effect lives *between* videos: each video gets an overall depth scale.
+This is not a leverage artifact — within-video `gt_z` range averages 1.70 m vs a 1.61 m between-video
+spread of means.
 
-This kills the OOD-crop/`betas`-inflation hypothesis for the third time. Inflation predicts scale
-*increases* with `betas_mag`; measured, it *decreases* (−0.454 per video, −0.373 per frame). The crop-size
-correlation is real but is distance wearing a disguise — closer subjects fill more pixels.
+> **Retracted (2026-07-16):** an earlier revision of this section claimed *shrinkage toward a fixed depth
+> prior*, `pred = 0.891·gt + 0.366` (~11%, prior ~3.3 m). **That was an ecological fallacy** — a pooled fit
+> across videos reads the between-video relationship and misreports it as a within-video law. A fixed prior
+> requires the within- and between-slopes to be equal (both `1−k`); they are 0.977 vs 0.811. The `+0.366 m`
+> intercept is an aggregation artifact, and 16/17 per-video affine fits (`b ≤ 0.14 m`) said so.
 
-**Consequence for consumers: do not apply a constant correction.** A single global scale only moves mean
-|relative error| 6.99% → 5.14%, while a **per-video scale reaches 2.69%** — and a constant would actively
-*harm* the near-biased quarter of takes. Estimate one scalar per video per view (this is well-posed for a
-multi-view rig: bearings triangulate the pelvis without using any view's depth, so each view's scale falls
-out against it). Notes for such an estimator: it must be free to go **below 1.0**; expect a ~2.7% within-take
-residual floor; and ~1 in 17 sequences is not a pure scale at all (one fits `a=0.676, b=+0.95 m`).
-Distance alone predicts a view's scale to ±0.030 against the 0.138 spread — useful as a prior or sanity
-check, not a replacement for fitting.
+**Distance does not explain the scale.** The between-video `corr(gt_z, a) = −0.691` looked strong, but a
+calibrated multi-view consumer measured **+0.35 on their rig — opposite sign**. A mechanism transfers; a
+confound does not. Combined with within-video distance changes barely moving the scale, distance is a proxy
+for per-take context (framing, subject, scene), not a cause. **Do not use distance as a prior for the scale.**
+
+The OOD-crop/`betas`-inflation hypothesis is separately dead, three times over: inflation predicts `a` to
+*rise* with `betas_mag`; measured it falls (−0.454 per video, −0.373 per frame), and the crop-size
+correlation (+0.411) is distance in disguise — closer subjects fill more pixels.
+
+**Consequence for consumers: estimate one scalar per view per take. Do not apply a constant, and do not
+predict it from distance.** A single global scale only moves mean |relative error| 6.99% → 5.14%, while a
+**per-video scale reaches 2.69%** — and a constant would actively *harm* the near-biased quarter of takes.
+This is well-posed for a multi-view rig: bearings triangulate the pelvis without using any view's depth, so
+each view's scale falls out against it. Notes for such an estimator: it must be free to go **below 1.0**;
+expect a ~2.7% within-take residual floor; ~1 in 17 sequences is not a pure scale at all (one fits
+`a=0.676, b=+0.95 m`).
 
 *Independently replicated* (2026-07, a calibrated multi-view consumer): scale range 0.925–1.041 spanning
 both sides of 1.0, residuals at/under the 2.7% floor, affine regime at 1-of-15 fits vs this project's 1-of-17.
+Their rig adds a datum this single-sensor dataset cannot reach: two cameras co-mounted 30 cm apart, same
+subject at the same range, differing by ~12% in scale — i.e. a **per-view** term (sensor/appearance domain)
+that distance cannot produce. Consistent with "scale is set by per-take, per-view context"; unresolved.
 
 ### `depth_reliability()` does not predict depth error — do not weight by it
 
