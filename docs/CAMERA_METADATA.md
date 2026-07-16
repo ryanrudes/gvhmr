@@ -250,20 +250,45 @@ pixels). **If you consume in-camera depth, pass calibrated intrinsics** (`--f_px
 is no EXIF auto-detection, so the default path is always the heuristic. This is also why *"bearing good,
 range biased, view-specific"* is the signature of a per-camera focal error — check `fx` first.
 
-### With correct intrinsics: a per-video depth **scale**, cause unknown
+### With correct intrinsics: the depth scale **is the body-size error**
 
-A real, systematic bias survives calibration — but the pooled "+6% far" is an average over videos that
-disagree in **sign**. Per video (EMDB-1, 17 seqs), the fitted scale `a` (`pred_z ≈ a·gt_z`) runs
-**0.966 → 1.104**, and **4 of 17 sequences are biased NEAR, not far**. That per-video scale is the whole
-of the effect, and it is what consumers should model. What *sets* it is not established.
+`tz = 2f/(s·b)` infers depth from *apparent* size. So if the network gets the person's **body size** wrong
+by a factor, depth must pay for it one-for-one — depth error and size error are the same error. This is
+algebra, not a fitted story, and it predicts `depth_scale = pred_size / gt_size` with **slope exactly 1.0
+and intercept 0**. Measured (per-video, GT `K`, released ckpt; `size` = summed SMPL 24-joint bone lengths,
+which is pose- and camera-invariant):
 
-The decisive measurement is the within/between decomposition:
+| | corr(size ratio, depth scale) | fwd slope | true-slope bracket (errors-in-variables) | variance explained |
+|---|---|---|---|---|
+| EMDB-1 (17 seqs, 24k frames) | **+0.965** | 0.993 | **[0.993, 1.066]** | **93.1%** |
+| 3DPW (37 seqs, 34k frames) | **+0.845** | 0.769 | **[0.769, 1.077]** | 71.4% |
 
-| slope of `pred_z` on `gt_z` | value |
-|---|---|
-| **within**-video (video-centred, 24,117 frames) | **0.977** |
-| **between**-video (17 video means) | **0.811** |
-| pooled (a blend of the two — do not use) | 0.891 |
+Both brackets contain the theoretical 1.0 (the forward slope is attenuated by noise in the ratio). It also
+explains the **dataset-level** difference that killed the old "+6% far bias" claim:
+
+| | mean depth error | mean body-size error |
+|---|---|---|
+| EMDB-1 | +5.97% | **+5.65%** |
+| 3DPW | +0.14% | **+0.54%** |
+
+**There is no general far bias.** EMDB reads +6% because the network over-predicts *those subjects'* bodies
+by ~5.7%; 3DPW has no depth bias because it has no size error. Any claim of the form "GVHMR's in-cam depth
+is biased far by X%" is a statement about a dataset's body shapes, not about GVHMR.
+
+Corollary for consumers: **improving depth accuracy means improving `betas` accuracy** — they are the same
+problem. And a multi-view rig can exploit this without any ground truth: a subject has ONE true body size,
+so `a_v = size_v / size_true` means the *ratio* of two views' depth scales equals the ratio of their
+predicted body sizes, and N per-view scale unknowns collapse to **one** global unknown (the true size).
+
+The within/between decomposition (which is what disproved the earlier fixed-prior story) replicates
+cleanly across both datasets — the within-video slope is the same to four digits, on different cameras and
+different subjects:
+
+| slope of `pred_z` on `gt_z` | EMDB-1 | 3DPW |
+|---|---|---|
+| **within**-video (video-centred) | **0.9770** | **0.9768** |
+| **between**-video (video means) | 0.8113 | 0.9593 |
+| pooled (a blend — do not use) | 0.891 | 0.970 |
 
 Within a take the network tracks depth changes almost correctly (~2% shrinkage) as the subject walks
 1.2→3.1 m. Essentially the entire effect lives *between* videos: each video gets an overall depth scale.
@@ -276,22 +301,24 @@ spread of means.
 > requires the within- and between-slopes to be equal (both `1−k`); they are 0.977 vs 0.811. The `+0.366 m`
 > intercept is an aggregation artifact, and 16/17 per-video affine fits (`b ≤ 0.14 m`) said so.
 
-**Distance does not explain the scale.** The between-video `corr(gt_z, a) = −0.691` looked strong, but a
-calibrated multi-view consumer measured **+0.35 on their rig — opposite sign**. A mechanism transfers; a
-confound does not. Combined with within-video distance changes barely moving the scale, distance is a proxy
-for per-take context (framing, subject, scene), not a cause. **Do not use distance as a prior for the scale.**
+**Distance and crop are confounds, not causes.** `corr(gt_z, a)` is −0.691 (EMDB) / −0.452 (3DPW) and
+`corr(bbx_px, a)` ≈ +0.40 on both — but distance, crop size and apparent size are the same variable wearing
+three hats, and the size ratio dominates all of them (+0.965 / +0.845). A calibrated multi-view consumer
+measures `corr(dist, a) = +0.35` on their rig, opposite sign. **Do not predict the scale from distance.**
 
-The OOD-crop/`betas`-inflation hypothesis is separately dead, three times over: inflation predicts `a` to
-*rise* with `betas_mag`; measured it falls (−0.454 per video, −0.373 per frame), and the crop-size
-correlation (+0.411) is distance in disguise — closer subjects fill more pixels.
+The OOD-crop/`betas`-inflation hypothesis is dead four times over. It predicts `a` to *rise* with
+`betas_mag`; measured it *falls* on EMDB (−0.454 per video, −0.373 per frame) and vanishes on 3DPW
+(−0.033) — the EMDB correlation was itself an artifact. Note the distinction the hypothesis missed:
+`betas` **magnitude** is not body **size**, and it is the size *ratio to truth* that drives depth.
 
 **Consequence for consumers: estimate one scalar per view per take. Do not apply a constant, and do not
-predict it from distance.** A single global scale only moves mean |relative error| 6.99% → 5.14%, while a
-**per-video scale reaches 2.69%** — and a constant would actively *harm* the near-biased quarter of takes.
-This is well-posed for a multi-view rig: bearings triangulate the pelvis without using any view's depth, so
-each view's scale falls out against it. Notes for such an estimator: it must be free to go **below 1.0**;
-expect a ~2.7% within-take residual floor; ~1 in 17 sequences is not a pure scale at all (one fits
-`a=0.676, b=+0.95 m`).
+predict it from distance.** A single global scale only moves mean |relative error| 6.99% → 5.14% (EMDB),
+while a **per-video scale reaches 2.61%** (1.70% on 3DPW) — and a constant would actively *harm* the
+near-biased takes (4/17 on EMDB, 21/37 on 3DPW). This is well-posed for a multi-view rig: bearings
+triangulate the pelvis without using any view's depth, so each view's scale falls out against it. Notes for
+such an estimator: it must be free to go **below 1.0**; expect a ~2.6% within-take residual floor; ~1 in 17
+sequences is not a pure scale at all (one fits `a=0.676, b=+0.95 m`). The body-size corollary above can
+collapse the N per-view unknowns to one — unverified on a real rig as of this writing.
 
 *Independently replicated* (2026-07, a calibrated multi-view consumer): scale range 0.925–1.041 spanning
 both sides of 1.0, residuals at/under the 2.7% floor, affine regime at 1-of-15 fits vs this project's 1-of-17.
