@@ -210,15 +210,26 @@ exp_last_ckpt() { ls -v "$1"/checkpoints/*.ckpt 2>/dev/null | tail -1 || true; }
 # Score EVERY arm that has a checkpoint (not just the ones we trained this time) and print one table
 # with `off` as the reference column. That's what lets you train a single new arm and still compare it
 # against the baseline you already paid for. NB TF32 stays OFF (it costs 4x the EMDB accel error).
+#
+# An arm's scores are CACHED in $DATA_ROOT/arm_<name>.json and reused, so adding a 4th arm costs one
+# eval, not four. Without this the job re-scored every arm from scratch and blew its wall-clock before
+# reaching the new arm (it did: the `contact` arm's eval timed out mid-`light`). RESCORE=1 forces a
+# fresh eval of every arm; SCORE_ARMS limits which arms are considered at all.
 exp_score() {
   local scored=()
-  for arm in off light vel contact; do
-    local out ck
+  for arm in ${SCORE_ARMS:-off light vel contact}; do
+    local out ck json
     out="$(exp_arm_out "$arm")"
+    json="$DATA_ROOT/arm_$arm.json"
     ck=$(exp_last_ckpt "$out")
     [ -n "$ck" ] || continue
+    if [ -s "$json" ] && [ "${RESCORE:-0}" != 1 ]; then
+      say "arm '$arm': reusing cached scores ($json; RESCORE=1 to redo)"
+      scored+=("$arm")
+      continue
+    fi
     say "scoring arm '$arm': $ck"
-    bin/gvhmr eval all --ckpt "$ck" --json "$DATA_ROOT/arm_$arm.json"
+    bin/gvhmr eval all --ckpt "$ck" --json "$json"
     scored+=("$arm")
   done
   [ ${#scored[@]} -gt 0 ] || die "no arm has a checkpoint under $DATA_ROOT/outputs — see the logs"

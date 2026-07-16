@@ -6,7 +6,10 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --time=02:00:00
+# Each arm's eval (3DPW + EMDB-1/2 + RICH, flip-test on) runs ~1h. Scores are cached per arm in
+# arm_<name>.json and reused, so a normal run scores only what's new — but a cold RESCORE=1 has to
+# get through every arm, hence the headroom.
+#SBATCH --time=06:00:00
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 source scripts/_exp_lib.sh
