@@ -14,6 +14,11 @@ from gvhmr.utils.net_utils import get_valid_mask, repeat_to_max_len, repeat_to_m
 from gvhmr.utils.pylogger import Log
 from gvhmr.utils.smplx_utils import make_smplx
 from gvhmr.utils.video_io_utils import read_video_np, save_video
+
+#: Decode scale BEDLAM's cached ViT features were extracted at. **Full-res**, unlike 3DPW's 0.5 — the
+#: videos are natively 720x1280 and the cache reproduces bit-exactly at 1.0 (cosine 1.00000). Do not
+#: "harmonize" this with 3DPW: at 0.5 the features still score ~0.999, so the error is silent.
+BEDLAM_IMG_DS = 1.0
 from gvhmr.utils.vis.renderer_utils import simple_render_mesh_background
 from gvhmr.utils.wis3d_utils import add_motion_as_lines, make_wis3d
 
@@ -31,18 +36,29 @@ class BedlamDatasetV2(ImgfeatMotionDatasetBase):
         mid_indices=["all60", "maxspan60"],
         lazy_load=True,  # Load from disk when needed
         random1024=False,  # Faster loading for debugging
+        serve_crops=False,
     ):
+        # serve_crops: also decode the clip's raw crops (L,3,256,256) for in-loop LoRA backbone training
+        # (ROADMAP Regime B). Off by default, so the cached-feature path stays byte-identical. The crops
+        # reproduce what the extractor fed the ViT, so f_imgseq matches at LoRA-0 — see BEDLAM_IMG_DS.
         self.root = DATA_ROOT / "BEDLAM/hmr4d_support"  # honours $GVHMR_DATA_ROOT (default inputs/)
         self.min_motion_frames = 60
         self.max_motion_frames = 120
         self.lazy_load = lazy_load
         self.random1024 = random1024
+        self.serve_crops = serve_crops
 
         # speficify mid_index to handle
-        if not isinstance(mid_indices, list):
+        if isinstance(mid_indices, str):
             mid_indices = [mid_indices]
+        # Hydra hands over an omegaconf ListConfig, which is NOT a `list` — the old isinstance(list) check
+        # wrapped it in another list and the assert below then tested a ListConfig for membership. Normalize
+        # to plain strs instead; for a real list this is a no-op, so the existing `v2` node is unchanged.
+        mid_indices = [str(m) for m in mid_indices]
         self.mid_indices = mid_indices
-        assert all([m in self.MIDINDEX_TO_LOAD for m in mid_indices])
+        assert all([m in self.MIDINDEX_TO_LOAD for m in mid_indices]), (
+            f"unknown mid_indices {mid_indices}; known: {sorted(self.MIDINDEX_TO_LOAD)}"
+        )
 
         super().__init__()
 
@@ -122,6 +138,22 @@ class BedlamDatasetV2(ImgfeatMotionDatasetBase):
         data["img_wh"] = f_img_dict["img_wh"]  # (2)
         data["kp2d"] = torch.zeros((end - start), 17, 3)  # (L, 17, 3)  # do not provide kp2d
 
+        # Raw crops for in-loop backbone training — decode only this clip's frames, with the same bbx and
+        # decode scale the extractor used, so JointBackbone(crops) reproduces the cached f_imgseq at LoRA-0.
+        # Two BEDLAM-specific contracts, both verified by parity (tests/test_joint_dataset.py):
+        #   * img_ds=1.0 — BEDLAM's cache is FULL-res (unlike 3DPW's 0.5). Decoding at 0.5 still scores
+        #     cosine ~0.999, which sails past a loose threshold while feeding the ViT the wrong pixels.
+        #   * `start`/`end` are ABSOLUTE video frames, while features are relative to start_end[0] (nonzero
+        #     for ~14% of maxspan60). Passing the mapped indices instead misaligns exactly that subset.
+        if self.serve_crops:
+            from gvhmr.utils.imgcrop import get_batch  # dpvo-free: safe to import in a forked worker
+
+            video_path = self.root / "videos" / mid2vname(mid)
+            crops, _ = get_batch(
+                str(video_path), data["bbx_xys"], img_ds=BEDLAM_IMG_DS, start_frame=start, end_frame=end
+            )
+            data["crops"] = crops.float()  # (L, 3, 256, 256)
+
         return data
 
     def _process_data(self, data, idx):
@@ -174,6 +206,8 @@ class BedlamDatasetV2(ImgfeatMotionDatasetBase):
                 "spv_incam_only": False,
             },
         }
+        if "crops" in data:
+            return_data["crops"] = data["crops"]  # (F, 3, 256, 256)
 
         if False:  # check transformation, wis3d: sampled motion (global, incam)
             wis3d = make_wis3d(name="debug-data-bedlam")
@@ -242,9 +276,33 @@ class BedlamDatasetV2(ImgfeatMotionDatasetBase):
         return_data["f_imgseq"] = repeat_to_max_len(return_data["f_imgseq"], max_len)
         return_data["kp2d"] = repeat_to_max_len(return_data["kp2d"], max_len)
         return_data["cam_angvel"] = repeat_to_max_len(return_data["cam_angvel"], max_len)
+        if "crops" in return_data:  # pad the crops the same way (padded frames are masked downstream)
+            return_data["crops"] = repeat_to_max_len(return_data["crops"], max_len)
         return return_data
 
 
 group_name = "train_datasets/imgfeat_bedlam"
 MainStore.store(name="v2", node=builds(BedlamDatasetV2), group=group_name)
 MainStore.store(name="v2_random1024", node=builds(BedlamDatasetV2, random1024=True), group=group_name)
+# Serves raw crops for in-loop LoRA backbone training (ROADMAP Regime B). BEDLAM is the big image-feature
+# dataset — 32250 (all60) + 5287 (maxspan60) clips vs 3DPW-train's **88**, i.e. the testbed the 3DPW-only
+# joint A/B never was (that run saw 110 optimizer steps in total). It also carries full WORLD supervision
+# (spv_incam_only=False), which 3DPW-train does not — 3DPW zeroes smpl_params_w/R_c2gv/gravity_vec, so
+# fine-tuning on it alone gives the world head no target at all and it drifts. That, not the backbone, is
+# what sank the earlier arms' world metrics.
+MainStore.store(name="v2_crops", node=builds(BedlamDatasetV2, serve_crops=True), group=group_name)
+MainStore.store(
+    name="v2_random1024_crops",
+    node=builds(BedlamDatasetV2, random1024=True, serve_crops=True),
+    group=group_name,
+)
+# maxspan60 alone (5287 clips ≈ 661 steps/epoch at batch 8): the joint arm runs the ViT fwd+bwd over up to
+# 960 crops/step, so full BEDLAM is ~7 h/epoch. These two are an A/B PAIR — identical data, one serving
+# crops for the in-loop backbone, one serving only the cached features. Do not pair a subset with a
+# full-set control; the data must match or the comparison measures the data.
+MainStore.store(name="v2_maxspan60", node=builds(BedlamDatasetV2, mid_indices=["maxspan60"]), group=group_name)
+MainStore.store(
+    name="v2_maxspan60_crops",
+    node=builds(BedlamDatasetV2, mid_indices=["maxspan60"], serve_crops=True),
+    group=group_name,
+)

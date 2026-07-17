@@ -1,0 +1,100 @@
+# @package _global_
+# ROADMAP Regime B stage 3, take 3 — JOINT LoRA backbone on BEDLAM+3DPW, fine-tuned from the released ckpt.
+#
+# Why take 2 (joint_lora_3dpw_ft.yaml) answered nothing, despite looking like a clean negative:
+#
+#   1. **It ran 110 optimizer steps.** 3DPW-train is 88 clips/epoch; 10 epochs at batch 8 = 110 steps. The
+#      "LoRA loses by 0.4 mm PA-MPJPE" verdict was noise around a model that had barely moved.
+#   2. **3DPW-train carries NO world supervision.** It zeroes smpl_params_w / R_c2gv / gravity_vec and sets
+#      spv_incam_only=True. Both arms' world metrics collapsed (W-MPJPE 279 -> 324/343, foot-slide 3.5 ->
+#      8.1/8.4) because the world head was fine-tuned against *no target*. That was read as catastrophic
+#      forgetting caused by fine-tuning; it was the dataset choice, and it would have happened with no
+#      backbone involved at all.
+#
+# This arm trains on BEDLAM maxspan60 (5287 clips, ~661 steps/epoch — 24x take 2's total steps) which has
+# full world supervision, plus 3DPW-train to keep the in-domain signal. Both arms warm-start from the
+# released checkpoint (pass ckpt_path=<gvhmr_siga24_release.ckpt>): it holds ONLY pipeline.denoiser3d.*,
+# load_hmr2() supplies the backbone, and LoRA is zero-init — so at step 0 this IS the released model, bit
+# for bit, and so is the frozen twin (joint_lora_bedlam_frozen_ft.yaml). Every millimetre is attributable.
+#
+# The question: does letting the ViT adapt beat frozen cached features, given a real amount of data and a
+# training signal that covers both the in-cam and world heads?
+#
+# Guardrails: 3DPW PA-MPJPE = in-domain; EMDB-1 PA-MPJPE = generalization; EMDB-2 W-MPJPE/foot-slide = the
+# world metrics that take 2 destroyed. If those still regress with BEDLAM's world supervision present, the
+# regression is real and about fine-tuning, not about the data.
+#
+# The crop path is parity-tested (tests/test_joint_dataset.py): BEDLAM's cache is full-res (img_ds=1.0, NOT
+# 3DPW's 0.5) and indexed by absolute video frame. Both mistakes fail silently at ~0.999 cosine.
+defaults:
+    - override /data: mocap/trainX_testY
+    - override /model: gvhmr/gvhmr_pl
+    - override /endecoder: gvhmr/v1_amass_local_bedlam_cam
+    # 5e-5, not the from-scratch 2e-4: this warm-starts from a converged model. BOTH arms share it —
+    # a per-arm LR would confound the A/B.
+    - override /optimizer: adamw_5e-5
+    - override /scheduler_cfg: epoch_half_200_350 # milestones at 200/350 >> 4 epochs -> LR is constant
+    # Every dataset here must serve crops: the collate keys off the first item, so mixing a crops dataset
+    # with a non-crops one (e.g. AMASS, which has no images) silently drops or breaks the batch.
+    - override /train_datasets:
+          - imgfeat_bedlam/v2_maxspan60_crops
+          - imgfeat_3dpw/v1_crops
+    - override /test_datasets:
+          - emdb1/v1_fliptest
+          - emdb2/v1_fliptest
+          - 3dpw/fliptest
+    - override /callbacks:
+          - simple_ckpt_saver/every10e_top100
+          - prog_bar/prog_reporter_every0.1
+          - train_speed_timer/base
+          - lr_monitor/pl
+          - metric_emdb1
+          - metric_emdb2
+          - metric_3dpw
+    - override /network: gvhmr/relative_transformer
+    - override /logger: wandb
+
+exp_name_base: joint_lora_bedlam_ft
+exp_name_var: ""
+exp_name: ${exp_name_base}${exp_name_var}
+data_name: mocap_joint_bedlam_v1
+
+pipeline:
+    _target_: gvhmr.model.gvhmr.pipeline.gvhmr_pipeline.Pipeline
+    args_denoiser3d: ${network}
+    args:
+        endecoder_opt: ${endecoder}
+        normalize_cam_angvel: True
+        weights:
+            cr_j3d: 500.
+            transl_c: 1.
+            cr_verts: 500.
+            j2d: 1000.
+            verts2d: 1000.
+            transl_w: 1.
+            static_conf_bce: 1.
+        static_conf:
+            vel_thr: 0.15
+
+        # The in-loop LoRA backbone. Zero-init B -> zero delta at step 0 -> identical to the frozen twin.
+        joint_backbone:
+            enabled: True
+            rank: 8
+            alpha: 16.0
+            dropout: 0.0
+
+data:
+    loader_opts:
+        train:
+            batch_size: 8 # ViT-Huge fwd+bwd on B*L crops/step; grad-checkpointing keeps this ~13 GB
+            num_workers: 8
+
+pl_trainer:
+    precision: 16-mixed
+    log_every_n_steps: 50
+    gradient_clip_val: 0.5
+    # ~661 steps/epoch. The joint arm decodes video + runs the ViT fwd+bwd, so budget ~1 h/epoch and
+    # give the job 12 h. The frozen twin is far faster (cached features, no decode) — same epochs anyway.
+    max_epochs: 4
+    check_val_every_n_epoch: 2
+    devices: 1
