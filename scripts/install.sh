@@ -112,6 +112,20 @@ if [ "$DPVO" = 1 ]; then
   esac
 fi
 
+# 5b) System tools uv can't provide. Without exiftool, `gvhmr demo` can't read a phone's focal from the
+# video metadata and silently falls back to the diagonal-FOV heuristic (a ~43mm-equiv lens) — which costs
+# ~65% on in-cam depth for main-camera phone video and ~200% for ultrawide. Advisory only: we don't invoke
+# a system package manager on the user's behalf. See docs/CAMERA_METADATA.md.
+if ! command -v exiftool >/dev/null 2>&1; then
+  case "$(uname -s)" in
+    Darwin) EXIFTOOL_CMD="brew install exiftool" ;;
+    *)      EXIFTOOL_CMD="sudo apt install libimage-exiftool-perl" ;;
+  esac
+  say "NOTE: exiftool not found — without it the demo can't read the camera focal from video metadata"
+  say "      and falls back to a heuristic that mis-scales in-cam DEPTH (~65% phone main, ~200% ultrawide)."
+  say "      Install it with: $EXIFTOOL_CMD    (or pass --f_px/--intrinsics per run)"
+fi
+
 # 6) Show what we ended up with + the next steps.
 run uv run --no-sync gvhmr info || true
 say "done. From here on you never need uv directly — use the wrapper (or activate the venv):"

@@ -13,11 +13,14 @@ from gvhmr import PROJ_ROOT
 from gvhmr.cli.envcmd import (
     EXTRA_COMPONENTS,
     SCRIPT_COMPONENTS,
+    SYSTEM_COMPONENTS,
     TORCH_CHOICES,
     _extra_for_cuda,
     component_installed,
     record_env,
     sync_args,
+    system_component_hint,
+    system_component_installed,
 )
 from gvhmr.utils import localconfig
 
@@ -93,6 +96,40 @@ def test_component_registry_matches_pyproject_and_disk():
         assert (PROJ_ROOT / script).is_file(), f"{key}: missing {script}"
         kind = probe.split(":", 1)[0]
         assert kind in ("module", "dir"), f"{key}: bad probe {probe!r}"
+
+
+def test_system_components_are_not_pip_extras():
+    """System tools can't live in an extra — `uv sync` can never provide them, so they must stay out of
+    EXTRA_COMPONENTS (which test_component_registry_matches_pyproject_and_disk requires to be in pyproject).
+    """
+    with open(PROJ_ROOT / "pyproject.toml", "rb") as f:
+        declared = set(tomllib.load(f)["project"]["optional-dependencies"])
+    assert not set(SYSTEM_COMPONENTS) & declared
+    assert not set(SYSTEM_COMPONENTS) & set(EXTRA_COMPONENTS)
+
+
+def test_system_component_registry_shape():
+    for key, (label, desc, binary, cmds) in SYSTEM_COMPONENTS.items():
+        assert label and desc and binary, key
+        # macOS + Linux are the supported platforms; both need a real install command to advise.
+        assert {"Darwin", "Linux"} <= set(cmds), f"{key}: missing an install command for a supported platform"
+        assert all(cmds.values()), key
+        assert isinstance(system_component_installed(key), bool)
+
+
+def test_system_component_hint_is_platform_specific(monkeypatch):
+    monkeypatch.setattr("platform.system", lambda: "Darwin")
+    assert system_component_hint("exiftool") == "brew install exiftool"
+    monkeypatch.setattr("platform.system", lambda: "Linux")
+    assert "apt" in system_component_hint("exiftool")
+    monkeypatch.setattr("platform.system", lambda: "Plan9")  # unknown platform: list every option, don't crash
+    assert "brew" in system_component_hint("exiftool") and "apt" in system_component_hint("exiftool")
+
+
+def test_exiftool_is_registered():
+    """The demo's focal detection depends on it, and its absence is silent — so it must be advertised."""
+    assert "exiftool" in SYSTEM_COMPONENTS
+    assert "depth" in SYSTEM_COMPONENTS["exiftool"][1].lower()  # the description must name the consequence
 
 
 def test_component_installed_probes():

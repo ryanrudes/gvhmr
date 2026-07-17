@@ -375,7 +375,14 @@ def init() -> None:
         "`gvhmr env sync` re-applies them)[/]",
         default=True,
     ):
-        from gvhmr.cli.envcmd import EXTRA_COMPONENTS, SCRIPT_COMPONENTS, component_installed
+        from gvhmr.cli.envcmd import (
+            EXTRA_COMPONENTS,
+            SCRIPT_COMPONENTS,
+            SYSTEM_COMPONENTS,
+            component_installed,
+            system_component_hint,
+            system_component_installed,
+        )
 
         detected = detect_torch_extra()
         console.print(f"  detected torch backend for this box: [gvhmr]{detected or 'none (PyPI wheel — macOS/MPS)'}[/]")
@@ -400,6 +407,11 @@ def init() -> None:
                 continue
             default = env.get(key) == "true" or component_installed(probe)
             env[key] = "true" if Confirm.ask(f"    {key} — {desc}?", default=default) else "false"
+        # …and system tools, which no extra can provide: only advisable, never recorded (probed from $PATH).
+        for key, (_label, desc, _binary, _cmds) in SYSTEM_COMPONENTS.items():
+            if not system_component_installed(key):
+                console.print(f"    [warn]{key} missing[/] — {desc}")
+                console.print(f"      install with: [gvhmr]{system_component_hint(key)}[/]")
 
     # 4) Where to write (honors $GVHMR_CONFIG / an existing file; default is <repo>/gvhmr.toml).
     target = Path(Prompt.ask("Write config to", default=str(localconfig.target_config_path()))).expanduser()

@@ -82,12 +82,12 @@ def _warn_focal_fallback(video_path) -> None:
     unaffected; only depth/translation scale. This used to fail silently, which is how every EMDB depth
     number this project reported ended up ~70% long.
     """
-    import shutil
+    from gvhmr.cli.envcmd import system_component_hint, system_component_installed
 
-    if shutil.which("exiftool") is None:
+    if not system_component_installed("exiftool"):
         hint = (
-            "[warn]exiftool not found[/] — install it to auto-read the focal from video metadata "
-            "([dim]brew install exiftool  ·  apt install libimage-exiftool-perl[/]), or pass"
+            f"[warn]exiftool not found[/] — install it to auto-read the focal from video metadata "
+            f"([dim]{system_component_hint('exiftool')}[/]), or pass"
         )
     else:
         hint = "This video carries no focal metadata — pass"

@@ -51,6 +51,36 @@ SCRIPT_COMPONENTS: dict[str, tuple[str, str, str]] = {
 }
 
 
+#: system tools — NOT pip-installable and not in any extra, so `uv sync` can never provide them and
+#: `gvhmr env sync` can only advise. They are recorded nowhere: presence is probed live from $PATH.
+#: name → (short label, description, binary, {platform.system(): install command}).
+SYSTEM_COMPONENTS: dict[str, tuple[str, str, str, dict[str, str]]] = {
+    "exiftool": (
+        "camera focal from metadata",
+        "read the camera focal from video metadata — without it `gvhmr demo` falls back to the "
+        "diagonal-FOV heuristic (a ~43mm-equiv lens), costing ~65% on in-cam DEPTH for phone main-camera "
+        "video and ~200% for ultrawide (docs/CAMERA_METADATA.md)",
+        "exiftool",
+        {"Darwin": "brew install exiftool", "Linux": "apt install libimage-exiftool-perl"},
+    ),
+}
+
+
+def system_component_installed(name: str) -> bool:
+    """Whether a system tool from :data:`SYSTEM_COMPONENTS` is on ``$PATH``."""
+    import shutil
+
+    return shutil.which(SYSTEM_COMPONENTS[name][2]) is not None
+
+
+def system_component_hint(name: str) -> str:
+    """The install command for this platform (falls back to listing all of them)."""
+    import platform
+
+    cmds = SYSTEM_COMPONENTS[name][3]
+    return cmds.get(platform.system()) or " · ".join(cmds.values())
+
+
 def component_installed(probe: str) -> bool:
     """Whether a component is present: ``module:<name>`` probes an import, ``dir:<path>`` a repo dir."""
     import importlib.util

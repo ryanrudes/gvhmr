@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import importlib.util
 import platform
-import shutil
 
 from rich.table import Table
 
 from gvhmr import PROJ_ROOT
+from gvhmr.cli.envcmd import SYSTEM_COMPONENTS, system_component_hint, system_component_installed
 from gvhmr.utils.console import console
 
 
@@ -83,14 +83,11 @@ def run() -> None:
             "scripts/setup_scene_aware.sh",
         ),
         ("2D-pose / RTMPose (alt backend)", "rtmlib", _has("rtmlib"), "uv sync --extra rtmpose"),
-        # Not a pip dep (system tool), so it can't live in an extra — but without it `gvhmr demo` cannot read
-        # a phone's focal from metadata and silently falls back to the diagonal-FOV heuristic, which costs
-        # ~65% (main camera) to ~200% (ultrawide) on in-cam DEPTH. See docs/CAMERA_METADATA.md.
-        (
-            "camera focal from metadata",
-            "exiftool (system)",
-            shutil.which("exiftool") is not None,
-            "brew install exiftool · apt install libimage-exiftool-perl",
+        *(
+            # System tools: no extra can provide these, so `gvhmr env sync` can only advise. Missing
+            # exiftool silently costs ~65%-200% on in-cam depth — see docs/CAMERA_METADATA.md.
+            (label, f"{binary} (system)", system_component_installed(key), system_component_hint(key))
+            for key, (label, _desc, binary, _cmds) in SYSTEM_COMPONENTS.items()
         ),
         ("mesh renderer (GPU, moderngl)", "moderngl", _has("moderngl"), "base install"),
         ("render fallback (pytorch3d)", "pytorch3d", _has("pytorch3d"), "uv sync --extra render (optional)"),
