@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import platform
+import shutil
 
 from rich.table import Table
 
@@ -82,6 +83,15 @@ def run() -> None:
             "scripts/setup_scene_aware.sh",
         ),
         ("2D-pose / RTMPose (alt backend)", "rtmlib", _has("rtmlib"), "uv sync --extra rtmpose"),
+        # Not a pip dep (system tool), so it can't live in an extra — but without it `gvhmr demo` cannot read
+        # a phone's focal from metadata and silently falls back to the diagonal-FOV heuristic, which costs
+        # ~65% (main camera) to ~200% (ultrawide) on in-cam DEPTH. See docs/CAMERA_METADATA.md.
+        (
+            "camera focal from metadata",
+            "exiftool (system)",
+            shutil.which("exiftool") is not None,
+            "brew install exiftool · apt install libimage-exiftool-perl",
+        ),
         ("mesh renderer (GPU, moderngl)", "moderngl", _has("moderngl"), "base install"),
         ("render fallback (pytorch3d)", "pytorch3d", _has("pytorch3d"), "uv sync --extra render (optional)"),
         ("3D visualization", "wis3d", _has("wis3d"), "uv sync --extra vis"),

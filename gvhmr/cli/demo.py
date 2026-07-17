@@ -72,6 +72,33 @@ def _sane_focal(value) -> int | None:
     return f if 8 <= f <= 400 else None  # sane lens range
 
 
+def _warn_focal_fallback(video_path) -> None:
+    """Say so — loudly — when we fall back to the diagonal-FOV heuristic.
+
+    ``estimate_K`` returns the image diagonal, i.e. it assumes a **~43mm-equivalent** lens (53° diagonal
+    FOV). Real phone lenses are nothing like that: main ≈26mm, ultrawide ≈14mm. Since ``tz = 2f/(s·b)`` is
+    exactly linear in the focal, the heuristic overestimates in-camera depth by ~65% on main-camera footage
+    and ~200% on ultrawide (both measured — see docs/CAMERA_METADATA.md). Bearing, pose and shape are
+    unaffected; only depth/translation scale. This used to fail silently, which is how every EMDB depth
+    number this project reported ended up ~70% long.
+    """
+    import shutil
+
+    if shutil.which("exiftool") is None:
+        hint = (
+            "[warn]exiftool not found[/] — install it to auto-read the focal from video metadata "
+            "([dim]brew install exiftool  ·  apt install libimage-exiftool-perl[/]), or pass"
+        )
+    else:
+        hint = "This video carries no focal metadata — pass"
+    Log.warning(
+        f"No camera focal for [muted]{Path(video_path).name}[/]: using the diagonal-FOV heuristic, which "
+        f"assumes a ~43mm-equiv lens. Phone video is typically ~26mm (main) or ~14mm (ultrawide), where this "
+        f"overestimates in-cam [bold]depth[/] by ~65% / ~200%. Pose and bearing are unaffected. {hint} "
+        f"[gvhmr]--f_px[/] / [gvhmr]--f_mm[/] / [gvhmr]--intrinsics[/]."
+    )
+
+
 def focal_mm_from_metadata(video_path) -> int | None:
     """Best-effort 35mm-equivalent focal length from the video's metadata.
 
@@ -341,6 +368,8 @@ def build_demo_cfg(
             f_mm = focal_mm_from_metadata(video)
             if f_mm is not None:
                 Log.info(f"Focal length [ok]{f_mm}mm[/] (35mm-equiv) read from video metadata")
+            else:
+                _warn_focal_fallback(video)
 
     with initialize_config_module(version_base="1.3", config_module="gvhmr.configs"):
         overrides = [

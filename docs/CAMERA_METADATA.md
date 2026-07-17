@@ -242,13 +242,29 @@ is ~1435 px and the heuristic returns 2400 px: **1.67× too long**. Depth follow
 The network sees `K` in its `bbox_info` conditioning and **absorbs only ~9%** of the focal error
 (`pred_est/pred_gt` = 1.614 against a focal ratio of 1.672); the remaining 1.61× lands straight on depth.
 
+**Why 1.67×, and why it isn't specific to EMDB.** `estimate_K` returns the image *diagonal*, which is
+exactly the assumption of a **~43mm-equivalent lens** (53° diagonal FOV). No phone shoots at 43mm, so the
+heuristic is wrong for essentially all phone video — and worst on the wide lenses people shoot action with:
+
+| lens (35mm-equiv) | typical source | heuristic / true focal | in-cam depth error |
+|---|---|---|---|
+| ~14–15mm | phone ultrawide (0.5×) | **3.09×** | **+209%** (measured on real clips) |
+| ~26mm | phone main (1×) | **1.65×** | **+65%** — this is EMDB's 1.67× |
+| ~43mm | (what the heuristic assumes) | 1.00× | 0% |
+| ~48mm | phone tele (2×) | 0.90× | −10% |
+
 **Consequences.** *Every EMDB depth number this project has ever reported is ~70% long* — including the
 paper protocol, since `emdb_motion_test.py` deliberately discards EMDB's GT intrinsics ("We use estimated
 K"). This is invisible to every metric we ship: `mpjpe` is pelvis-aligned, `pa_mpjpe` is Procrustes-aligned,
 and 2D reprojection cannot see it either (a body placed farther with a larger `s` reprojects to the same
-pixels). **If you consume in-camera depth, pass calibrated intrinsics** (`--f_px` / `--intrinsics`); there
-is no EXIF auto-detection, so the default path is always the heuristic. This is also why *"bearing good,
-range biased, view-specific"* is the signature of a per-camera focal error — check `fx` first.
+pixels). This is also why *"bearing good, range biased, view-specific"* is the signature of a per-camera
+focal error — check `fx` first.
+
+**What `gvhmr demo` does about it.** It auto-reads the 35mm-equivalent focal from the video's metadata
+(`focal_mm_from_metadata`, via **exiftool**; `gvhmr info` reports whether exiftool is installed). That
+handles the common phone case with no flags. **Without exiftool there is no detection** and the run falls
+back to the heuristic — the demo now warns loudly when that happens, rather than failing silently as it did
+through v1.6.0. If you consume in-camera depth, the reliable routes remain `--f_px` / `--intrinsics`.
 
 ### With correct intrinsics: the depth scale **is the body-size error**
 
