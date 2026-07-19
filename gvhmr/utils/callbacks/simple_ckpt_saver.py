@@ -92,3 +92,8 @@ MainStore.store(name="every5e", node=base(every_n_epochs=5), group=group_name)
 MainStore.store(name="every5e_top100", node=base(every_n_epochs=5, save_top_k=100), group=group_name)
 MainStore.store(name="every10e", node=base(every_n_epochs=10), group=group_name)
 MainStore.store(name="every10e_top100", node=base(every_n_epochs=10, save_top_k=100), group=group_name)
+# NOTE this saver only fires in on_train_epoch_end, on the every_n_epochs boundary — there is NO final-save
+# hook. A short run whose max_epochs is not a multiple of every_n_epochs therefore produces NO checkpoint at
+# all (e.g. every10e with max_epochs=4 → epochs 0-3 → nothing saved, the whole run unevaluable). Short
+# fine-tunes should use this: save every epoch, keep them all.
+MainStore.store(name="every1e_top100", node=base(every_n_epochs=1, save_top_k=100), group=group_name)

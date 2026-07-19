@@ -44,7 +44,7 @@ defaults:
           - emdb2/v1_fliptest
           - 3dpw/fliptest
     - override /callbacks:
-          - simple_ckpt_saver/every10e_top100
+          - simple_ckpt_saver/every1e_top100 # 4-epoch run: every10e would save NOTHING (see the saver)
           - prog_bar/prog_reporter_every0.1
           - train_speed_timer/base
           - lr_monitor/pl
@@ -86,15 +86,25 @@ pipeline:
 data:
     loader_opts:
         train:
-            batch_size: 8 # ViT-Huge fwd+bwd on B*L crops/step; grad-checkpointing keeps this ~13 GB
+            # MEASURED on an RTX 6000 Ada (47 GB): the ViT-Huge fwd+bwd over a clip's crops costs ~5.2 GB
+            # per item (clips pad to 120 frames, so every item is 120 crops even when shorter) — 7.8 GB at
+            # B=1, 13.0 at B=2, 23.4 at B=4, and B=8 needs ~44 GB. The 8 here originally came from the H200
+            # (80 GB) cluster runs and OOMs on a 47 GB card, more so when the GPU is shared.
+            # Effective batch stays 8 via accumulate_grad_batches=4 below, so this is NOT an A/B change.
+            batch_size: 2
             num_workers: 8
 
 pl_trainer:
     precision: 16-mixed
     log_every_n_steps: 50
     gradient_clip_val: 0.5
-    # ~661 steps/epoch. The joint arm decodes video + runs the ViT fwd+bwd, so budget ~1 h/epoch and
-    # give the job 12 h. The frozen twin is far faster (cached features, no decode) — same epochs anyway.
+    # batch_size 2 x 4 = the effective batch 8 both arms are specified at. LayerNorm-only model, so
+    # accumulation is mathematically equivalent to the larger batch (no BatchNorm statistics to skew).
+    accumulate_grad_batches: 4
+    # MEASURED: ~3 h/epoch for the joint arm on an RTX 6000 Ada. 5287+88 clips at batch 2 = ~2680 fwd/bwd
+    # passes per epoch (661 OPTIMIZER steps after accumulation ×4 — an earlier note conflated the two and
+    # guessed ~1 h). 4 epochs ≈ 12 h. Per-epoch checkpoints mean an early stop is still evaluable.
+    # The frozen twin is far faster (cached features, no decode, no ViT backward) — same epochs regardless.
     max_epochs: 4
     check_val_every_n_epoch: 2
     devices: 1
